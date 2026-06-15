@@ -1,0 +1,7 @@
+# JobMagnet — runtime dependencies (kept deliberately light, like RingBack).
+Flask>=3.0
+requests>=2.31
+# Optional: only needed when RINGBACK/JOBMAGNET provider is "claude".
+# anthropic>=0.40
+# Optional: only needed once Stripe billing is configured (STRIPE_SECRET_KEY set).
+# stripe>=9.0

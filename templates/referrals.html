@@ -1,0 +1,37 @@
+{% extends "app_shell.html" %}
+{% block title %}Referrals{% endblock %}
+{% block page_title %}Referrals &amp; Plans{% endblock %}
+{% block page_sub %}<p class="page-sub">Your happy customers are warm, free leads. Ask for an intro at peak happiness.</p>{% endblock %}
+
+{% block content %}
+{% set msg = request.args.get('msg') %}
+{% if msg and msg.startswith('sent_') %}<div class="save-banner">Referral ask {{ msg[5:] }} ({{ channel_status.sms }}).</div>{% endif %}
+{% if msg == 'nophone' %}<div class="save-banner">That customer has no phone number on file.</div>{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Recurring plan pitch</h2></div>
+  <div class="card-body"><p class="post-body">{{ pitch }}</p></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Ask a happy customer for an intro</h2></div>
+  <div class="card-body">
+    {% if customers %}
+      {% for cu in customers %}
+      <div class="card" style="margin-bottom:var(--space-3)">
+        <div class="card-head">
+          <span class="card-title">{{ cu.name or cu.phone or 'Customer' }}</span>
+          <form method="post" action="/referrals/ask" style="display:inline">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="contact_id" value="{{ cu.id }}">
+            <button class="btn btn-primary btn-sm" type="submit" {{ 'disabled' if not cu.phone }}>Ask for a referral</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="dt-muted">No customers yet. Add them under <a href="/reviews">Reviews</a> or <a href="/contacts">Contacts</a>.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

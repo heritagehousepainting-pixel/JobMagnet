@@ -1,0 +1,27 @@
+{% extends "app_shell.html" %}
+{% block title %}Offer{% endblock %}
+{% block page_title %}Offer &amp; Guarantee{% endblock %}
+{% block page_sub %}<p class="page-sub">A strong, honest offer lowers what every lead costs. Here's what fits your business.</p>{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">Suggested offers</h2>
+    <span class="pill {{ 'pill-booked' if offer.luxury else 'pill-neutral' }}"><span class="pill-dot"></span>{{ 'Premium' if offer.luxury else 'Standard' }}</span>
+  </div>
+  <div class="card-body">
+    <p class="post-body" style="margin-bottom:var(--space-3)"><strong>Mason:</strong> {{ offer.note }}</p>
+    {% for o in offer.offers %}
+    <div class="card" style="margin-bottom:var(--space-2)"><div class="card-body"><p class="post-body" style="margin:0">{{ o }}</p></div></div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Your risk-reversal</h2></div>
+  <div class="card-body">
+    <p class="post-body">{{ offer.guarantee }}</p>
+    <p class="dt-muted" style="font-size:.85rem;margin-top:var(--space-2)">Set the specifics in your <a href="/settings">Business Brain</a>, then Mason weaves the offer into your posts, ads and outreach.</p>
+  </div>
+</div>
+{% endblock %}

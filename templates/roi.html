@@ -1,0 +1,87 @@
+{% extends "app_shell.html" %}
+{% block title %}Results{% endblock %}
+{% block page_title %}Results &amp; ROI{% endblock %}
+{% block page_sub %}<p class="page-sub">The number that matters: cost per booked job. Log what you spend per channel and the jobs each one books.</p>{% endblock %}
+
+{% block content %}
+{% set t = summary.totals %}
+{% if request.args.get('sync') == 'simulated' %}<div class="save-banner">RingBack is not connected, so nothing was synced. Connect it to pull booked jobs automatically.</div>{% endif %}
+{% if request.args.get('sync') == 'live' %}<div class="save-banner">Synced {{ request.args.get('added') }} booked job(s) from RingBack.</div>{% endif %}
+
+<div class="stat-row" style="margin-bottom:var(--space-6)">
+  <div class="stat-tile"><div class="stat-value">${{ '%.0f'|format(t.spend) }}</div><div class="stat-label">Spend</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ t.booked }}</div><div class="stat-label">Booked jobs</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ ('$%.0f'|format(t.cost_per_booked)) if t.cost_per_booked is not none else '—' }}</div><div class="stat-label">Cost / booked job</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ ('%.1fx'|format(t.roas)) if t.roas is not none else '—' }}</div><div class="stat-label">ROAS</div></div>
+</div>
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">By channel</h2>
+    <span class="pill {{ 'pill-booked' if ringback_connected else 'pill-neutral' }}"><span class="pill-dot"></span>RingBack: {{ 'connected' if ringback_connected else 'not connected' }}</span>
+  </div>
+  <div class="card-body">
+    {% if summary.rows %}
+    <table class="dt-table" style="width:100%;border-collapse:collapse">
+      <thead><tr style="text-align:left">
+        <th>Channel</th><th>Spend</th><th>Leads</th><th>Booked</th><th>Won</th><th>Revenue</th><th>Cost / booked</th><th>ROAS</th>
+      </tr></thead>
+      <tbody>
+        {% for r in summary.rows %}
+        <tr>
+          <td><strong>{{ labels.get(r.channel, r.channel) }}</strong></td>
+          <td>${{ '%.0f'|format(r.spend) }}</td>
+          <td>{{ r.leads }}</td>
+          <td>{{ r.booked }}</td>
+          <td>{{ r.won }}</td>
+          <td>${{ '%.0f'|format(r.revenue) }}</td>
+          <td>{{ ('$%.0f'|format(r.cost_per_booked)) if r.cost_per_booked is not none else '—' }}</td>
+          <td>{{ ('%.1fx'|format(r.roas)) if r.roas is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="dt-muted">No data yet. Log spend and booked jobs below to see your cost per booked job.</p>
+    {% endif %}
+    <form method="post" action="/roi/sync-ringback" style="margin-top:var(--space-4)">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <button class="btn btn-ghost btn-sm" type="submit">Sync booked jobs from RingBack</button>
+    </form>
+  </div>
+</div>
+
+<div style="display:flex;gap:var(--space-6);flex-wrap:wrap">
+  <div class="card" style="flex:1;min-width:300px">
+    <div class="card-head"><h2 class="card-title">Log spend</h2></div>
+    <div class="card-body">
+      <form method="post" action="/roi/spend">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="sc">Channel</label>
+          <select class="field-control" id="sc" name="channel">{% for ch in channels %}<option value="{{ ch }}">{{ labels.get(ch, ch) }}</option>{% endfor %}</select>
+        </div>
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="sa">Amount ($)</label>
+          <input class="field-control" id="sa" name="amount" type="number" step="0.01" min="0" required></div>
+        <button class="btn btn-secondary" type="submit">Add spend</button>
+      </form>
+    </div>
+  </div>
+  <div class="card" style="flex:1;min-width:300px">
+    <div class="card-head"><h2 class="card-title">Log a booked job</h2></div>
+    <div class="card-body">
+      <form method="post" action="/roi/conversion">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="cc">Channel that sourced it</label>
+          <select class="field-control" id="cc" name="channel">{% for ch in channels %}<option value="{{ ch }}">{{ labels.get(ch, ch) }}</option>{% endfor %}</select>
+        </div>
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="cs">Status</label>
+          <select class="field-control" id="cs" name="status"><option value="won">Won (job done)</option><option value="booked">Booked</option><option value="lead">Lead</option></select>
+        </div>
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="cv">Job value ($)</label>
+          <input class="field-control" id="cv" name="value" type="number" step="0.01" min="0"></div>
+        <button class="btn btn-primary" type="submit">Add job</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

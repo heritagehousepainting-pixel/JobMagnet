@@ -1,0 +1,119 @@
+{% extends "app_shell.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Content{% endblock %}
+{% block page_sub %}<p class="page-sub">Review what {{ app_name }} wrote, then approve it. Nothing goes out without your OK.</p>{% endblock %}
+{% block header_actions %}<a class="btn btn-primary" href="/compose">New post</a>{% endblock %}
+
+{% block content %}
+{% if not mandate_ready %}
+<div class="save-banner" style="margin-bottom:var(--space-6)">Start here: run <a href="/walkthrough">the Walkthrough</a> and Mason will build your Game Plan, what to do first, and what to skip.</div>
+{% endif %}
+<div class="stat-row" style="margin-bottom:var(--space-6)">
+  <div class="stat-tile"><div class="stat-value">{{ stats.draft }}</div><div class="stat-label">Awaiting review</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.approved }}</div><div class="stat-label">Approved</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.published }}</div><div class="stat-label">Published</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">Total created</div></div>
+</div>
+
+{% set pub = request.args.get('pub') %}
+{% if pub == 'assisted' %}<div class="save-banner">Copy is ready to paste on {{ request.args.get('platform')|capitalize }} (assisted, until that account is connected).</div>{% endif %}
+{% if pub == 'simulated' %}<div class="save-banner">Marked published (simulated). Connect {{ request.args.get('platform')|capitalize }} to post for real.</div>{% endif %}
+{% if pub == 'live' %}<div class="save-banner">Published to {{ request.args.get('platform')|capitalize }}.</div>{% endif %}
+{% if request.args.get('due') %}<div class="save-banner">Published {{ request.args.get('due') }} scheduled post(s) that were due.</div>{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Awaiting your review</h2></div>
+  <div class="card-body">
+    {% if drafts %}
+      {% for p in drafts %}
+      <div class="card" style="margin-bottom:var(--space-4)">
+        <div class="card-head">
+          <span class="pill pill-new"><span class="pill-dot"></span>{{ p.platform|capitalize }}</span>
+          <div class="card-actions">
+            <form method="post" action="/posts/{{ p.id }}/status" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="status" value="approved">
+              <button class="btn btn-primary btn-sm" type="submit">Approve</button>
+            </form>
+            <form method="post" action="/posts/{{ p.id }}/status" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="status" value="rejected">
+              <button class="btn btn-ghost btn-sm" type="submit">Reject</button>
+            </form>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if p.topic %}<p class="post-topic">On: {{ p.topic }}</p>{% endif %}
+          <p class="post-body">{{ p.body }}</p>
+          <details class="post-edit">
+            <summary>Edit</summary>
+            <form method="post" action="/posts/{{ p.id }}/edit" style="margin-top:var(--space-3)">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <textarea class="field-control" name="body" rows="6">{{ p.body }}</textarea>
+              <button class="btn btn-secondary btn-sm" type="submit" style="margin-top:var(--space-2)">Save edit</button>
+            </form>
+          </details>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">
+        <span class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <p class="empty-title">Nothing to review</p>
+        <p class="empty-msg">Write your first post and it will land here for approval.</p>
+        <a class="btn btn-primary empty-action" href="/compose">New post</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 class="card-title">Approved, scheduled &amp; published</h2>
+    {% if due_count %}
+    <form method="post" action="/scheduler/run" style="display:inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <button class="btn btn-primary btn-sm" type="submit">Publish {{ due_count }} due now</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if queue %}
+      {% for p in queue %}
+      <div class="card" style="margin-bottom:var(--space-4)">
+        <div class="card-head">
+          <div style="display:flex;gap:var(--space-2);align-items:center">
+            <span class="pill pill-neutral">{{ p.platform|capitalize }}</span>
+            {% if p.status == 'published' %}
+              <span class="pill pill-booked"><span class="pill-dot"></span>Published</span>
+            {% elif p.status == 'scheduled' %}
+              <span class="pill pill-new"><span class="pill-dot"></span>Scheduled · {{ p.scheduled_for }}</span>
+            {% else %}
+              <span class="pill pill-warning"><span class="pill-dot"></span>Approved</span>
+            {% endif %}
+          </div>
+          {% if p.status in ('approved', 'scheduled') %}
+          <form method="post" action="/posts/{{ p.id }}/publish" style="display:inline">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="btn btn-secondary btn-sm" type="submit">Publish now</button>
+          </form>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <p class="post-body">{{ p.body }}</p>
+          {% if p.status == 'approved' %}
+          <form method="post" action="/posts/{{ p.id }}/schedule" style="margin-top:var(--space-2);display:flex;gap:var(--space-2);align-items:center">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input class="field-control" type="datetime-local" name="scheduled_for" style="max-width:230px">
+            <button class="btn btn-ghost btn-sm" type="submit">Schedule</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="dt-muted">Approved posts will show up here.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

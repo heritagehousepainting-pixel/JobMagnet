@@ -1,0 +1,48 @@
+{% extends "app_shell.html" %}
+{% block title %}Plan &amp; Pricing{% endblock %}
+{% block page_title %}Plan &amp; Pricing{% endblock %}
+{% block page_sub %}<p class="page-sub">Less than the cost of one job, and Mason books you several. $0 setup, we handle the whole thing.</p>{% endblock %}
+
+{% block content %}
+{% if request.args.get('switched') %}<div class="save-banner" style="margin-bottom:var(--space-4)">Plan updated.</div>{% endif %}
+{% if request.args.get('billing_err') %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Something went wrong starting checkout. Please try again.</div>{% endif %}
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4)">
+{% for key in order %}{% set p = plans[key] %}
+  <div class="card" style="{{ 'border:2px solid var(--accent)' if key == current else '' }}">
+    <div class="card-head">
+      <h2 class="card-title">{{ p.name }}</h2>
+      {% if key == current %}<span class="pill pill-booked"><span class="pill-dot"></span>Current</span>{% endif %}
+    </div>
+    <div class="card-body">
+      <div class="stat-value" style="font-size:2rem">${{ p.price }}<span class="dt-muted" style="font-size:.9rem;font-weight:400">/mo</span></div>
+      <p class="post-topic" style="margin:var(--space-2) 0">{{ p.tagline }}</p>
+      <ul class="dt-muted" style="padding-left:1.1rem;margin:var(--space-3) 0 var(--space-4)">
+        {% for f in p.features %}<li style="margin-bottom:4px">{{ f }}</li>{% endfor %}
+      </ul>
+      {% if key == current %}
+        <button class="btn btn-ghost" disabled>Your plan</button>
+      {% else %}
+        <form method="post" action="{{ '/plan/checkout' if billing_live else '/plan/switch' }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="hidden" name="plan" value="{{ key }}">
+          <button class="btn btn-primary" type="submit">{{ 'Choose ' ~ p.name if billing_live else 'Switch to ' ~ p.name }}</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+{% if subscribed and billing_live %}
+<form method="post" action="/billing/portal" style="margin-top:var(--space-4)">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <button class="btn btn-secondary" type="submit">Manage billing &amp; payment</button>
+</form>
+{% endif %}
+
+<p class="dt-muted" style="margin-top:var(--space-4);font-size:.85rem">
+  Annual billing saves about two months. Texting, the number, and carrier registration are
+  included, Mason handles the setup.
+  {% if not billing_live %}<br>Card payment isn't connected yet, so choosing a plan updates it in the app for now.{% endif %}</p>
+{% endblock %}

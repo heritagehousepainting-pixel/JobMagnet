@@ -1,0 +1,50 @@
+{% extends "app_shell.html" %}
+{% block title %}Local SEO{% endblock %}
+{% block page_title %}Local SEO &amp; AI visibility{% endblock %}
+{% block page_sub %}<p class="page-sub">Structured data and answer-first FAQs so Google and AI assistants (ChatGPT, AI Overviews) can find and recommend you.</p>{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">FAQ for AI answer engines</h2>
+    <form method="post" action="/local/faq" style="display:flex;gap:var(--space-2)">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <button class="btn btn-primary btn-sm" type="submit">{{ 'Regenerate' if faqs else 'Generate FAQ' }}</button>
+      {% if faqs %}<button class="btn btn-ghost btn-sm" type="submit" name="action" value="clear">Clear</button>{% endif %}
+    </form>
+  </div>
+  <div class="card-body">
+    {% if faqs %}
+      {% for q, a in faqs %}
+      <div style="margin-bottom:var(--space-3)">
+        <p class="post-topic" style="font-weight:600">{{ q }}</p>
+        <p class="post-body">{{ a }}</p>
+      </div>
+      {% endfor %}
+      <p class="field-help">These are embedded in your schema below as FAQ markup, and are written answer-first so AI assistants can quote them.</p>
+    {% else %}
+      <p class="dt-muted">Generate an answer-first FAQ from your Business Brain. It feeds the schema markup below and helps you get cited by AI search.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Schema markup (structured data)</h2></div>
+  <div class="card-body">
+    <p class="field-help" style="margin-bottom:var(--space-3)">Paste this into the <code>&lt;head&gt;</code> of your website (inside a <code>&lt;script type="application/ld+json"&gt;</code> tag). It tells Google and AI engines exactly what your business is. Most contractor sites have none.</p>
+    <pre style="background:var(--surface-2,#f5f5f4);border:1px solid var(--border,#e7e5e4);border-radius:var(--radius);padding:var(--space-4);overflow:auto;font-size:var(--text-sm);white-space:pre-wrap">{{ schema }}</pre>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Publishing channels</h2></div>
+  <div class="card-body">
+    <p class="field-help" style="margin-bottom:var(--space-3)">How each channel posts right now. Connect accounts to move from assisted/simulated to live (see your setup checklist).</p>
+    <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+      {% for platform, mode in publishing.items() %}
+      <span class="pill {{ 'pill-booked' if mode == 'live' else ('pill-new' if mode == 'assisted' else 'pill-neutral') }}"><span class="pill-dot"></span>{{ platform|capitalize }}: {{ mode }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

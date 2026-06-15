@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ 'Sign up' if mode == 'signup' else 'Log in' }} · {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/ui.css">
+  <style>
+    .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
+      padding:var(--space-6);background:var(--bg)}
+    .auth-card{width:100%;max-width:400px}
+    .auth-brand{display:flex;align-items:center;gap:var(--space-2);justify-content:center;
+      font-weight:800;font-size:var(--text-xl);color:var(--ink);margin-bottom:var(--space-2)}
+    .auth-brand .mark{display:flex;color:var(--accent)}
+    .auth-brand svg{width:24px;height:24px}
+    .auth-tag{text-align:center;color:var(--ink-soft);font-size:var(--text-sm);margin-bottom:var(--space-6)}
+    .auth-form{display:flex;flex-direction:column;gap:var(--space-4)}
+    .auth-alt{text-align:center;margin-top:var(--space-4);font-size:var(--text-sm);color:var(--ink-soft)}
+    .auth-alt a{color:var(--accent-strong);font-weight:600;text-decoration:none}
+    .auth-err{background:var(--danger-bg);color:var(--danger);font-size:var(--text-sm);
+      font-weight:500;padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)}
+  </style>
+</head>
+<body class="ui-body">
+  <div class="auth-wrap">
+    <div class="auth-card card">
+      <div class="card-body">
+        <div class="auth-brand">
+          <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"/><path d="m5 8 4 4"/><path d="m12 15 4 4"/></svg></span>
+          {{ app_name }}
+        </div>
+        <p class="auth-tag">{{ tagline }}</p>
+        {% if error %}<div class="auth-err">{{ error }}</div>{% endif %}
+        <form class="auth-form" method="post" action="{{ '/signup' if mode == 'signup' else '/login' }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          {% if mode == 'signup' %}
+          <div class="field">
+            <label class="field-label" for="name">Business name</label>
+            <input class="field-control" id="name" name="name" placeholder="Heritage House Painting" required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="trade">Trade</label>
+            <input class="field-control" id="trade" name="trade" placeholder="Residential & commercial painting">
+          </div>
+          {% endif %}
+          <div class="field">
+            <label class="field-label" for="email">Email</label>
+            <input class="field-control" id="email" name="email" type="email" placeholder="you@business.com" required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="password">Password</label>
+            <input class="field-control" id="password" name="password" type="password"
+                   placeholder="{{ '8+ characters' if mode == 'signup' else 'Your password' }}" required>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">
+            {{ 'Create account' if mode == 'signup' else 'Log in' }}
+          </button>
+        </form>
+        {% if mode == 'signup' %}
+          <p class="auth-alt">Already have an account? <a href="/login">Log in</a></p>
+        {% else %}
+          <p class="auth-alt">New here? <a href="/signup">Create an account</a></p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

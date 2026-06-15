@@ -1,0 +1,86 @@
+{% extends "app_shell.html" %}
+{% block title %}Business Brain{% endblock %}
+{% block page_title %}Business Brain{% endblock %}
+{% block page_sub %}<p class="page-sub">This is what {{ app_name }} knows about your business. The better it is, the better your content.</p>{% endblock %}
+
+{% block content %}
+{% if saved %}<div class="save-banner">Saved.</div>{% endif %}
+
+<div class="card" style="max-width:760px;margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Profile &amp; voice</h2></div>
+  <div class="card-body">
+    <form method="post" action="/settings">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="name">Business name</label>
+        <input class="field-control" id="name" name="name" value="{{ business.name or '' }}">
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="trade">Trade</label>
+        <input class="field-control" id="trade" name="trade" value="{{ business.trade or '' }}">
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="service_area">Service area</label>
+        <input class="field-control" id="service_area" name="service_area" value="{{ business.service_area or '' }}">
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="owner_name">Owner / contact name</label>
+        <input class="field-control" id="owner_name" name="owner_name" value="{{ business.owner_name or '' }}">
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="google_review_link">Google review link</label>
+        <input class="field-control" id="google_review_link" name="google_review_link" value="{{ business.google_review_link or '' }}" placeholder="https://g.page/r/...">
+        <span class="field-help">Where customers leave a Google review. Used by the Reviews page to request reviews. <a href="https://support.google.com/business/answer/7035772" target="_blank" rel="noopener">How to find yours</a>.</span>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="brand_voice">Brand voice</label>
+        <textarea class="field-control" id="brand_voice" name="brand_voice" rows="3">{{ business.brand_voice or '' }}</textarea>
+        <span class="field-help">How you sound. Tone, formality, things to avoid.</span>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="services">Services</label>
+        <textarea class="field-control" id="services" name="services" rows="2">{{ business.services or '' }}</textarea>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="target_customer">Ideal customer</label>
+        <textarea class="field-control" id="target_customer" name="target_customer" rows="2">{{ business.target_customer or '' }}</textarea>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="differentiators">What sets you apart</label>
+        <textarea class="field-control" id="differentiators" name="differentiators" rows="2">{{ business.differentiators or '' }}</textarea>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="mailing_address">Mailing address</label>
+        <input class="field-control" id="mailing_address" name="mailing_address" value="{{ business.mailing_address or '' }}" placeholder="123 Main St, Springfield, IL 62701">
+        <span class="field-help">Required on marketing emails by law (CAN-SPAM). Cold email stays off until this is set.</span>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="capacity_note">Capacity note</label>
+        <textarea class="field-control" id="capacity_note" name="capacity_note" rows="2">{{ business.capacity_note or '' }}</textarea>
+        <span class="field-help">What work you want more of right now. Steers the content toward your best jobs.</span>
+      </div>
+      <button class="btn btn-primary" type="submit">Save Business Brain</button>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="max-width:760px">
+  <div class="card-head"><h2 class="card-title">Password</h2></div>
+  <div class="card-body">
+    {% if request.args.get('pw') == 'ok' %}<div class="save-banner">Password updated.</div>{% endif %}
+    {% if request.args.get('pw') == 'err' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Check your current password and use 8+ characters.</div>{% endif %}
+    <form method="post" action="/settings/password">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="current_password">Current password</label>
+        <input class="field-control" id="current_password" name="current_password" type="password">
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="new_password">New password</label>
+        <input class="field-control" id="new_password" name="new_password" type="password" placeholder="8+ characters">
+      </div>
+      <button class="btn btn-secondary" type="submit">Update password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

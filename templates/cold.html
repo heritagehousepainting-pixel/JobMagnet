@@ -1,0 +1,62 @@
+{% extends "app_shell.html" %}
+{% block title %}Cold Outreach{% endblock %}
+{% block page_title %}Cold SMS &amp; Voice{% endblock %}
+{% block page_sub %}<p class="page-sub">The highest-risk channels, built compliant. Off by default until a TCPA attorney reviews the consent flow. This discipline is the point, not a limitation.</p>{% endblock %}
+
+{% block content %}
+{% set msg = request.args.get('msg') %}
+{% if msg == 'blocked_disabled' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Cold SMS is disabled. It stays off until a TCPA attorney signs off on the consent flow.</div>{% endif %}
+{% if msg == 'blocked_no_consent' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">No prior written consent on file for that contact, so nothing was sent.</div>{% endif %}
+{% if msg == 'simulated' %}<div class="save-banner">Cold SMS queued (simulated). Connect SMS to send for real.</div>{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-body" style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:center">
+    <span class="pill {{ 'pill-booked' if sms_enabled else 'pill-warning' }}"><span class="pill-dot"></span>Cold SMS: {{ 'enabled' if sms_enabled else 'disabled (attorney gate)' }}</span>
+    <span class="pill {{ 'pill-booked' if voice_enabled else 'pill-warning' }}"><span class="pill-dot"></span>Cold voice: {{ 'enabled' if voice_enabled else 'disabled (attorney gate)' }}</span>
+    <span class="pill pill-neutral"><span class="pill-dot"></span>SMS delivery: {{ channels.sms }}</span>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--space-6);border-left:3px solid var(--warning,#d97706)">
+  <div class="card-body">
+    <p style="margin:0"><strong>How this works.</strong> Cold marketing SMS requires prior express <em>written</em> consent under the TCPA, and cold AI voice is treated by the FCC as artificial/prerecorded (the highest risk). JobMagnet keeps both off until counsel reviews the flow, and even when enabled it will only message a contact who has written consent on file. We sell the <em>compliant</em> outbound engine, on purpose.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Contacts &amp; written consent</h2></div>
+  <div class="card-body">
+    {% if leads %}
+    <table class="dt-table" style="width:100%">
+      <tbody>
+        {% for c in leads %}
+        <tr>
+          <td><strong>{{ c.name }}</strong> <span class="pill pill-neutral">{{ c.kind }}</span></td>
+          <td class="dt-muted">{{ c.phone or 'no phone' }}</td>
+          <td>{% if c.consent_status == 'granted' %}<span class="pill pill-booked">written consent</span>{% elif c.suppressed or c.consent_status == 'opted_out' %}<span class="pill pill-warning">do not contact</span>{% else %}<span class="pill pill-neutral">no consent</span>{% endif %}</td>
+          <td style="text-align:right">
+            {% if c.consent_status != 'granted' and not c.suppressed and c.consent_status != 'opted_out' %}
+            <form method="post" action="/cold/consent" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="contact_id" value="{{ c.id }}">
+              <button class="btn btn-ghost btn-sm" type="submit">Record written consent</button>
+            </form>
+            {% elif c.consent_status == 'granted' and sms_enabled %}
+            <form method="post" action="/cold/sms" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="contact_id" value="{{ c.id }}">
+              <input type="hidden" name="body" value="Quick note from a local pro. Reply STOP to opt out.">
+              <button class="btn btn-primary btn-sm" type="submit">Send cold SMS</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="dt-muted">No partners or leads yet. Add them in <a href="/contacts">Contacts</a>.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

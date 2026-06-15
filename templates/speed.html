@@ -1,0 +1,68 @@
+{% extends "app_shell.html" %}
+{% block title %}Speed-to-Lead{% endblock %}
+{% block page_title %}Speed-to-Lead{% endblock %}
+{% block page_sub %}<p class="page-sub">Whoever answers first usually wins the job. Log an inbound and Mason texts back in seconds.</p>{% endblock %}
+
+{% block content %}
+{% set sent = request.args.get('sent') %}
+{% if sent == 'sent' %}<div class="save-banner">Lead logged and texted for real. ✅</div>
+{% elif sent == 'simulated' %}<div class="save-banner">Lead logged. The text was <strong>simulated</strong>, connect Twilio under <a href="/connections">Connections</a> to send for real.</div>
+{% elif sent == 'error' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Lead logged, but the text <strong>failed to send</strong>. Check your Twilio details in <a href="/connections">Connections</a>.</div>
+{% elif sent and sent.startswith('blocked') %}<div class="save-banner">Lead logged. Text not sent ({{ sent.replace('blocked_','') }}).</div>{% endif %}
+{% if request.args.get('msg') == 'logged' %}<div class="save-banner">Lead logged. Add a phone number to text them back.</div>{% endif %}
+{% if request.args.get('msg') == 'empty' %}<div class="save-banner">Add at least a name or a phone number.</div>{% endif %}
+
+<div class="stat-row" style="margin-bottom:var(--space-6)">
+  <div class="stat-tile"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">Leads</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.responded }}</div><div class="stat-label">Responded</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.awaiting }}</div><div class="stat-label">Awaiting</div></div>
+  <div class="stat-tile"><div class="stat-value">{% if stats.avg_seconds is not none %}{{ stats.avg_seconds }}s{% else %}--{% endif %}</div><div class="stat-label">Avg first touch</div></div>
+</div>
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">New inbound lead</h2></div>
+  <div class="card-body">
+    <form method="post" action="/speed/lead" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-3);align-items:end">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label class="field"><span class="field-label">Name</span><input class="field-control" name="name" placeholder="Caller name"></label>
+      <label class="field"><span class="field-label">Phone</span><input class="field-control" name="phone" placeholder="(215) 555-0100"></label>
+      <label class="field"><span class="field-label">Channel</span>
+        <select class="field-control" name="channel">{% for ch in channels %}<option value="{{ ch }}">{{ ch|capitalize }}</option>{% endfor %}</select></label>
+      <label class="field"><span class="field-label">What they want</span><input class="field-control" name="topic" placeholder="e.g. exterior repaint quote"></label>
+      <button class="btn btn-primary" type="submit">Log &amp; text back now</button>
+    </form>
+    <p class="dt-muted" style="margin-top:var(--space-3);font-size:.85rem">Auto-reply asks: {{ qualify|join(' · ') }}</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Leads</h2></div>
+  <div class="card-body">
+    {% if leads %}
+      {% for l in leads %}
+      <div class="card" style="margin-bottom:var(--space-3)">
+        <div class="card-head">
+          <div style="display:flex;gap:var(--space-2);align-items:center">
+            <span class="card-title">{{ l.name or l.phone or 'Lead' }}</span>
+            <span class="pill pill-neutral">{{ l.channel|capitalize }}</span>
+            {% if l.first_response_at %}<span class="pill pill-booked"><span class="pill-dot"></span>{{ l.status|capitalize }}</span>
+            {% else %}<span class="pill pill-warning"><span class="pill-dot"></span>{{ l.status|capitalize }}</span>{% endif %}
+          </div>
+          <form method="post" action="/speed/{{ l.id }}/status" style="display:flex;gap:var(--space-2)">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <select class="field-control" name="status" style="max-width:150px">{% for s in statuses %}<option value="{{ s }}" {{ 'selected' if l.status==s }}>{{ s|capitalize }}</option>{% endfor %}</select>
+            <input class="field-control" type="number" name="value" min="0" step="100" style="max-width:120px"
+                   value="{{ l.value|round|int if l.value else '' }}" placeholder="$ job value"
+                   title="Job value when booked/won -- feeds your cost-per-booked-job">
+            <button class="btn btn-ghost btn-sm" type="submit">Update</button>
+          </form>
+        </div>
+        <div class="card-body">{% if l.topic %}<p class="post-topic" style="margin:0">{{ l.topic }}</p>{% endif %}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="dt-muted">No leads yet. Log one above to see the instant text-back.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

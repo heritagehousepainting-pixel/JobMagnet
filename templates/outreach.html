@@ -1,0 +1,70 @@
+{% extends "app_shell.html" %}
+{% block title %}Outreach{% endblock %}
+{% block page_title %}Partner Outreach{% endblock %}
+{% block page_sub %}<p class="page-sub">Cold email to potential referral partners (realtors, property managers, GCs). Built CAN-SPAM compliant. Not for homeowners.</p>{% endblock %}
+
+{% block content %}
+{% set msg = request.args.get('msg') %}
+{% if msg == 'noaddr' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Add your mailing address in <a href="/settings">Business Brain</a> first. The law (CAN-SPAM) requires it on every marketing email.</div>{% endif %}
+{% if msg == 'incomplete' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That partner needs an email address, and the message needs a subject and body.</div>{% endif %}
+{% if msg and msg.startswith('sent_simulated') %}<div class="save-banner">Email queued (simulated). Connect email sending to deliver for real, see <a href="/settings">setup</a>.</div>{% endif %}
+{% if msg == 'sent_sent' %}<div class="save-banner">Email sent.</div>{% endif %}
+{% if msg and msg.startswith('sent_blocked') %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That contact opted out or is on do-not-contact, so nothing was sent.</div>{% endif %}
+
+{% if not can_spam %}
+<div class="card" style="margin-bottom:var(--space-6);border-left:3px solid var(--warning,#d97706)">
+  <div class="card-body"><strong>Cold email is off.</strong> Add a mailing address in <a href="/settings">Business Brain</a> to enable compliant sending.</div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">Partners</h2>
+    <span class="pill {{ 'pill-booked' if channels.email == 'live' else 'pill-neutral' }}"><span class="pill-dot"></span>Email: {{ channels.email }}</span>
+  </div>
+  <div class="card-body">
+    {% if partners %}
+    <table class="dt-table" style="width:100%">
+      <tbody>
+        {% for p in partners %}
+        <tr>
+          <td><strong>{{ p.name }}</strong></td>
+          <td class="dt-muted">{{ p.email or 'no email' }}</td>
+          <td>{% if p.suppressed or p.consent_status == 'opted_out' %}<span class="pill pill-warning">do not contact</span>{% endif %}</td>
+          <td style="text-align:right">
+            <form method="post" action="/outreach" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="generate">
+              <input type="hidden" name="contact_id" value="{{ p.id }}">
+              <button class="btn btn-secondary btn-sm" type="submit" {{ 'disabled' if (p.suppressed or p.consent_status == 'opted_out' or not p.email) }}>Draft email</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="dt-muted">No partners yet. Add partner contacts in <a href="/contacts">Contacts</a> first.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if preview %}
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Draft to {{ preview.contact.name }}</h2></div>
+  <div class="card-body">
+    <form method="post" action="/outreach/send">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="contact_id" value="{{ preview.contact.id }}">
+      <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label">Subject</label>
+        <input class="field-control" name="subject" value="{{ preview.subject }}"></div>
+      <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label">Body</label>
+        <textarea class="field-control" name="body" rows="9">{{ preview.body }}</textarea>
+        <span class="field-help">A compliant footer (your address + an opt-out link) is added automatically when sent.</span>
+      </div>
+      <button class="btn btn-primary" type="submit">Send email</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

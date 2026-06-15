@@ -1,0 +1,60 @@
+{% extends "app_shell.html" %}
+{% block title %}Get Found{% endblock %}
+{% block page_title %}Get Found{% endblock %}
+{% block page_sub %}<p class="page-sub">Claimed isn't optimized. Work this list and post weekly, and the right homeowners start finding you.</p>{% endblock %}
+
+{% block content %}
+{% if request.args.get('posted') %}<div class="save-banner">This week's Google post is drafted and waiting in your queue for approval.</div>{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">Profile optimization</h2>
+    <span class="stat-value" style="font-size:1.25rem">{{ score.pct }}%</span>
+  </div>
+  <div class="card-body">
+    <div style="height:10px;background:var(--surface-2,#eee);border-radius:99px;overflow:hidden;margin-bottom:var(--space-2)">
+      <div style="height:100%;width:{{ score.pct }}%;background:var(--accent,#2f6df6);border-radius:99px"></div>
+    </div>
+    <p class="dt-muted" style="margin-bottom:var(--space-4)">{{ score.done }} of {{ score.total }} done.
+      {% if not score.complete and next_steps %}Next up: {{ next_steps[0].label }}.{% endif %}</p>
+
+    {% for item in checklist %}
+    {% set is_done = item.key in done %}
+    <div class="card" style="margin-bottom:var(--space-3)">
+      <div class="card-head">
+        <div style="display:flex;gap:var(--space-2);align-items:center">
+          {% if is_done %}<span class="pill pill-booked"><span class="pill-dot"></span>Done</span>
+          {% else %}<span class="pill pill-warning"><span class="pill-dot"></span>To do</span>{% endif %}
+          <span class="card-title">{{ item.label }}</span>
+        </div>
+        <form method="post" action="/getfound/check" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="hidden" name="item" value="{{ item.key }}">
+          <input type="hidden" name="done" value="{{ '0' if is_done else '1' }}">
+          <button class="btn btn-sm {{ 'btn-ghost' if is_done else 'btn-primary' }}" type="submit">{{ 'Undo' if is_done else 'Mark done' }}</button>
+        </form>
+      </div>
+      <div class="card-body"><p class="dt-muted" style="margin:0">{{ item.help }}</p></div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Weekly Google post</h2></div>
+  <div class="card-body">
+    <p class="dt-muted" style="margin-bottom:var(--space-3)">
+      {% if last_gbp_post %}Last Google post drafted: {{ last_gbp_post[:10] }}. Keep the weekly cadence going.
+      {% else %}No Google posts yet. A weekly post is the freshness signal that lifts local rank.{% endif %}
+    </p>
+    <form method="post" action="/getfound/post" style="display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <input class="field-control" name="topic" placeholder="What did you work on this week? (optional)" style="max-width:420px">
+      <button class="btn btn-primary" type="submit">Draft this week's post</button>
+    </form>
+    <p class="dt-muted" style="margin-top:var(--space-3);font-size:.85rem">
+      Also worth doing: <a href="/local">publish your FAQ + schema (AEO)</a> and
+      <a href="/reviews">keep reviews fresh</a>. Both feed Get Found.</p>
+  </div>
+</div>
+{% endblock %}

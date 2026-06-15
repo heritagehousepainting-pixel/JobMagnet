@@ -1,0 +1,113 @@
+{% extends "app_shell.html" %}
+{% block title %}Reviews{% endblock %}
+{% block page_title %}Reviews &amp; Reputation{% endblock %}
+{% block page_sub %}<p class="page-sub">Ask happy customers for reviews and reply to every one. More reviews lift your local ranking and your close rate.</p>{% endblock %}
+
+{% block content %}
+{% set msg = request.args.get('msg') %}
+{% if msg == 'nolink' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Add your Google review link in <a href="/settings">Business Brain</a> before requesting reviews.</div>{% endif %}
+{% if msg == 'nophone' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That customer has no phone number on file.</div>{% endif %}
+{% if msg and msg.startswith('sent_simulated') %}<div class="save-banner">Review request queued (simulated). Connect SMS to send for real, see <a href="/settings">setup</a>.</div>{% endif %}
+{% if msg == 'sent_sent' %}<div class="save-banner">Review request sent.</div>{% endif %}
+{% if msg and msg.startswith('sent_blocked') %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That contact has opted out, so nothing was sent.</div>{% endif %}
+{% if msg and msg.startswith('bulk_') %}<div class="save-banner">Sent {{ msg[5:] }} review request(s) to customers not yet asked.</div>{% endif %}
+
+<div class="stat-row" style="margin-bottom:var(--space-6)">
+  <div class="stat-tile"><div class="stat-value">{{ stats.avg or '—' }}</div><div class="stat-label">Avg rating</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.velocity_30d }}</div><div class="stat-label">New (30 days)</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">Reviews</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.new }}</div><div class="stat-label">Need a reply</div></div>
+  <div class="stat-tile"><div class="stat-value">{{ stats.requested }}</div><div class="stat-label">Requests sent</div></div>
+</div>
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">Request reviews</h2>
+    <span class="pill {{ 'pill-booked' if channels.sms == 'live' else 'pill-neutral' }}"><span class="pill-dot"></span>SMS: {{ channels.sms }}</span>
+  </div>
+  <div class="card-body">
+    <form method="post" action="/reviews/customers" style="display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4)">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div class="field" style="flex:1;min-width:140px;margin:0"><label class="field-label" for="cn">Customer name</label><input class="field-control" id="cn" name="name" required></div>
+      <div class="field" style="flex:1;min-width:140px;margin:0"><label class="field-label" for="cp">Phone</label><input class="field-control" id="cp" name="phone" placeholder="555 123 4567"></div>
+      <button class="btn btn-secondary" type="submit">Add customer</button>
+    </form>
+    <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-bottom:var(--space-4)">
+      <form method="post" action="/reviews/request-all" style="display:inline">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="btn btn-primary btn-sm" type="submit">Request from everyone not yet asked</button>
+      </form>
+      <span class="dt-muted" style="font-size:.85rem">Velocity beats volume. We ask every customer and never hide the unhappy ones, that's Google's rule and ours.</span>
+    </div>
+    {% if contacts %}
+    <table class="dt-table" style="width:100%">
+      <tbody>
+        {% for c in contacts %}
+        <tr>
+          <td><strong>{{ c.name }}</strong></td>
+          <td class="dt-muted">{{ c.phone or c.email or '' }}</td>
+          <td>{% if c.consent_status == 'opted_out' %}<span class="pill pill-warning">opted out</span>{% endif %}</td>
+          <td style="text-align:right">
+            <form method="post" action="/reviews/request" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="contact_id" value="{{ c.id }}">
+              <button class="btn btn-primary btn-sm" type="submit" {{ 'disabled' if c.consent_status == 'opted_out' }}>Request review</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="dt-muted">Add a past customer to send your first review request.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 class="card-title">Your reviews</h2>
+    <span class="card-subtitle">Automatic monitoring needs the Google API. Until then, add reviews here to draft replies.</span>
+  </div>
+  <div class="card-body">
+    <form method="post" action="/reviews/import" style="display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4)">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div class="field" style="min-width:130px;margin:0"><label class="field-label" for="ra">Reviewer</label><input class="field-control" id="ra" name="author"></div>
+      <div class="field" style="width:90px;margin:0"><label class="field-label" for="rr">Rating</label>
+        <select class="field-control" id="rr" name="rating">{% for n in [5,4,3,2,1] %}<option value="{{ n }}">{{ n }}★</option>{% endfor %}</select>
+      </div>
+      <div class="field" style="flex:1;min-width:200px;margin:0"><label class="field-label" for="rb">Review text</label><input class="field-control" id="rb" name="body" required></div>
+      <button class="btn btn-secondary" type="submit">Add &amp; draft reply</button>
+    </form>
+
+    {% if reviews %}
+      {% for r in reviews %}
+      <div class="card" style="margin-bottom:var(--space-4)">
+        <div class="card-head">
+          <div style="display:flex;gap:var(--space-2);align-items:center">
+            <span class="pill pill-neutral">{{ r.source|capitalize }}</span>
+            <span class="pill {{ 'pill-booked' if (r.rating or 0) >= 4 else 'pill-warning' }}">{{ r.rating }}★</span>
+            {% if r.author %}<strong>{{ r.author }}</strong>{% endif %}
+            {% if r.status == 'responded' %}<span class="pill pill-new"><span class="pill-dot"></span>Replied</span>{% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="post-body">{{ r.body }}</p>
+          <form method="post" action="/reviews/{{ r.id }}/respond" style="margin-top:var(--space-3)">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <label class="field-label">Your reply <span class="dt-muted">(AI-drafted, edit before posting)</span></label>
+            <textarea class="field-control" name="response" rows="3">{{ r.response or '' }}</textarea>
+            <div style="margin-top:var(--space-2);display:flex;gap:var(--space-2)">
+              <button class="btn btn-primary btn-sm" type="submit">Save reply</button>
+              <button class="btn btn-ghost btn-sm" type="submit" name="action" value="regenerate">Regenerate</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="dt-muted">No reviews yet. Add one above to see an AI-drafted reply.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

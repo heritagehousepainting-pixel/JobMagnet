@@ -1,0 +1,81 @@
+{% extends "app_shell.html" %}
+{% block title %}Game Plan{% endblock %}
+{% block page_title %}Mason's Game Plan{% endblock %}
+{% block page_sub %}<p class="page-sub">What I'd run for you, in order, and what I'd skip for now. You decide how much I take on for each.</p>{% endblock %}
+{% block header_actions %}<a class="btn btn-ghost" href="/walkthrough">Redo the Walkthrough</a>{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Mason's read</h2></div>
+  <div class="card-body">
+    <p class="post-body" style="font-size:1.05rem">{{ result.headline }}</p>
+    <ul class="dt-muted" style="margin:var(--space-3) 0 0;padding-left:1.1rem">
+      {% for note in result.woven %}<li>{{ note }}</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">Autopilot</h2>
+    <span class="dt-muted">{{ ap_summary.run }} on autopilot · {{ ap_summary.ask }} ask first · {{ ap_summary.off }} off</span>
+  </div>
+  <div class="card-body">
+    {% set apo = request.args.get('ap_posts') %}{% set apm = request.args.get('ap_msgs') %}
+    {% if apo is not none %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot ran: drafted {{ apo }} post(s) and sent {{ apm }} message(s). Drafts are waiting in your <a href="/dashboard">queue</a>.</div>{% endif %}
+    {% if request.args.get('ap_blocked') %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot is a Premium feature. <a href="/plan">Upgrade</a> to let Mason act on his own.</div>{% endif %}
+    {% if can_autopilot %}
+    <p class="dt-muted" style="margin-bottom:var(--space-3)">Runs every play you set to <strong>Take it over</strong>. Drafts wait for your approval; texts respect consent and quiet hours.</p>
+    <form method="post" action="/autopilot/run" style="display:inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <button class="btn btn-primary" type="submit" {{ 'disabled' if ap_summary.run == 0 }}>Run autopilot ({{ ap_summary.run }})</button>
+    </form>
+    {% else %}
+    <p class="dt-muted">On <strong>Pro</strong>, Mason drafts everything and asks first. <a href="/plan">Upgrade to Premium</a> to turn on Autopilot, so Mason acts on his own within your rules.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% for p in plays %}
+<div class="card" style="margin-bottom:var(--space-4)">
+  <div class="card-head">
+    <div style="display:flex;gap:var(--space-3);align-items:center">
+      {% if p.applicability == 'applies' %}<span class="stat-value" style="font-size:1.25rem">{{ p.priority }}</span>{% endif %}
+      <div>
+        <span class="card-title">{{ p.label }}</span>
+        {% if p.applicability == 'applies' %}
+          <span class="pill pill-booked"><span class="pill-dot"></span>Active</span>
+        {% elif p.applicability == 'not_yet' %}
+          <span class="pill pill-warning"><span class="pill-dot"></span>Not yet</span>
+        {% else %}
+          <span class="pill pill-neutral"><span class="pill-dot"></span>Locked</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="post-topic" style="margin-bottom:var(--space-2)">{{ p.blurb }}</p>
+    <p class="post-body"><strong>Mason:</strong> {{ p.reason }}</p>
+    {% if p.applicability == 'applies' %}
+    <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:var(--space-3);flex-wrap:wrap">
+      {% for value, label in election_labels.items() %}
+        {% if value == 'take_over' and not can_autopilot %}
+        <button class="btn btn-sm btn-ghost" disabled title="Premium feature">{{ label }} 🔒</button>
+        {% else %}
+        <form method="post" action="/mandate/election" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="hidden" name="playbook" value="{{ p.playbook }}">
+          <input type="hidden" name="election" value="{{ value }}">
+          <button class="btn btn-sm {{ 'btn-primary' if p.election == value else 'btn-ghost' }}" type="submit">{{ label }}</button>
+        </form>
+        {% endif %}
+      {% endfor %}
+      {% if p.recommended and p.recommended != p.election %}
+        <span class="dt-muted" style="font-size:.85rem">Mason suggests: {{ election_labels[p.recommended] }}</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

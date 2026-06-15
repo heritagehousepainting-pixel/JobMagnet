@@ -1,0 +1,55 @@
+{% extends "app_shell.html" %}
+{% block title %}Connections{% endblock %}
+{% block page_title %}Connections{% endblock %}
+{% block page_sub %}<p class="page-sub">Link your real accounts so Mason actually does the work, texts, posts, and pulls reviews, instead of just drafting. Nothing goes live until you connect it.</p>{% endblock %}
+
+{% block content %}
+{% if secrets_active %}
+  <div class="dt-muted" style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-4);font-size:0.85rem">
+    <span class="pill pill-booked"><span class="pill-dot"></span>Encrypted at rest</span>
+    Your credentials are sealed with authenticated encryption. We never display a saved secret back.
+  </div>
+{% else %}
+  <div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4);font-size:0.9rem">
+    <strong>Credentials are not yet encrypted.</strong> This dev install has no secrets key set, so anything you connect is stored in the clear. Set <code>JOBMAGNET_SECRETS_KEY</code> before connecting real accounts.
+  </div>
+{% endif %}
+{% set saved = request.args.get('saved') %}
+{% if saved %}
+  {% set sp = providers | selectattr('id', 'equalto', saved) | list %}
+  {% if sp and sp[0].connected %}<div class="save-banner" style="margin-bottom:var(--space-4)">{{ sp[0].label }} connected. It's live now.</div>
+  {% elif sp %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Couldn't connect {{ sp[0].label }}. Double-check the details below (e.g. the Twilio Account SID starts with <strong>AC</strong>, and the From number starts with <strong>+</strong>).</div>{% endif %}
+{% endif %}
+{% for p in providers %}
+<div class="card" style="margin-bottom:var(--space-4)">
+  <div class="card-head">
+    <div style="display:flex;gap:var(--space-2);align-items:center">
+      <h2 class="card-title">{{ p.label }}</h2>
+      {% if p.connected %}<span class="pill pill-booked"><span class="pill-dot"></span>Connected</span>
+      {% else %}<span class="pill pill-neutral"><span class="pill-dot"></span>Not connected</span>{% endif %}
+    </div>
+    {% if p.connected %}
+    <form method="post" action="/connections/{{ p.id }}/disconnect" style="display:inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <button class="btn btn-ghost btn-sm" type="submit">Disconnect</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <p class="dt-muted" style="margin-bottom:var(--space-3)">{{ p.blurb }}</p>
+    <form method="post" action="/connections/{{ p.id }}" autocomplete="off" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-3);align-items:end">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      {% for f in p.fields %}
+      <label class="field"><span class="field-label">{{ f.label }}</span>
+        <input class="field-control" name="{{ f.key }}"
+               {% if f.secret %}type="password" autocomplete="new-password"{% else %}type="text" autocomplete="off"{% endif %}
+               autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore
+               value="{{ '' if f.secret else f.display }}"
+               placeholder="{{ ('saved: ' ~ f.display) if (f.secret and f.display) else '' }}"></label>
+      {% endfor %}
+      <button class="btn btn-primary" type="submit">{{ 'Update' if p.connected else 'Connect' }}</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

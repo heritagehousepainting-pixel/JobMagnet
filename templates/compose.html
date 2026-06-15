@@ -1,0 +1,59 @@
+{% extends "app_shell.html" %}
+{% block title %}Compose{% endblock %}
+{% block page_title %}New post{% endblock %}
+{% block page_sub %}<p class="page-sub">Tell {{ app_name }} about a job or update. It writes the post in your brand voice; you review before anything is saved.</p>{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:680px;margin-bottom:var(--space-6)">
+  <div class="card-body">
+    <form method="post" action="/compose">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="generate">
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="topic">What's the job or update?</label>
+        <textarea class="field-control" id="topic" name="topic" rows="3"
+          placeholder="e.g. Finished a full exterior repaint on a 1920s colonial, warm white with navy trim. Two-day job, crew left it spotless.">{{ topic }}</textarea>
+        <span class="field-help">Be specific. Leave blank for a general trust-building post.</span>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label" for="platform">Platform</label>
+        <select class="field-control" id="platform" name="platform">
+          {% for key, hint in platforms.items() %}
+          <option value="{{ key }}" {{ 'selected' if key == platform }}>{{ key|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">{{ 'Regenerate' if draft is not none else 'Generate post' }}</button>
+    </form>
+  </div>
+</div>
+
+{% if draft is not none %}
+<div class="card" style="max-width:680px">
+  <div class="card-head">
+    <h2 class="card-title">Draft</h2>
+    <span class="pill pill-new"><span class="pill-dot"></span>{{ platform|capitalize }}</span>
+  </div>
+  <div class="card-body">
+    <form method="post" action="/compose">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="save">
+      <input type="hidden" name="platform" value="{{ platform }}">
+      <input type="hidden" name="topic" value="{{ topic }}">
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <textarea class="field-control" name="body" rows="9">{{ draft }}</textarea>
+        <span class="field-help">Edit anything you like, then save it to your review queue.</span>
+      </div>
+      {% if image %}
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label class="field-label">Suggested image <span class="pill pill-neutral">AI image: {{ image.mode }}</span></label>
+        <p class="field-help" style="margin-top:var(--space-2)">{{ image.prompt }}</p>
+        {% if image.mode == 'simulated' %}<span class="field-help">Connect an image provider to generate this automatically.</span>{% endif %}
+      </div>
+      {% endif %}
+      <button class="btn btn-primary" type="submit">Save to queue</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

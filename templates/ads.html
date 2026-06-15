@@ -1,0 +1,48 @@
+{% extends "app_shell.html" %}
+{% block title %}Ads{% endblock %}
+{% block page_title %}Paid Ads Assist{% endblock %}
+{% block page_sub %}<p class="page-sub">Budget guidance and ad copy. Spend Local Services Ads first, it is the cheapest qualified lead.</p>{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Budget calculator</h2></div>
+  <div class="card-body">
+    <form method="get" action="/ads" style="display:flex;gap:var(--space-2);align-items:flex-end;margin-bottom:var(--space-4)">
+      <div class="field" style="margin:0"><label class="field-label" for="rev">Your annual revenue ($)</label>
+        <input class="field-control" id="rev" name="revenue" type="number" min="0" step="1000" value="{{ revenue }}"></div>
+      <button class="btn btn-primary" type="submit">Calculate</button>
+    </form>
+    {% if budget %}
+    <div class="stat-row">
+      <div class="stat-tile"><div class="stat-value">${{ '{:,}'.format(budget.total_lo) }}–{{ '{:,}'.format(budget.total_hi) }}</div><div class="stat-label">Total marketing / mo</div></div>
+      <div class="stat-tile"><div class="stat-value">${{ '{:,}'.format(budget.paid_lo) }}–{{ '{:,}'.format(budget.paid_hi) }}</div><div class="stat-label">Paid ads / mo</div></div>
+      <div class="stat-tile"><div class="stat-value">${{ '{:,}'.format(budget.seo_lo) }}–{{ '{:,}'.format(budget.seo_hi) }}</div><div class="stat-label">SEO / owned / mo</div></div>
+      <div class="stat-tile"><div class="stat-value">~{{ budget.est_lsa_leads }}</div><div class="stat-label">Est. LSA leads / mo</div></div>
+    </div>
+    <p class="field-help" style="margin-top:var(--space-3)">Based on 8–12% of revenue (growth mode), with 60–70% to paid ads. LSA leads estimated at ~${{ budget.cpl.google_lsa }} each. Google Ads run ~${{ budget.cpl.google_ads }}/lead, Facebook ~${{ budget.cpl.facebook_ads }}/lead (lower intent).</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 class="card-title">Google Search ad copy</h2>
+    <form method="post" action="/ads">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="revenue" value="{{ revenue }}">
+      <button class="btn btn-primary btn-sm" type="submit" name="action" value="copy">Generate ad copy</button>
+    </form>
+  </div>
+  <div class="card-body">
+    {% if adcopy %}
+    <p class="field-label">Headlines</p>
+    <ul class="post-body" style="margin-bottom:var(--space-4)">{% for h in adcopy.headlines %}<li>{{ h }}</li>{% endfor %}</ul>
+    <p class="field-label">Descriptions</p>
+    <ul class="post-body">{% for d in adcopy.descriptions %}<li>{{ d }}</li>{% endfor %}</ul>
+    <p class="field-help" style="margin-top:var(--space-3)">Paste these into a Google Responsive Search Ad. Keep headlines under 30 characters and descriptions under 90.</p>
+    {% else %}
+    <p class="dt-muted">Generate ad copy in your brand voice from the Business Brain.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

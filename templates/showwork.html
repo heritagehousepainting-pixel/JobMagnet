@@ -1,0 +1,44 @@
+{% extends "app_shell.html" %}
+{% block title %}Show the Work{% endblock %}
+{% block page_title %}Show the Work{% endblock %}
+{% block page_sub %}<p class="page-sub">Your best projects are the unfair advantage. Turn one into a before/after showcase, ready for your approval.</p>{% endblock %}
+
+{% block content %}
+{% if request.args.get('posted') %}<div class="save-banner">Showcase post drafted and waiting in your queue for approval.</div>{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">New showcase</h2></div>
+  <div class="card-body">
+    <form method="post" action="/showwork/post" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-3);align-items:end">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label class="field" style="grid-column:1 / -1"><span class="field-label">Describe the project</span>
+        <input class="field-control" name="topic" placeholder="e.g. Repainted a 1920s Main Line foyer, deep green with restored trim"></label>
+      <label class="field"><span class="field-label">Platform</span>
+        <select class="field-control" name="platform">
+          <option value="instagram">Instagram</option>
+          <option value="facebook">Facebook</option>
+        </select></label>
+      <button class="btn btn-primary" type="submit">Draft the showcase</button>
+    </form>
+    <p class="dt-muted" style="margin-top:var(--space-3);font-size:.85rem">
+      Image generation is <strong>{{ image_mode }}</strong>. Pair the caption with real before/after photos for the strongest proof.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Recent showcases</h2></div>
+  <div class="card-body">
+    {% if recent %}
+      {% for p in recent %}
+      <div class="card" style="margin-bottom:var(--space-3)">
+        <div class="card-head"><span class="pill pill-neutral">{{ p.platform|capitalize }}</span>
+          <span class="pill {{ 'pill-booked' if p.status=='published' else 'pill-warning' }}"><span class="pill-dot"></span>{{ p.status|capitalize }}</span></div>
+        <div class="card-body"><p class="post-body">{{ p.body }}</p></div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="dt-muted">No showcases yet. Draft one above, then approve it on your <a href="/dashboard">dashboard</a>.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

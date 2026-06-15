@@ -1,0 +1,76 @@
+{% extends "app_shell.html" %}
+{% block title %}Contacts{% endblock %}
+{% block page_title %}Contacts &amp; Leads{% endblock %}
+{% block page_sub %}<p class="page-sub">Your customers, partners, and leads. Consent and do-not-contact live here, the spine of every message JobMagnet sends.</p>{% endblock %}
+
+{% block content %}
+{% if request.args.get('imported') %}<div class="save-banner">Imported {{ request.args.get('imported') }} contact(s).</div>{% endif %}
+
+<div style="display:flex;gap:var(--space-6);flex-wrap:wrap;margin-bottom:var(--space-6)">
+  <div class="card" style="flex:1;min-width:280px">
+    <div class="card-head"><h2 class="card-title">Add a contact</h2></div>
+    <div class="card-body">
+      <form method="post" action="/contacts/add">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="n">Name</label><input class="field-control" id="n" name="name" required></div>
+        <div style="display:flex;gap:var(--space-2)">
+          <div class="field" style="flex:1"><label class="field-label" for="p">Phone</label><input class="field-control" id="p" name="phone"></div>
+          <div class="field" style="flex:1"><label class="field-label" for="e">Email</label><input class="field-control" id="e" name="email"></div>
+        </div>
+        <div class="field" style="margin:var(--space-3) 0"><label class="field-label" for="k">Type</label>
+          <select class="field-control" id="k" name="kind">{% for kd in kinds %}<option value="{{ kd }}">{{ kd|capitalize }}</option>{% endfor %}</select>
+        </div>
+        <button class="btn btn-secondary" type="submit">Add contact</button>
+      </form>
+    </div>
+  </div>
+  <div class="card" style="flex:1;min-width:280px">
+    <div class="card-head"><h2 class="card-title">Bulk import</h2></div>
+    <div class="card-body">
+      <form method="post" action="/contacts/import">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="rows">One per line: name, phone, email</label>
+          <textarea class="field-control" id="rows" name="rows" rows="4" placeholder="Jane Doe, 555 123 4567, jane@email.com"></textarea></div>
+        <div class="field" style="margin-bottom:var(--space-3)"><label class="field-label" for="ik">Import as</label>
+          <select class="field-control" id="ik" name="kind">{% for kd in kinds %}<option value="{{ kd }}">{{ kd|capitalize }}</option>{% endfor %}</select>
+        </div>
+        <button class="btn btn-secondary" type="submit">Import</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">All contacts ({{ contacts|length }})</h2></div>
+  <div class="card-body">
+    {% if contacts %}
+    <table class="dt-table" style="width:100%">
+      <thead><tr style="text-align:left"><th>Name</th><th>Type</th><th>Phone / Email</th><th>Consent</th><th></th></tr></thead>
+      <tbody>
+        {% for c in contacts %}
+        <tr>
+          <td><strong>{{ c.name }}</strong></td>
+          <td><span class="pill pill-neutral">{{ c.kind }}</span></td>
+          <td class="dt-muted">{{ c.phone or '' }} {{ c.email or '' }}</td>
+          <td>
+            {% if c.suppressed %}<span class="pill pill-warning">do not contact</span>
+            {% elif c.consent_status == 'opted_out' %}<span class="pill pill-warning">opted out</span>
+            {% elif c.consent_status == 'granted' %}<span class="pill pill-booked">granted</span>
+            {% else %}<span class="pill pill-neutral">unknown</span>{% endif %}
+          </td>
+          <td style="text-align:right">
+            <form method="post" action="/contacts/{{ c.id }}/suppress" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <button class="btn btn-ghost btn-sm" type="submit">{{ 'Allow' if c.suppressed else 'Do not contact' }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="dt-muted">No contacts yet. Add one or import a list to get started.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

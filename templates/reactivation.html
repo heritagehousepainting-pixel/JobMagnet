@@ -1,0 +1,66 @@
+{% extends "app_shell.html" %}
+{% block title %}Reactivation{% endblock %}
+{% block page_title %}Database Reactivation{% endblock %}
+{% block page_sub %}<p class="page-sub">Past customers coming due on their repaint cycle. Five to six times cheaper than a new lead.</p>{% endblock %}
+
+{% block content %}
+{% set msg = request.args.get('msg') %}
+{% if msg and msg.startswith('sent_') %}<div class="save-banner">Reactivation message {{ msg[5:] }} ({{ channel_status.sms }}).</div>{% endif %}
+{% if msg == 'nophone' %}<div class="save-banner">That customer has no phone number on file.</div>{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Due now ({{ due|length }})</h2></div>
+  <div class="card-body">
+    {% if due %}
+      {% for cu in due %}
+      <div class="card" style="margin-bottom:var(--space-3)">
+        <div class="card-head">
+          <div style="display:flex;gap:var(--space-2);align-items:center">
+            <span class="card-title">{{ cu.name or 'Customer' }}</span>
+            <span class="pill pill-warning"><span class="pill-dot"></span>{{ cu.last_service or 'job' }} · {{ cu.years }}y ago</span>
+          </div>
+          <form method="post" action="/reactivation/send" style="display:inline">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="contact_id" value="{{ cu.id }}">
+            <button class="btn btn-primary btn-sm" type="submit" {{ 'disabled' if not cu.phone }}>Send reactivation</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="dt-muted">Nobody's due yet. Add last-job dates below and Mason will flag them when their cycle comes around. (Mason won't invent a goldmine that isn't there.)</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">All customers</h2></div>
+  <div class="card-body">
+    {% if customers %}
+      {% for cu in customers %}
+      <div class="card" style="margin-bottom:var(--space-3)">
+        <div class="card-head">
+          <span class="card-title">{{ cu.name or cu.phone or 'Customer' }}</span>
+          {% if cu.years is not none %}<span class="dt-muted">{{ cu.last_service or 'job' }} · {{ cu.years }}y ago{% if cu.due %} · due{% endif %}</span>{% else %}<span class="dt-muted">no job date</span>{% endif %}
+        </div>
+        <div class="card-body">
+          <form method="post" action="/reactivation/job" style="display:flex;gap:var(--space-2);align-items:end;flex-wrap:wrap">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="contact_id" value="{{ cu.id }}">
+            <label class="field"><span class="field-label">Last job date</span><input class="field-control" type="date" name="last_job_at" value="{{ (cu.last_job_at or '')[:10] }}"></label>
+            <label class="field"><span class="field-label">Service</span>
+              <select class="field-control" name="last_service">
+                <option value="">--</option>
+                {% for s in services %}<option value="{{ s }}" {{ 'selected' if cu.last_service==s }}>{{ s|capitalize }}</option>{% endfor %}
+              </select></label>
+            <button class="btn btn-ghost btn-sm" type="submit">Save</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="dt-muted">No customers yet. Add them under <a href="/reviews">Reviews</a> or <a href="/contacts">Contacts</a>.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
