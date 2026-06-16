@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Reactivation{% endblock %}
 {% block page_title %}Database Reactivation{% endblock %}
 {% block page_sub %}<p class="page-sub">Past customers coming due on their repaint cycle. Five to six times cheaper than a new lead.</p>{% endblock %}
@@ -28,7 +29,8 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="dt-muted">Nobody's due yet. Add last-job dates below and Mason will flag them when their cycle comes around. (Mason won't invent a goldmine that isn't there.)</p>
+      {{ ui.empty("Nobody's due yet",
+                  "Add last-job dates below and Mason flags customers when their repaint cycle comes around. He won't invent a goldmine that isn't there.") }}
     {% endif %}
   </div>
 </div>
@@ -59,7 +61,9 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="dt-muted">No customers yet. Add them under <a href="/reviews">Reviews</a> or <a href="/contacts">Contacts</a>.</p>
+      {{ ui.empty("No customers yet",
+                  "Add past customers under Contacts, then set their last-job date so Mason can time the reactivation.",
+                  "/contacts", "Add customers") }}
     {% endif %}
   </div>
 </div>

@@ -221,6 +221,65 @@ def init_db():
             UNIQUE(business_id, provider)
         );
         CREATE INDEX IF NOT EXISTS idx_connections_biz ON connections(business_id);
+
+        -- Command-center memory: every conversation the owner has with Mason, so we can
+        -- replay it, call out the weak spots, and learn from confirmed corrections.
+        CREATE TABLE IF NOT EXISTS assistant_convos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id INTEGER NOT NULL,
+            session_key TEXT,
+            started_at TEXT,
+            last_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS assistant_turns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            convo_id INTEGER NOT NULL,
+            business_id INTEGER NOT NULL,
+            role TEXT,           -- 'user' | 'assistant'
+            content TEXT,
+            tool TEXT,           -- which tool ran (or 'chat' / 'route' / NULL)
+            status TEXT,         -- ok | pending | capability_gap | chat | empty | error
+            created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS assistant_flags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id INTEGER NOT NULL,
+            convo_id INTEGER,
+            turn_id INTEGER,
+            kind TEXT,           -- capability_gap | empty | repeat | negative
+            detail TEXT,
+            created_at TEXT,
+            resolved INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS assistant_learnings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id INTEGER NOT NULL,
+            pattern TEXT,        -- normalized phrase the owner said
+            action TEXT,         -- a tool name, 'route', or 'answer'
+            answer TEXT,         -- canned reply / link target (for 'answer'/'route')
+            source_turn_id INTEGER,
+            confirmed INTEGER DEFAULT 0,
+            uses INTEGER DEFAULT 0,
+            created_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_aturns_convo ON assistant_turns(convo_id);
+        CREATE INDEX IF NOT EXISTS idx_aturns_biz ON assistant_turns(business_id);
+        CREATE INDEX IF NOT EXISTS idx_aflags_biz ON assistant_flags(business_id);
+        CREATE INDEX IF NOT EXISTS idx_alearn_biz ON assistant_learnings(business_id);
+
+        -- Phase 0 autonomy: an audit row for every autopilot run (manual button or cron
+        -- heartbeat), so the owner can see what Mason did unattended. Phase 5 reads this.
+        CREATE TABLE IF NOT EXISTS autopilot_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id INTEGER NOT NULL,
+            origin TEXT NOT NULL DEFAULT 'manual',   -- manual | cron
+            posts INTEGER NOT NULL DEFAULT 0,        -- drafts created this run
+            msgs INTEGER NOT NULL DEFAULT 0,         -- messages that actually went out
+            capped INTEGER NOT NULL DEFAULT 0,       -- sends paced to a later run
+            sms_mode TEXT,                           -- live | simulated (honest at run time)
+            created_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_aprun_biz ON autopilot_runs(business_id, created_at);
         """
     )
     # Lightweight migrations so existing DBs gain new columns without a rebuild.
@@ -241,6 +300,13 @@ def init_db():
     _ensure_columns(c, "businesses", {"stripe_customer_id": "TEXT",
                                       "stripe_subscription_id": "TEXT",
                                       "plan_status": "TEXT"})
+    # How a published post actually went out (live / assisted / simulated), so the UI
+    # can show an honest status instead of badging un-posted copy as "Published".
+    _ensure_columns(c, "content_posts", {"publish_mode": "TEXT"})
+    # Phase 2 trust dial: when ON, autopilot-generated content for this tenant is
+    # auto-scheduled (so the heartbeat publishes it) -- but ONLY on live channels.
+    # Default OFF: everything still drafts and waits for approval.
+    _ensure_columns(c, "businesses", {"auto_publish": "INTEGER DEFAULT 0"})
     conn.commit()
     # Seed "client zero" (Heritage) so the app is usable on first boot.
     existing = c.execute("SELECT 1 FROM businesses WHERE id=1").fetchone()
@@ -401,6 +467,18 @@ def set_post_status(post_id, business_id, status):
     return changed
 
 
+def set_post_published(post_id, business_id, mode):
+    """Mark a post published AND record how it went out (live/assisted/simulated), so
+    the dashboard can label it honestly. Scoped to the tenant."""
+    conn = get_conn()
+    conn.execute(
+        "UPDATE content_posts SET status='published', publish_mode=?, decided_at=? "
+        "WHERE id=? AND business_id=?",
+        (mode, now_iso(), post_id, business_id))
+    conn.commit()
+    conn.close()
+
+
 def update_post_body(post_id, business_id, body):
     conn = get_conn()
     conn.execute("UPDATE content_posts SET body=? WHERE id=? AND business_id=?",
@@ -417,6 +495,23 @@ def schedule_post(post_id, business_id, when_iso):
                  (when_iso, now_iso(), post_id, business_id))
     conn.commit()
     conn.close()
+
+
+def scheduled_post_times(business_id):
+    """Parsed datetimes of a tenant's still-scheduled posts -- the posting guardrail
+    uses these to keep a new schedule from stacking on an existing one."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT scheduled_for FROM content_posts WHERE business_id=? AND status='scheduled' "
+        "AND scheduled_for IS NOT NULL", (business_id,)).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        try:
+            out.append(datetime.fromisoformat(r["scheduled_for"]))
+        except (ValueError, TypeError):
+            pass
+    return out
 
 
 def due_posts(now_iso_str=None):
@@ -795,6 +890,25 @@ def set_plan(business_id, plan):
     return True
 
 
+def get_auto_publish(business_id):
+    """Phase 2 trust dial: is this tenant opted in to auto-schedule & publish autopilot
+    content on its live channels? Default OFF."""
+    conn = get_conn()
+    row = conn.execute("SELECT auto_publish FROM businesses WHERE id=?",
+                       (business_id,)).fetchone()
+    conn.close()
+    return bool(row and row["auto_publish"])
+
+
+def set_auto_publish(business_id, on):
+    """Set the tenant's auto-publish opt-in (stored 0/1, tenant-scoped)."""
+    conn = get_conn()
+    conn.execute("UPDATE businesses SET auto_publish=? WHERE id=?",
+                 (1 if on else 0, business_id))
+    conn.commit()
+    conn.close()
+
+
 def find_business_by_customer(customer_id):
     """Map a Stripe customer back to a tenant (for subscription webhooks)."""
     if not customer_id:
@@ -830,13 +944,295 @@ def messages_this_month(business_id):
     """Outbound SMS actually sent/simulated this calendar month (for plan text caps)."""
     start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0,
                                                microsecond=0).isoformat()
+    return _outbound_sms_since(business_id, start)
+
+
+def messages_today(business_id):
+    """Outbound SMS actually sent/simulated so far today (for the daily pacing cap)."""
+    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0,
+                                               microsecond=0).isoformat()
+    return _outbound_sms_since(business_id, start)
+
+
+def _outbound_sms_since(business_id, start_iso):
     conn = get_conn()
     n = conn.execute(
         "SELECT COUNT(*) FROM messages WHERE business_id=? AND channel='sms' "
         "AND direction='outbound' AND status IN ('sent','simulated') AND created_at>=?",
-        (business_id, start)).fetchone()[0]
+        (business_id, start_iso)).fetchone()[0]
     conn.close()
     return n
+
+
+# ---- Command-center conversation memory (record / flag / learn) ----
+def start_or_get_convo(business_id, session_key):
+    """Reuse this browser session's current conversation (if recent) or open a new one,
+    so a back-and-forth groups into one replayable thread."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT id, last_at FROM assistant_convos WHERE business_id=? AND session_key=? "
+        "ORDER BY id DESC LIMIT 1", (business_id, session_key or "")).fetchone()
+    cid = None
+    if row:
+        try:
+            gap = (datetime.now(timezone.utc)
+                   - datetime.fromisoformat(row["last_at"])).total_seconds()
+            if gap < 7200:                 # within 2h -> same conversation
+                cid = row["id"]
+        except (ValueError, TypeError):
+            cid = row["id"]
+    now = now_iso()
+    if cid is None:
+        cid = conn.execute(
+            "INSERT INTO assistant_convos (business_id, session_key, started_at, last_at) "
+            "VALUES (?,?,?,?)", (business_id, session_key or "", now, now)).lastrowid
+    else:
+        conn.execute("UPDATE assistant_convos SET last_at=? WHERE id=?", (now, cid))
+    conn.commit()
+    conn.close()
+    return cid
+
+
+def log_turn(convo_id, business_id, role, content, tool=None, status=None):
+    conn = get_conn()
+    tid = conn.execute(
+        "INSERT INTO assistant_turns (convo_id, business_id, role, content, tool, status, "
+        "created_at) VALUES (?,?,?,?,?,?,?)",
+        (convo_id, business_id, role, content, tool, status, now_iso())).lastrowid
+    conn.commit()
+    conn.close()
+    return tid
+
+
+def recent_user_turns(convo_id, business_id, limit=6):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT content FROM assistant_turns WHERE convo_id=? AND business_id=? AND role='user' "
+        "ORDER BY id DESC LIMIT ?", (convo_id, business_id, limit)).fetchall()
+    conn.close()
+    return [r["content"] for r in rows]
+
+
+def add_flag(business_id, convo_id, turn_id, kind, detail=""):
+    conn = get_conn()
+    fid = conn.execute(
+        "INSERT INTO assistant_flags (business_id, convo_id, turn_id, kind, detail, created_at) "
+        "VALUES (?,?,?,?,?,?)",
+        (business_id, convo_id, turn_id, kind, detail, now_iso())).lastrowid
+    conn.commit()
+    conn.close()
+    return fid
+
+
+def list_convos(business_id, limit=30):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT c.id, c.started_at, c.last_at, "
+        " (SELECT COUNT(*) FROM assistant_turns t WHERE t.convo_id=c.id) AS turns, "
+        " (SELECT COUNT(*) FROM assistant_flags f WHERE f.convo_id=c.id AND f.resolved=0) AS flags "
+        "FROM assistant_convos c WHERE c.business_id=? ORDER BY c.id DESC LIMIT ?",
+        (business_id, limit)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_convo_turns(convo_id, business_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM assistant_turns WHERE convo_id=? AND business_id=? ORDER BY id",
+        (convo_id, business_id)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def list_flags(business_id, resolved=0, limit=50):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT f.*, t.content AS turn_content FROM assistant_flags f "
+        "LEFT JOIN assistant_turns t ON t.id=f.turn_id "
+        "WHERE f.business_id=? AND f.resolved=? ORDER BY f.id DESC LIMIT ?",
+        (business_id, resolved, limit)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def flag_counts(business_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT kind, COUNT(*) AS n FROM assistant_flags WHERE business_id=? AND resolved=0 "
+        "GROUP BY kind", (business_id,)).fetchall()
+    conn.close()
+    return {r["kind"]: r["n"] for r in rows}
+
+
+def get_flag(business_id, flag_id):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM assistant_flags WHERE id=? AND business_id=?",
+                       (flag_id, business_id)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def resolve_flag(business_id, flag_id):
+    conn = get_conn()
+    conn.execute("UPDATE assistant_flags SET resolved=1 WHERE id=? AND business_id=?",
+                 (flag_id, business_id))
+    conn.commit()
+    conn.close()
+
+
+def add_learning(business_id, pattern, action, answer="", source_turn_id=None, confirmed=1):
+    conn = get_conn()
+    lid = conn.execute(
+        "INSERT INTO assistant_learnings (business_id, pattern, action, answer, source_turn_id, "
+        "confirmed, created_at) VALUES (?,?,?,?,?,?,?)",
+        (business_id, (pattern or "").strip().lower(), action, answer, source_turn_id,
+         1 if confirmed else 0, now_iso())).lastrowid
+    conn.commit()
+    conn.close()
+    return lid
+
+
+def list_learnings(business_id, confirmed_only=True):
+    conn = get_conn()
+    q = "SELECT * FROM assistant_learnings WHERE business_id=?"
+    if confirmed_only:
+        q += " AND confirmed=1"
+    rows = conn.execute(q + " ORDER BY id DESC", (business_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def bump_learning(business_id, learning_id):
+    conn = get_conn()
+    conn.execute("UPDATE assistant_learnings SET uses=uses+1 WHERE id=? AND business_id=?",
+                 (learning_id, business_id))
+    conn.commit()
+    conn.close()
+
+
+def memory_digest(business_id, since_iso):
+    """Counts since `since_iso` for the command-center digest: flags by kind, learnings
+    added, and conversations touched."""
+    conn = get_conn()
+    flags = conn.execute(
+        "SELECT kind, COUNT(*) AS n FROM assistant_flags WHERE business_id=? AND created_at>=? "
+        "GROUP BY kind", (business_id, since_iso)).fetchall()
+    learns = conn.execute(
+        "SELECT COUNT(*) FROM assistant_learnings WHERE business_id=? AND created_at>=?",
+        (business_id, since_iso)).fetchone()[0]
+    convs = conn.execute(
+        "SELECT COUNT(*) FROM assistant_convos WHERE business_id=? "
+        "AND COALESCE(last_at, started_at)>=?", (business_id, since_iso)).fetchone()[0]
+    conn.close()
+    d = {r["kind"]: r["n"] for r in flags}
+    return {"gaps": d.get("capability_gap", 0) + d.get("unhelpful", 0),
+            "repeats": d.get("repeat", 0), "negatives": d.get("negative", 0),
+            "learnings": learns, "convos": convs}
+
+
+def unmet_flag_contents(business_id):
+    """The owner messages behind every still-open capability-gap / unhelpful flag, so we
+    can rank which missing capability recurs the most (what to build next)."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT t.content AS c FROM assistant_flags f JOIN assistant_turns t ON t.id=f.turn_id "
+        "WHERE f.business_id=? AND f.resolved=0 AND f.kind IN ('capability_gap','unhelpful') "
+        "AND t.content IS NOT NULL AND t.content != ''", (business_id,)).fetchall()
+    conn.close()
+    return [r["c"] for r in rows]
+
+
+def coach_candidates(business_id):
+    """(message, route) for every open capability-gap whose flag recorded the page Mason
+    pointed to -- the raw material for a proactive 'want me to remember this' offer."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT t.content AS c, f.detail AS d FROM assistant_flags f "
+        "JOIN assistant_turns t ON t.id=f.turn_id "
+        "WHERE f.business_id=? AND f.resolved=0 AND f.kind='capability_gap' "
+        "AND f.detail LIKE 'route:%' AND t.content IS NOT NULL AND t.content != ''",
+        (business_id,)).fetchall()
+    conn.close()
+    return [(r["c"], r["d"][6:]) for r in rows]   # strip the 'route:' prefix
+
+
+def convo_user_turn_count(business_id, convo_id):
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM assistant_turns WHERE business_id=? AND convo_id=? "
+                     "AND role='user'", (business_id, convo_id)).fetchone()[0]
+    conn.close()
+    return n
+
+
+def has_coach_offer(business_id, convo_id):
+    """True once Mason has already made a teaching offer in this conversation (so he asks
+    at most once per chat)."""
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM assistant_flags WHERE business_id=? AND convo_id=? "
+                     "AND kind='coach_offered'", (business_id, convo_id)).fetchone()[0]
+    conn.close()
+    return n > 0
+
+
+def mark_coach_offered(business_id, convo_id):
+    """Record that an offer was made (resolved=1 so it never shows up as an open issue)."""
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO assistant_flags (business_id, convo_id, turn_id, kind, detail, "
+        "created_at, resolved) VALUES (?,?,?,?,?,?,1)",
+        (business_id, convo_id, None, "coach_offered", "", now_iso()))
+    conn.commit()
+    conn.close()
+
+
+def all_owner_recipients():
+    """(business_id, owner_email) for every tenant -- the weekly-digest cron's mailing list."""
+    conn = get_conn()
+    rows = conn.execute("SELECT business_id AS bid, email FROM users").fetchall()
+    conn.close()
+    return [(r["bid"], r["email"]) for r in rows if r["email"]]
+
+
+def all_business_ids():
+    """Every tenant's id -- the autonomy heartbeat (/tasks/tick) iterates these to run
+    each tenant's autopilot through the same gated seams a button would."""
+    conn = get_conn()
+    rows = conn.execute("SELECT id FROM businesses ORDER BY id").fetchall()
+    conn.close()
+    return [r["id"] for r in rows]
+
+
+# ---- Autopilot run log (Phase 0: the activity audit trail) ----
+def log_autopilot_run(business_id, posts, msgs, capped, sms_mode, origin="manual"):
+    """Record one autopilot run so the owner can see what Mason did on his own."""
+    conn = get_conn()
+    rid = conn.execute(
+        "INSERT INTO autopilot_runs (business_id, origin, posts, msgs, capped, sms_mode, "
+        "created_at) VALUES (?,?,?,?,?,?,?)",
+        (business_id, origin, int(posts), int(msgs), int(capped), sms_mode,
+         now_iso())).lastrowid
+    conn.commit()
+    conn.close()
+    return rid
+
+
+def list_autopilot_runs(business_id, limit=20):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM autopilot_runs WHERE business_id=? ORDER BY id DESC LIMIT ?",
+        (business_id, limit)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def last_autopilot_run(business_id):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM autopilot_runs WHERE business_id=? ORDER BY id DESC LIMIT 1",
+        (business_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 # ---- Connections (per-tenant real account links) ----

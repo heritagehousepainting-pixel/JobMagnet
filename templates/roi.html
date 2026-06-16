@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Results{% endblock %}
 {% block page_title %}Results &amp; ROI{% endblock %}
 {% block page_sub %}<p class="page-sub">The number that matters: cost per booked job. Log what you spend per channel and the jobs each one books.</p>{% endblock %}
@@ -6,6 +7,7 @@
 {% block content %}
 {% set t = summary.totals %}
 {% if request.args.get('sync') == 'simulated' %}<div class="save-banner">RingBack is not connected, so nothing was synced. Connect it to pull booked jobs automatically.</div>{% endif %}
+{% if request.args.get('sync') == 'pending' %}<div class="save-banner">RingBack is linked, but automatic booking sync isn't live yet. Log booked jobs below for now.</div>{% endif %}
 {% if request.args.get('sync') == 'live' %}<div class="save-banner">Synced {{ request.args.get('added') }} booked job(s) from RingBack.</div>{% endif %}
 
 <div class="stat-row" style="margin-bottom:var(--space-6)">
@@ -18,7 +20,7 @@
 <div class="card" style="margin-bottom:var(--space-6)">
   <div class="card-head">
     <h2 class="card-title">By channel</h2>
-    <span class="pill {{ 'pill-booked' if ringback_connected else 'pill-neutral' }}"><span class="pill-dot"></span>RingBack: {{ 'connected' if ringback_connected else 'not connected' }}</span>
+    <span class="pill {{ 'pill-booked' if ringback_connected else 'pill-neutral' }}"><span class="pill-dot"></span>RingBack: {{ 'linked' if ringback_connected else 'not connected' }}</span>
   </div>
   <div class="card-body">
     {% if summary.rows %}
@@ -42,7 +44,8 @@
       </tbody>
     </table>
     {% else %}
-      <p class="dt-muted">No data yet. Log spend and booked jobs below to see your cost per booked job.</p>
+      {{ ui.empty("No numbers to show yet",
+                  "Log what you spend per channel and the jobs each one books. Mason turns it into your cost per booked job, the only number that matters.") }}
     {% endif %}
     <form method="post" action="/roi/sync-ringback" style="margin-top:var(--space-4)">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">

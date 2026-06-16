@@ -1,0 +1,15 @@
+{# Shared template helpers. Import with: {% import "_macros.html" as ui %} #}
+
+{# A premium empty state: icon + title + one line + optional action.
+   Replaces bare gray <p> placeholders so every "nothing here yet" reads
+   intentional and on-brand (UI kit: .empty in ui.css). #}
+{% macro empty(title, msg, href=None, label=None) %}
+<div class="empty">
+  <span class="empty-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+  </span>
+  <p class="empty-title">{{ title }}</p>
+  <p class="empty-msg">{{ msg|safe }}</p>
+  {% if href and label %}<a class="btn btn-primary empty-action" href="{{ href }}">{{ label }}</a>{% endif %}
+</div>
+{% endmacro %}

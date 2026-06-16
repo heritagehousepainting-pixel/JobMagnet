@@ -86,5 +86,11 @@ def publish_post(business_id, post):
         except Exception as e:
             print(f"[jobmagnet] {platform} publish failed: {e}", flush=True)
             mode = "error"
-    db.set_post_status(post["id"], business_id, "published")
+    if mode == "error":
+        # A real publish was attempted and failed -- never fake success. Leave the post
+        # in the queue (still 'approved'/'scheduled') so the owner can retry.
+        return {"mode": "error", "platform": platform}
+    # Record HOW it went out so the dashboard shows an honest status: only a real
+    # live post is "Published"; assisted = copy ready to paste, simulated = marked.
+    db.set_post_published(post["id"], business_id, mode)
     return {"mode": mode, "platform": platform}

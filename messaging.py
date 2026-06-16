@@ -11,11 +11,15 @@ Provider interface (standalone first, RingBack/Twilio pluggable):
 
 Every send returns a result dict and is written to the `messages` log:
   {"status": "...", "provider": "...", "message_id": <int>}
-  status in: sent | simulated | blocked_optout | blocked_quiet | blocked_no_consent | error
+  status in: sent | simulated | blocked_optout | blocked_quiet | blocked_cap |
+             blocked_no_consent | error
+(blocked_cap = the tenant hit today's pacing cap or the monthly plan ceiling; the send
+ waits and a later run continues it, so blasts drip instead of dumping.)
 """
 from datetime import datetime
 
 import db
+import plans
 import connections
 from config import (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM,
                     EMAIL_FROM, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD,
@@ -79,6 +83,28 @@ def in_quiet_hours(now=None):
     return h >= start or h < end          # wraps midnight
 
 
+def cap_status(business_id):
+    """How much outbound SMS headroom this tenant has, given their plan: today's daily
+    pacing cap and the monthly plan ceiling. Surfaced honestly in the UI and enforced by
+    the gate below, so a blast drips over days instead of dumping (carrier hygiene)."""
+    plan = db.get_plan(business_id)
+    day_used, month_used = db.messages_today(business_id), db.messages_this_month(business_id)
+    day_cap, month_cap = plans.daily_cap(plan), plans.text_cap(plan)
+    return {"day_used": day_used, "day_cap": day_cap, "day_left": max(0, day_cap - day_used),
+            "month_used": month_used, "month_cap": month_cap,
+            "month_left": max(0, month_cap - month_used)}
+
+
+def _over_cap(business_id):
+    """'month' / 'day' if the tenant has hit a cap and the send must wait, else None."""
+    s = cap_status(business_id)
+    if s["month_left"] <= 0:
+        return "month"
+    if s["day_left"] <= 0:
+        return "day"
+    return None
+
+
 def consent_ok(contact, kind):
     """(ok, reason). Opt-out and DNC suppression always block. Marketing to a stranger
     (no contact on file, or consent unknown) is allowed in this phase but flagged; cold
@@ -132,6 +158,12 @@ def send_sms(business_id, to, body, kind="marketing", purpose="",
                        kind, purpose, cid)
     if kind == "marketing" and in_quiet_hours(now):
         return _logged(business_id, "sms", to, body, "blocked_quiet", "blocked",
+                       kind, purpose, cid)
+    # Pacing: hold the send when the tenant has hit today's daily cap or the monthly plan
+    # ceiling. blocked_cap is NOT counted as contacted (see db.contacted_ids), so the next
+    # run picks this contact up -- a big blast drips over days instead of dumping.
+    if _over_cap(business_id):
+        return _logged(business_id, "sms", to, body, "blocked_cap", "blocked",
                        kind, purpose, cid)
 
     creds = _sms_creds(business_id)

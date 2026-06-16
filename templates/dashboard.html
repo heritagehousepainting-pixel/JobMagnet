@@ -1,28 +1,54 @@
 {% extends "app_shell.html" %}
-{% block title %}Dashboard{% endblock %}
-{% block page_title %}Content{% endblock %}
-{% block page_sub %}<p class="page-sub">Review what {{ app_name }} wrote, then approve it. Nothing goes out without your OK.</p>{% endblock %}
-{% block header_actions %}<a class="btn btn-primary" href="/compose">New post</a>{% endblock %}
+{% import "_macros.html" as ui %}
+{% block title %}Mason's home{% endblock %}
+{% block page_title %}Home{% endblock %}
+{% block page_sub %}<p class="page-sub">Your morning brief, and anything waiting on your okay.</p>{% endblock %}
+{% block header_actions %}<a class="btn btn-secondary" href="/compose">New post</a>{% endblock %}
 
 {% block content %}
-{% if not mandate_ready %}
-<div class="save-banner" style="margin-bottom:var(--space-6)">Start here: run <a href="/walkthrough">the Walkthrough</a> and Mason will build your Game Plan, what to do first, and what to skip.</div>
-{% endif %}
-<div class="stat-row" style="margin-bottom:var(--space-6)">
-  <div class="stat-tile"><div class="stat-value">{{ stats.draft }}</div><div class="stat-label">Awaiting review</div></div>
-  <div class="stat-tile"><div class="stat-value">{{ stats.approved }}</div><div class="stat-label">Approved</div></div>
-  <div class="stat-tile"><div class="stat-value">{{ stats.published }}</div><div class="stat-label">Published</div></div>
-  <div class="stat-tile"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">Total created</div></div>
+{# ---------------- Mason's briefing ---------------- #}
+<div class="brief-hero">
+  <div class="brief-row">
+    <span class="brief-mason">M</span>
+    <div class="brief-main">
+      <p class="brief-hi">{{ brief.hello }}</p>
+      <p class="brief-line">{{ brief.line }}</p>
+      <div class="brief-actions">
+        <a class="btn btn-primary" href="{{ brief.todo_href }}">{{ brief.todo_label }}</a>
+        <span class="brief-meta"><span class="dot"></span> Mason · on the clock</span>
+      </div>
+    </div>
+  </div>
 </div>
 
-{% set pub = request.args.get('pub') %}
-{% if pub == 'assisted' %}<div class="save-banner">Copy is ready to paste on {{ request.args.get('platform')|capitalize }} (assisted, until that account is connected).</div>{% endif %}
-{% if pub == 'simulated' %}<div class="save-banner">Marked published (simulated). Connect {{ request.args.get('platform')|capitalize }} to post for real.</div>{% endif %}
-{% if pub == 'live' %}<div class="save-banner">Published to {{ request.args.get('platform')|capitalize }}.</div>{% endif %}
-{% if request.args.get('due') %}<div class="save-banner">Published {{ request.args.get('due') }} scheduled post(s) that were due.</div>{% endif %}
+{# ---------------- At a glance ---------------- #}
+<div class="glance">
+  <div class="glance-tile"><span class="glance-k">Waiting on you</span><span class="glance-v" data-countup="{{ stats.draft }}">{{ stats.draft }}</span><span class="glance-s">drafts to approve</span></div>
+  <div class="glance-tile"><span class="glance-k">Approved</span><span class="glance-v" data-countup="{{ stats.approved }}">{{ stats.approved }}</span><span class="glance-s">ready or scheduled</span></div>
+  <div class="glance-tile"><span class="glance-k">Published</span><span class="glance-v" data-countup="{{ stats.published }}">{{ stats.published }}</span><span class="glance-s">live so far</span></div>
+  <div class="glance-tile"><span class="glance-k">Total created</span><span class="glance-v" data-countup="{{ stats.total }}">{{ stats.total }}</span><span class="glance-s">posts Mason wrote</span></div>
+</div>
 
-<div class="card" style="margin-bottom:var(--space-6)">
-  <div class="card-head"><h2 class="card-title">Awaiting your review</h2></div>
+{% if not mandate_ready %}
+<div class="save-banner" style="margin:0">Start here: run <a href="/walkthrough">the Walkthrough</a> and Mason will build your Game Plan, what to do first, and what to skip.</div>
+{% endif %}
+
+{% set pub = request.args.get('pub') %}
+{% if pub == 'assisted' %}<div class="save-banner" style="margin:0">Copy is ready to paste on {{ request.args.get('platform')|capitalize }} (assisted, until that account is connected).</div>{% endif %}
+{% if pub == 'simulated' %}<div class="save-banner" style="margin:0">Marked published (simulated). Connect {{ request.args.get('platform')|capitalize }} to post for real.</div>{% endif %}
+{% if pub == 'live' %}<div class="save-banner" style="margin:0">Published to {{ request.args.get('platform')|capitalize }}.</div>{% endif %}
+{% if pub == 'error' %}<div class="save-banner" style="margin:0;background:var(--danger-bg);color:var(--danger)">Couldn't reach {{ request.args.get('platform')|capitalize }} just now, so nothing was posted. The post is still in your queue, try Publish again.</div>{% endif %}
+{% if request.args.get('due') %}<div class="save-banner" style="margin:0">Published {{ request.args.get('due') }} scheduled post(s) that were due.</div>{% endif %}
+{% if request.args.get('sched') %}<div class="save-banner" style="margin:0">Scheduled. I {{ request.args.get('sched') }}, so it is now set for {{ request.args.get('when')|replace('T',' ') }}.</div>{% endif %}
+
+{# ---------------- Waiting on your yes (approval queue) ---------------- #}
+<div class="card" id="review">
+  <div class="card-head">
+    <div class="section-label">
+      <h2 class="card-title">Awaiting your review</h2>
+      {% if drafts %}<span class="count">{{ drafts|length }}</span>{% endif %}
+    </div>
+  </div>
   <div class="card-body">
     {% if drafts %}
       {% for p in drafts %}
@@ -58,18 +84,19 @@
       {% endfor %}
     {% else %}
       <div class="empty">
-        <span class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
-        <p class="empty-title">Nothing to review</p>
-        <p class="empty-msg">Write your first post and it will land here for approval.</p>
-        <a class="btn btn-primary empty-action" href="/compose">New post</a>
+        <span class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <p class="empty-title">All clear. Nothing needs your okay.</p>
+        <p class="empty-msg">When Mason drafts a post, it lands here for your approval before anything goes out.</p>
+        <a class="btn btn-primary empty-action" href="/compose">Write something new</a>
       </div>
     {% endif %}
   </div>
 </div>
 
-<div class="card">
+{# ---------------- Approved / scheduled / published ---------------- #}
+<div class="card" id="queue">
   <div class="card-head">
-    <h2 class="card-title">Approved, scheduled &amp; published</h2>
+    <div class="section-label"><h2 class="card-title">Approved, scheduled &amp; published</h2></div>
     {% if due_count %}
     <form method="post" action="/scheduler/run" style="display:inline">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -85,7 +112,13 @@
           <div style="display:flex;gap:var(--space-2);align-items:center">
             <span class="pill pill-neutral">{{ p.platform|capitalize }}</span>
             {% if p.status == 'published' %}
-              <span class="pill pill-booked"><span class="pill-dot"></span>Published</span>
+              {% if p.publish_mode == 'assisted' %}
+                <span class="pill pill-warning"><span class="pill-dot"></span>Ready to paste</span>
+              {% elif p.publish_mode == 'simulated' %}
+                <span class="pill pill-neutral"><span class="pill-dot"></span>Marked · simulated</span>
+              {% else %}
+                <span class="pill pill-booked"><span class="pill-dot"></span>Published</span>
+              {% endif %}
             {% elif p.status == 'scheduled' %}
               <span class="pill pill-new"><span class="pill-dot"></span>Scheduled · {{ p.scheduled_for }}</span>
             {% else %}
@@ -112,7 +145,8 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="dt-muted">Approved posts will show up here.</p>
+      {{ ui.empty("Nothing approved yet",
+                  "Once you approve a draft above, it shows up here ready to schedule or publish.") }}
     {% endif %}
   </div>
 </div>

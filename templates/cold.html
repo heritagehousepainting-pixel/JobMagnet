@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Cold Outreach{% endblock %}
 {% block page_title %}Cold SMS &amp; Voice{% endblock %}
 {% block page_sub %}<p class="page-sub">The highest-risk channels, built compliant. Off by default until a TCPA attorney reviews the consent flow. This discipline is the point, not a limitation.</p>{% endblock %}
@@ -55,7 +56,9 @@
       </tbody>
     </table>
     {% else %}
-      <p class="dt-muted">No partners or leads yet. Add them in <a href="/contacts">Contacts</a>.</p>
+      {{ ui.empty("No contacts here yet",
+                  "Add contacts first. Nothing cold ever sends without written consent on file, that's the whole point.",
+                  "/contacts", "Go to Contacts") }}
     {% endif %}
   </div>
 </div>

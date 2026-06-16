@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Reviews{% endblock %}
 {% block page_title %}Reviews &amp; Reputation{% endblock %}
 {% block page_sub %}<p class="page-sub">Ask happy customers for reviews and reply to every one. More reviews lift your local ranking and your close rate.</p>{% endblock %}
@@ -10,7 +11,7 @@
 {% if msg and msg.startswith('sent_simulated') %}<div class="save-banner">Review request queued (simulated). Connect SMS to send for real, see <a href="/settings">setup</a>.</div>{% endif %}
 {% if msg == 'sent_sent' %}<div class="save-banner">Review request sent.</div>{% endif %}
 {% if msg and msg.startswith('sent_blocked') %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That contact has opted out, so nothing was sent.</div>{% endif %}
-{% if msg and msg.startswith('bulk_') %}<div class="save-banner">Sent {{ msg[5:] }} review request(s) to customers not yet asked.</div>{% endif %}
+{% if msg and msg.startswith('bulk_') %}<div class="save-banner">Sent {{ msg[5:] }} review request(s) to customers not yet asked.{% if request.args.get('capped') %} {{ request.args.get('capped') }} more are paced for the next few days to stay carrier-friendly, and will go out automatically.{% endif %}</div>{% endif %}
 
 <div class="stat-row" style="margin-bottom:var(--space-6)">
   <div class="stat-tile"><div class="stat-value">{{ stats.avg or '—' }}</div><div class="stat-label">Avg rating</div></div>
@@ -59,7 +60,8 @@
       </tbody>
     </table>
     {% else %}
-    <p class="dt-muted">Add a past customer to send your first review request.</p>
+    {{ ui.empty("No customers added yet",
+                "Add a finished customer above and Mason will text them a review request at the right moment.") }}
     {% endif %}
   </div>
 </div>
@@ -106,7 +108,8 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="dt-muted">No reviews yet. Add one above to see an AI-drafted reply.</p>
+      {{ ui.empty("No reviews here yet",
+                  "Add a review above and Mason drafts a reply you can edit. Google reads your replies, so every one counts.") }}
     {% endif %}
   </div>
 </div>

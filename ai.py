@@ -278,18 +278,21 @@ def _parse_qa(text):
 
 
 def image_mode():
-    """Whether AI image generation is live or simulated (needs a provider key)."""
-    return "live" if IMAGE_API_KEY else "simulated"
+    """AI image generation status. No real image provider is wired yet, so this is
+    always 'simulated' (prompt only) -- we never show 'live' for a call that returns
+    no image. Restore the IMAGE_API_KEY gate here once generate_image makes a real
+    provider call and returns a usable url."""
+    return "simulated"
 
 
 def generate_image(business, topic, platform=DEFAULT_PLATFORM):
-    """Generate (or, until a key is set, simulate) a post image. Returns a dict with
-    an honest mode so the UI never implies an image exists when it does not."""
+    """Build the image prompt. Until a real provider is wired, this is simulated
+    (prompt only, no url) -- an honest mode so the UI never implies an image exists
+    when it does not."""
     prompt = (f"Professional, bright photo-style image for a {business.get('trade','home services')} "
               f"business social post about: {topic or 'quality local work'}. Clean, real, no text overlay.")
-    if image_mode() == "live":
-        # Real image provider call lands here once IMAGE_API_KEY is configured.
-        return {"mode": "live", "prompt": prompt, "url": None}
+    # TODO: when IMAGE_API_KEY is set, call the provider here and return mode 'live'
+    # with a real url. Until then, always simulated.
     return {"mode": "simulated", "prompt": prompt, "url": None}
 
 

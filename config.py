@@ -50,6 +50,10 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 # Default 9pm-8am. Transactional messages still respect opt-outs but not quiet hours.
 QUIET_HOURS_START = int(os.environ.get("JOBMAGNET_QUIET_START", "21") or "21")
 QUIET_HOURS_END = int(os.environ.get("JOBMAGNET_QUIET_END", "8") or "8")
+# Smallest gap (minutes) between two of a tenant's scheduled posts, so the scheduler
+# never stacks several publishes on top of each other. The posting guardrail also keeps
+# scheduled publishes out of the quiet-hours window above.
+POST_MIN_GAP_MIN = int(os.environ.get("JOBMAGNET_POST_MIN_GAP", "60") or "60")
 # Physical mailing address (CAN-SPAM requires one in marketing email).
 MAILING_ADDRESS = os.environ.get("JOBMAGNET_MAILING_ADDRESS", "")
 

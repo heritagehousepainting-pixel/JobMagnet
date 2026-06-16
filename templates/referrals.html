@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Referrals{% endblock %}
 {% block page_title %}Referrals &amp; Plans{% endblock %}
 {% block page_sub %}<p class="page-sub">Your happy customers are warm, free leads. Ask for an intro at peak happiness.</p>{% endblock %}
@@ -30,7 +31,9 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="dt-muted">No customers yet. Add them under <a href="/reviews">Reviews</a> or <a href="/contacts">Contacts</a>.</p>
+      {{ ui.empty("No customers to ask yet",
+                  "Add a happy customer and Mason will help you ask for an intro at peak happiness.",
+                  "/contacts", "Add a customer") }}
     {% endif %}
   </div>
 </div>

@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Speed-to-Lead{% endblock %}
 {% block page_title %}Speed-to-Lead{% endblock %}
 {% block page_sub %}<p class="page-sub">Whoever answers first usually wins the job. Log an inbound and Mason texts back in seconds.</p>{% endblock %}
@@ -61,7 +62,8 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="dt-muted">No leads yet. Log one above to see the instant text-back.</p>
+      {{ ui.empty("No leads yet",
+                  "Log an inbound lead above and Mason texts them back in seconds. The first to answer usually wins the job.") }}
     {% endif %}
   </div>
 </div>

@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Show the Work{% endblock %}
 {% block page_title %}Show the Work{% endblock %}
 {% block page_sub %}<p class="page-sub">Your best projects are the unfair advantage. Turn one into a before/after showcase, ready for your approval.</p>{% endblock %}
@@ -37,7 +38,9 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="dt-muted">No showcases yet. Draft one above, then approve it on your <a href="/dashboard">dashboard</a>.</p>
+      {{ ui.empty("No showcases yet",
+                  "Describe a project above and Mason drafts a before/after showcase. It lands on your home page for approval before it goes out.",
+                  "/dashboard", "Go to my home") }}
     {% endif %}
   </div>
 </div>

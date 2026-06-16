@@ -11,6 +11,34 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done
 
 ## Already done
 - ✅ **MiniMax API key** — in `.env` (`MINIMAX_API_KEY`), brain is live.
+- ✅ **Public marketing site** — home (`/`), `/pricing`, `/how-it-works`, `/contact`
+  are built and live (dark, premium). Pricing pulls from `plans.py`, so changing a
+  plan there updates the site automatically.
+
+## Code-pending — NOT just a credential (won't work until built)
+The truthfulness audit (2026-06-15) confirmed the site now only claims what the code
+does. A few seams are gated honestly but still need **code**, not just a key — the UI
+says so:
+- ⬜ **RingBack auto booking-sync** — `roi.sync_ringback` reports "pending" when
+  RINGBACK_* is set (the bookings GET isn't implemented). Manual "Log a booked job"
+  works today; the closed loop is honest, just manual.
+- ⬜ **AI image generation** — `ai.generate_image` is prompt-only; status is always
+  "simulated" even with `JOBMAGNET_IMAGE_KEY` set, until a provider call is wired.
+- ⬜ **Managed paid ads** — `ads.py` is advisory (budgets + copy), not ad-account
+  management. The site says "Paid-ads guidance," not "managed," on purpose.
+- ⬜ **Texting line** — included as a feature you *connect* (Twilio in Connections);
+  not pre-provisioned. Until a number is linked, review/lead texts are simulated.
+
+## Public site — to make it fully real
+- ⬜ **Contact form delivery.** `POST /contact` currently appends each inquiry to a
+  local `contact_inbox.log` file (honest: it's recorded, not emailed) and shows the
+  visitor a confirmation. To get inquiries in your inbox, wire it to the email
+  provider (Phase 0 SMTP) or a form service. The `hello@jobmagnet.app` address shown
+  on the page is a placeholder — point it at a real mailbox.
+- ⬜ **Domain + favicon + OG/social image.** The site is ready to deploy; it needs a
+  domain, a favicon, and an Open Graph share image for link previews.
+- ⬜ (Optional) **Rate-limit the public contact POST.** It's CSRF-protected but
+  unauthenticated; add a simple per-IP limit before launch to avoid log spam.
 
 ## Security — before onboarding real tenants  ⚠️
 - ⬜ **`JOBMAGNET_SECRETS_KEY`** — encrypts stored connection credentials (Twilio/Google/
@@ -47,8 +75,14 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done
 - ⬜ **Public URL + Twilio inbound webhook** pointed at `POST /webhooks/sms` so
   texting a job photo creates a draft (photo-by-text). Needs the app deployed (or a
   tunnel) and per-business sending numbers to map texts to the right tenant.
-- ⬜ **Scheduler cron** — hit `POST /scheduler/run` on a schedule (e.g. every 15 min)
-  to auto-publish due scheduled posts. Until then, use the "Publish due now" button.
+- ⬜ **Autonomy heartbeat cron** — hit `POST /tasks/tick` on a schedule to make the
+  product run on its own: it publishes due scheduled posts AND runs each Premium+ tenant's
+  take_over plays through the gated seams. Token-gated by `JOBMAGNET_WEBHOOK_TOKEN` (send it
+  as a `token` form field). **Safe to run every ~15 min** — Phase 1 (content cadence) now
+  paces the get_found/show_work plays: each only redrafts once its platform window has passed
+  (Google ~weekly, showcase ~every few days), so a frequent heartbeat publishes and sends
+  without piling up drafts. The older per-tenant `POST /scheduler/run` button still works for
+  publishing due posts by hand.
 
 ## Phase 3 — ROI loop
 - ⬜ **Tracked phone numbers** (Twilio) per channel for attribution.

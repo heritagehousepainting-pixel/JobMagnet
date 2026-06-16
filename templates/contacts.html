@@ -1,4 +1,5 @@
 {% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Contacts{% endblock %}
 {% block page_title %}Contacts &amp; Leads{% endblock %}
 {% block page_sub %}<p class="page-sub">Your customers, partners, and leads. Consent and do-not-contact live here, the spine of every message JobMagnet sends.</p>{% endblock %}
@@ -69,7 +70,8 @@
       </tbody>
     </table>
     {% else %}
-      <p class="dt-muted">No contacts yet. Add one or import a list to get started.</p>
+      {{ ui.empty("No contacts yet",
+                  "Add a customer, partner, or lead above, or paste a list to import. Every message Mason sends starts here.") }}
     {% endif %}
   </div>
 </div>

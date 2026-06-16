@@ -9,8 +9,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/ui.css">
   <link rel="stylesheet" href="/static/app.css">
+  <script>
+    // Flag reveal-ready only when motion is allowed and IntersectionObserver
+    // exists, so content hides with no flash; reduced-motion / no-JS show all.
+    (function(){try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches
+      && 'IntersectionObserver' in window){document.documentElement.classList.add('js-reveal');}}catch(e){}})();
+  </script>
+  <script defer src="/static/motion.js"></script>
 </head>
-<body class="ui-body">
+<body class="ui-body {{ 'theme-dark' if theme != 'light' }}">
 {% set path = request.path %}
 <div class="app">
   <aside class="sidebar">
@@ -20,11 +27,19 @@
     </a>
     {% set chev %}<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>{% endset %}
     <nav class="sidebar-nav">
-      <details class="nav-group" {{ 'open' if path.startswith('/dashboard') or path.startswith('/mandate') or path.startswith('/walkthrough') }}>
+      <details class="nav-group" {{ 'open' if path.startswith('/dashboard') or path.startswith('/queue') or path.startswith('/mandate') or path.startswith('/walkthrough') or path.startswith('/training') }}>
         <summary>{{ chev }}<span>Home</span></summary>
         <a class="nav-item {{ 'active' if path.startswith('/dashboard') }}" href="/dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/></svg>
+          <span>Command Center</span>
+        </a>
+        <a class="nav-item {{ 'active' if path.startswith('/queue') }}" href="/queue">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-          <span>Dashboard</span>
+          <span>Queue</span>
+        </a>
+        <a class="nav-item {{ 'active' if path.startswith('/training') }}" href="/training">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"/><path d="M9 22h6"/></svg>
+          <span>Memory</span>
         </a>
         <a class="nav-item {{ 'active' if path.startswith('/mandate') or path.startswith('/walkthrough') }}" href="/mandate">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -122,13 +137,29 @@
         <span class="biz-name">{{ business.name }}</span>
         <span class="biz-sub">Brain: {{ brain }}</span>
       </span>
-      <a class="sidebar-logout" href="/logout" title="Log out" aria-label="Log out">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </a>
+      <div class="sidebar-foot-actions">
+        <button type="button" class="sidebar-theme" onclick="jmToggleTheme()" title="Toggle light / dark" aria-label="Toggle light or dark theme">
+          <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </button>
+        <a class="sidebar-logout" href="/logout" title="Log out" aria-label="Log out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
+      </div>
     </div>
   </aside>
+  <div class="nav-scrim" onclick="jmCloseNav()" aria-hidden="true"></div>
 
   <main class="content">
+    <div class="app-topbar">
+      <a class="sidebar-brand" href="/dashboard">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"/><path d="m5 8 4 4"/><path d="m12 15 4 4"/></svg></span>
+        {{ app_name }}
+      </a>
+      <button type="button" class="app-burger" onclick="jmToggleNav()" aria-label="Open navigation menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
     <header class="page-head">
       <div>
         <h1>{% block page_title %}{% endblock %}</h1>
@@ -136,8 +167,31 @@
       </div>
       <div class="page-actions">{% block header_actions %}{% endblock %}</div>
     </header>
-    <div class="page-body">{% block content %}{% endblock %}</div>
+    {% if section_tabs %}
+    <nav class="section-tabs" aria-label="{{ section_name }} sections">
+      {% for href, label in section_tabs %}
+      <a class="section-tab {{ 'active' if href == section_active }}" href="{{ href }}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+    <div class="page-body" data-reveal-auto>{% block content %}{% endblock %}</div>
   </main>
 </div>
+<script>
+  // Theme toggle: flip the class for an instant change, persist in a cookie so
+  // the server renders the right theme (no flash) on every later page.
+  function jmToggleTheme(){
+    var dark = document.body.classList.toggle('theme-dark');
+    document.cookie = 'jm_theme=' + (dark ? 'dark' : 'light') +
+      ';path=/;max-age=31536000;samesite=lax';
+  }
+  // Mobile off-canvas nav drawer
+  function jmToggleNav(){ document.querySelector('.app').classList.toggle('nav-open'); }
+  function jmCloseNav(){ document.querySelector('.app').classList.remove('nav-open'); }
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ jmCloseNav(); } });
+  // On narrow screens, scroll the active section tab into view in its scroller.
+  (function(){var a=document.querySelector('.section-tabs .section-tab.active');
+    if(a && a.scrollIntoView){ try{ a.scrollIntoView({inline:'center',block:'nearest'}); }catch(e){} }})();
+</script>
 </body>
 </html>

@@ -27,10 +27,13 @@ def ringback_connected():
 
 
 def sync_ringback(business_id):
-    """Pull booked jobs from a connected RingBack instance into conversions. Safe
-    no-op (simulated) until RINGBACK_* is configured."""
+    """Pull booked jobs from a connected RingBack instance into conversions.
+    Safe no-op until RINGBACK_* is configured. The actual bookings GET isn't
+    implemented yet, so when creds ARE present we honestly report 'pending'
+    (configured, auto-sync not live) rather than claiming a live sync that
+    pulled nothing."""
     if not ringback_connected():
         return {"mode": "simulated", "added": 0}
-    # A real implementation would GET RingBack's bookings API and add_conversion(...)
-    # for each new booking with origin='ringback'. Not reached until configured.
-    return {"mode": "live", "added": 0}
+    # TODO: GET RingBack's bookings API and add_conversion(... origin='ringback')
+    # for each new booking. Until that's built, do not claim a live sync.
+    return {"mode": "pending", "added": 0}

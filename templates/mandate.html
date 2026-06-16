@@ -21,8 +21,8 @@
     <span class="dt-muted">{{ ap_summary.run }} on autopilot · {{ ap_summary.ask }} ask first · {{ ap_summary.off }} off</span>
   </div>
   <div class="card-body">
-    {% set apo = request.args.get('ap_posts') %}{% set apm = request.args.get('ap_msgs') %}
-    {% if apo is not none %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot ran: drafted {{ apo }} post(s) and sent {{ apm }} message(s). Drafts are waiting in your <a href="/dashboard">queue</a>.</div>{% endif %}
+    {% set apo = request.args.get('ap_posts') %}{% set apm = request.args.get('ap_msgs') %}{% set aps = request.args.get('ap_sms') %}
+    {% if apo is not none %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot ran: drafted {{ apo }} post(s) and {{ 'sent' if aps == 'live' else 'queued' }} {{ apm }} message(s){% if aps and aps != 'live' %} (simulated until you connect a texting number){% endif %}.{% if request.args.get('ap_capped') %} {{ request.args.get('ap_capped') }} more are paced for the next few days to stay carrier-friendly, and continue automatically.{% endif %} Drafts are waiting in your <a href="/queue">queue</a>.</div>{% endif %}
     {% if request.args.get('ap_blocked') %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot is a Premium feature. <a href="/plan">Upgrade</a> to let Mason act on his own.</div>{% endif %}
     {% if can_autopilot %}
     <p class="dt-muted" style="margin-bottom:var(--space-3)">Runs every play you set to <strong>Take it over</strong>. Drafts wait for your approval; texts respect consent and quiet hours.</p>
@@ -30,6 +30,28 @@
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <button class="btn btn-primary" type="submit" {{ 'disabled' if ap_summary.run == 0 }}>Run autopilot ({{ ap_summary.run }})</button>
     </form>
+    {% if last_run %}<p class="dt-muted" style="margin-top:var(--space-3)">Last run {{ last_run.created_at[:16].replace('T', ' ') }} UTC{% if last_run.origin == 'cron' %} (on its own){% endif %}: {{ last_run.posts }} draft(s), {{ last_run.msgs }} message(s){% if last_run.capped %}, {{ last_run.capped }} paced{% endif %}.</p>{% endif %}
+
+    <div style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--border)">
+      <p class="post-topic" style="margin-bottom:var(--space-2)">How far should I take content?</p>
+      <p class="dt-muted" style="margin-bottom:var(--space-3)">
+        {% if auto_publish %}I schedule and publish your content for you, on the channels you've connected. Anything on a channel I can't post to yet still drafts for your approval.
+        {% else %}I draft everything and wait for you to approve it. Nothing posts on its own.{% endif %}
+      </p>
+      <div style="display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap">
+        <form method="post" action="/mandate/autopilot-publish" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="hidden" name="on" value="0">
+          <button class="btn btn-sm {{ 'btn-primary' if not auto_publish else 'btn-ghost' }}" type="submit">Draft for me, I approve</button>
+        </form>
+        <form method="post" action="/mandate/autopilot-publish" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="hidden" name="on" value="1">
+          <button class="btn btn-sm {{ 'btn-primary' if auto_publish else 'btn-ghost' }}" type="submit">Schedule and publish for me</button>
+        </form>
+      </div>
+      {% if auto_publish %}<p class="dt-muted" style="margin-top:var(--space-3);font-size:.85rem">Auto publishing only applies to connected channels. Everything else still drafts for your approval.</p>{% endif %}
+    </div>
     {% else %}
     <p class="dt-muted">On <strong>Pro</strong>, Mason drafts everything and asks first. <a href="/plan">Upgrade to Premium</a> to turn on Autopilot, so Mason acts on his own within your rules.</p>
     {% endif %}

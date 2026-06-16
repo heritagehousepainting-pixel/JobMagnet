@@ -71,7 +71,9 @@ check("wrong password rejected", b"Wrong email or password" in r.data)
 r = c.post("/login", data={"email": "heritagehousepainting@gmail.com", "password": "jobmagnet123"})
 check("correct login redirects to dashboard", r.status_code == 302 and r.headers["Location"].endswith("/dashboard"))
 r = c.get("/dashboard")
-check("dashboard loads when logged in", r.status_code == 200 and b"Awaiting your review" in r.data)
+check("dashboard is now the command center", r.status_code == 200 and b"command-shell" in r.data)
+r = c.get("/queue")
+check("queue loads the approval view", r.status_code == 200 and b"Awaiting your review" in r.data)
 
 # --- Content Engine + approval loop ----------------------------------------
 print("Content Engine + approval loop")
@@ -86,7 +88,7 @@ check("saving a draft redirects to dashboard", r.status_code == 302)
 posts = db.list_posts(1)
 check("post persisted as draft", len(posts) == 1 and posts[0]["status"] == "draft")
 pid = posts[0]["id"]
-r = c.get("/dashboard")
+r = c.get("/queue")
 check("draft shows in review queue with Approve", b"Approve" in r.data and b"Exterior repaint wrapped up" in r.data)
 # edit
 c.post(f"/posts/{pid}/edit", data={"body": "Edited body for the post."})
@@ -96,14 +98,14 @@ c.post(f"/posts/{pid}/status", data={"status": "approved"})
 check("approve sets status approved", db.get_post(pid, 1)["status"] == "approved")
 c.post(f"/posts/{pid}/status", data={"status": "published"})
 check("mark published sets status published", db.get_post(pid, 1)["status"] == "published")
-r = c.get("/dashboard")
+r = c.get("/queue")
 check("dashboard shows published post", b"Published" in r.data)
 # reject a second draft
 db.add_post(1, "facebook", "t", "A second draft to reject.")
 p2 = [p for p in db.list_posts(1) if p["status"] == "draft"][0]["id"]
 c.post(f"/posts/{p2}/status", data={"status": "rejected"})
 check("reject sets status rejected", db.get_post(p2, 1)["status"] == "rejected")
-r = c.get("/dashboard")
+r = c.get("/queue")
 check("rejected post is hidden from dashboard", b"A second draft to reject." not in r.data)
 # stats
 stats = db.content_stats(1)
@@ -143,7 +145,7 @@ check("new tenant is a separate business", bob_biz != 1)
 bb = db.get_business(bob_biz)
 check("new tenant does NOT inherit Heritage's painting services", (bb["services"] or "") == "")
 check("new tenant has its own trade", bb["trade"] == "Plumbing")
-r = cb.get("/dashboard")
+r = cb.get("/queue")
 check("Bob sees none of Heritage's posts", b"Edited body for the post." not in r.data)
 check("Bob's post list is empty", db.list_posts(bob_biz) == [])
 # cross-tenant write attempt: Bob tries to touch Heritage's published post
@@ -252,6 +254,62 @@ check("post becomes scheduled", db.get_post(pid_sched, 1)["status"] == "schedule
 check("past-due post appears in due_posts", any(p["id"] == pid_sched for p in db.due_posts()))
 c.post("/scheduler/run")
 check("scheduler publishes due posts", db.get_post(pid_sched, 1)["status"] == "published")
+
+# --- Posting guardrails: keep publishes out of quiet hours + from stacking ---
+import posting
+from datetime import datetime as _dt
+qsafe, qchg, _ = posting.safe_schedule_time(1, _dt(2030, 6, 15, 2, 0))   # 2am is quiet
+check("a quiet-hours publish is moved to a sane time",
+      qchg and not (qsafe.hour >= 21 or qsafe.hour < 8))
+osafe, ochg, _ = posting.safe_schedule_time(1, _dt(2030, 6, 15, 10, 0))  # 10am is fine
+check("a daytime publish is left alone", (not ochg) and osafe == _dt(2030, 6, 15, 10, 0))
+pid_gap = db.add_post(1, "facebook", "t", "Spacing guardrail body.")
+db.schedule_post(pid_gap, 1, "2030-06-16T10:00")
+gsafe, gchg, _ = posting.safe_schedule_time(1, _dt(2030, 6, 16, 10, 30))  # 30m < 60m gap
+check("a publish inside the min-gap is spaced out",
+      gchg and (gsafe - _dt(2030, 6, 16, 10, 0)).total_seconds() >= 3600)
+db.set_post_status(pid_gap, 1, "rejected")  # don't leave it in the schedule
+# the route applies the guardrail AND lands on the manual queue, not the command center
+pid_rt = db.add_post(1, "facebook", "t", "Route guardrail body.", status="approved")
+r = c.post(f"/posts/{pid_rt}/schedule", data={"scheduled_for": "2030-06-17T03:00"})
+check("schedule route redirects to /queue", r.status_code == 302 and "/queue" in r.headers["Location"])
+check("schedule route moved the 3am publish out of quiet hours",
+      "T03:00" not in (db.get_post(pid_rt, 1)["scheduled_for"] or ""))
+db.set_post_status(pid_rt, 1, "rejected")
+
+# --- Bulk-send pacing: plan-tiered daily cap + (now-enforced) monthly cap ---
+import messaging as _msg
+import plans as _plans
+cs = _msg.cap_status(1)
+check("cap_status reports the plan's daily + monthly caps",
+      cs["day_cap"] == 40 and cs["month_cap"] == 750)
+# Fresh tenant so its daily count starts at zero, independent of earlier sends.
+bidp = db.create_business({"name": "Pace Co", "trade": "painting"})
+cp = db.get_contact(db.add_contact(bidp, name="Pace", phone="+15557770001", kind="customer"), bidp)
+cp2id = db.add_contact(bidp, name="Pace Two", phone="+15557770002", kind="customer")
+cp2 = db.get_contact(cp2id, bidp)
+_origd = _plans.PLANS["pro"]["daily_cap"]
+_plans.PLANS["pro"]["daily_cap"] = 2          # make the boundary cheap to hit
+# Pass a fixed midday `now` so the quiet-hours gate (which runs before the cap) never
+# interferes -- this test is about the pacing cap, not the time of day.
+_noon = datetime(2030, 6, 16, 12, 0, 0)
+r1 = _msg.send_sms(bidp, cp["phone"], "one", kind="marketing", purpose="pace_test", contact=cp, now=_noon)
+r2 = _msg.send_sms(bidp, cp["phone"], "two", kind="marketing", purpose="pace_test", contact=cp, now=_noon)
+r3 = _msg.send_sms(bidp, cp2["phone"], "three", kind="marketing", purpose="pace_test", contact=cp2, now=_noon)
+check("sends within the daily cap go out",
+      r1["status"] in ("sent", "simulated") and r2["status"] in ("sent", "simulated"))
+check("the send past the daily cap is paced (blocked_cap)", r3["status"] == "blocked_cap")
+check("a paced send is NOT marked contacted, so it retries on the next run",
+      cp2id not in db.contacted_ids(bidp, "pace_test"))
+_plans.PLANS["pro"]["daily_cap"] = _origd
+# Monthly plan cap is now actually enforced (was display-only before).
+_origm = _plans.PLANS["pro"]["text_cap"]
+_plans.PLANS["pro"]["text_cap"] = 0
+r4 = _msg.send_sms(bidp, cp2["phone"], "month", kind="marketing", purpose="pace_test", contact=cp2, now=_noon)
+check("hitting the monthly plan cap blocks too (now enforced)", r4["status"] == "blocked_cap")
+_plans.PLANS["pro"]["text_cap"] = _origm
+# Note: we intentionally do NOT delete_business(bidp) -- deleting frees the rowid for
+# reuse while its message rows remain, which would pollute a later tenant's counts.
 # Publish (assisted for Facebook until Meta is connected).
 pid_pub = db.add_post(1, "facebook", "t", "Body to publish.", status="approved")
 r = c.post(f"/posts/{pid_pub}/publish")
@@ -590,17 +648,27 @@ check("off plays are skipped", _p["reactivation"]["status"] == "off")
 check("autopilot summary counts run plays", autopilot.summary(list(_p.values()))["run"] == 1)
 
 # Drive a real autopilot run: get_found drafts, reviews texts the not-yet-asked.
+# The /autopilot/run route sends through send_sms with the live clock, so neutralize the
+# quiet-hours gate here -- these checks are about autopilot behavior, not the time of day.
+_quiet_orig = messaging.in_quiet_hours
+messaging.in_quiet_hours = lambda *a, **k: False
 db.set_election(1, "get_found", "take_over")
 db.set_election(1, "show_work", "off")
 db.set_election(1, "reviews", "take_over")
 db.set_election(1, "reactivation", "off")
 db.set_election(1, "referrals", "off")
 db.add_contact(1, name="Auto NotAsked", phone="215-555-7020", kind="customer")
+# Cadence paces get_found by the Google post window: age out any recent Google post so this
+# run is genuinely due and drafts (the manual button respects the same pacing the cron does).
+_age_conn = db.get_conn()
+_age_conn.execute("UPDATE content_posts SET created_at='2020-01-01T09:00:00' "
+                  "WHERE business_id=1 AND platform='google'")
+_age_conn.commit(); _age_conn.close()
 _g_before = sum(1 for p in db.list_posts(1) if p["platform"] == "google")
 r = c.post("/autopilot/run", data={})
 check("autopilot run redirects with a report",
       r.status_code == 302 and "ap_posts=1" in r.headers["Location"])
-check("autopilot drafted a Google post (get_found = take_over)",
+check("autopilot drafted a Google post (get_found = take_over, cadence due)",
       sum(1 for p in db.list_posts(1) if p["platform"] == "google") == _g_before + 1)
 check("autopilot texted the not-yet-asked customer (reviews = take_over)",
       "ap_msgs=0" not in r.headers["Location"])
@@ -621,6 +689,177 @@ c.post("/autopilot/run", data={})
 check("a second autopilot run does NOT re-text reactivation (no spam)",
       len(db.contacted_ids(1, "reactivation")) == _reacted_1)
 db.set_election(1, "reactivation", "off")
+messaging.in_quiet_hours = _quiet_orig   # restore the real quiet-hours gate
+
+# --- Phase 0: the autonomy heartbeat (run_for + /tasks/tick + audit log) ----
+# run_for is the ONE path the manual button and the cron heartbeat both use, so an
+# autonomous run can never do something a click couldn't. It is plan-gated + logged.
+print("Phase 0 autonomy heartbeat")
+db.set_plan(1, "premium")   # Heritage dogfoods the autopilot tier
+_runs_before = len(db.list_autopilot_runs(1))
+_rep = autopilot.run_for(1, origin="cron")
+check("run_for is not blocked on Premium with a Game Plan", _rep["blocked"] is False)
+check("run_for returns an honest report dict",
+      set(_rep) == {"blocked", "posts", "msgs", "capped", "sms_mode"})
+check("run_for logs an audit row", len(db.list_autopilot_runs(1)) == _runs_before + 1)
+check("last_autopilot_run records the cron origin", db.last_autopilot_run(1)["origin"] == "cron")
+# Pro can't autopilot -> blocked, and a blocked run logs nothing.
+db.set_plan(1, "pro")
+_runs_pro = len(db.list_autopilot_runs(1))
+check("run_for is blocked on Pro (advise-only)", autopilot.run_for(1)["blocked"] is True)
+check("a blocked run logs nothing", len(db.list_autopilot_runs(1)) == _runs_pro)
+db.set_plan(1, "premium")
+# A tenant with no Game Plan is blocked too, so the cron simply skips it.
+_np = db.create_business({"name": "No Plan Co", "trade": "painting"})
+db.set_plan(_np, "premium")
+check("run_for is blocked without a mandate", autopilot.run_for(_np)["blocked"] is True)
+check("all_business_ids enumerates tenants for the cron",
+      1 in db.all_business_ids() and _np in db.all_business_ids())
+
+# The heartbeat endpoint: publishes due posts + runs autopilot across tenants, idempotently.
+_q2 = messaging.in_quiet_hours
+messaging.in_quiet_hours = lambda *a, **k: False    # this test is about the tick, not the clock
+db.set_election(1, "get_found", "take_over")
+_pid_due = db.add_post(1, "facebook", "due", "Heartbeat due body.", status="approved")
+db.schedule_post(_pid_due, 1, "2020-01-01T09:00")   # in the past -> due now
+_g0 = sum(1 for p in db.list_posts(1) if p["platform"] == "google")
+r = c.post("/tasks/tick", data={})
+check("/tasks/tick returns a JSON heartbeat summary", r.status_code == 200 and r.is_json)
+_tick = r.get_json()
+check("tick publishes the due scheduled post", db.get_post(_pid_due, 1)["status"] == "published")
+check("tick reports at least one published post", _tick["published"] >= 1)
+check("tick ran autopilot for the eligible tenant (skipped the rest)", _tick["ran"] >= 1)
+# Cadence pacing: business 1 already has a recent Google post, so an immediate tick must NOT
+# draft another (this is exactly what lets the heartbeat run every ~15 min without spamming).
+check("tick is cadence-paced (recent Google post -> no new draft)",
+      sum(1 for p in db.list_posts(1) if p["platform"] == "google") == _g0)
+# Age the Google post past the window and the next tick correctly drafts the take_over play.
+_age_tick = db.get_conn()
+_age_tick.execute("UPDATE content_posts SET created_at='2020-01-01T09:00:00' "
+                  "WHERE business_id=1 AND platform='google'")
+_age_tick.commit(); _age_tick.close()
+r2 = c.post("/tasks/tick", data={})
+check("tick drafts the take_over play's Google post once it ages past the cadence window",
+      sum(1 for p in db.list_posts(1) if p["platform"] == "google") == _g0 + 1)
+check("a second tick re-publishes nothing already out (idempotent)", r2.get_json()["published"] == 0)
+db.set_election(1, "get_found", "off")
+messaging.in_quiet_hours = _q2
+
+# --- Phase 1: cadence pacing (pure helper + run_for integration) ------------
+# A 15-min heartbeat must not pile up drafts: cadence.due gates get_found/show_work on the
+# tenant's last post on that platform. Pure window logic; drafting still lands in the queue.
+print("Phase 1 cadence pacing")
+import cadence
+from datetime import timedelta as _td, timezone as _tz
+_now = datetime(2026, 6, 15, tzinfo=_tz.utc)
+check("cadence exposes per-play windows", cadence.WINDOW_DAYS["google"] == 7 and
+      cadence.CADENCE["get_found"] == ("google", 7))
+check("cadence.due is True with no last post (fresh tenant -> draft)",
+      cadence.due(None, 7, now=_now) is True)
+check("cadence.due is True on an unparseable date (treat as old)",
+      cadence.due("not-a-date", 7, now=_now) is True)
+check("cadence.due is False inside the window (recent post -> paced)",
+      cadence.due((_now - _td(days=2)).isoformat(), 7, now=_now) is False)
+check("cadence.due is True once the post ages past the window",
+      cadence.due((_now - _td(days=8)).isoformat(), 7, now=_now) is True)
+check("cadence.due parses a bare YYYY-MM-DD date robustly",
+      cadence.due("2020-01-01", 7, now=_now) is True)
+
+# Integration: two back-to-back run_for calls on a FRESH tenant draft the Google post once.
+_cad_biz = db.create_business({"name": "Cadence Co", "trade": "painting"})
+db.set_plan(_cad_biz, "premium")
+db.save_mandate(_cad_biz, mandate.diagnose(db.get_business(_cad_biz), heritage_sig)["plays"])
+db.set_election(_cad_biz, "get_found", "take_over")
+db.set_election(_cad_biz, "show_work", "off")
+db.set_election(_cad_biz, "reviews", "off")
+db.set_election(_cad_biz, "reactivation", "off")
+db.set_election(_cad_biz, "referrals", "off")
+_r1 = autopilot.run_for(_cad_biz, origin="cron")
+_r2 = autopilot.run_for(_cad_biz, origin="cron")
+_cad_google = sum(1 for p in db.list_posts(_cad_biz) if p["platform"] == "google")
+check("first run_for drafts the get_found Google post", _r1["posts"] == 1)
+check("second back-to-back run_for is cadence-paced (no second draft)", _r2["posts"] == 0)
+check("only one Google draft exists after two runs (cadence holds the window)", _cad_google == 1)
+
+# --- Phase 2: the trust dial (the ONLY auto-publish, default OFF) -----------
+# A tenant-level opt-in turns autopilot drafts into auto-scheduled posts the heartbeat
+# publishes -- but ONLY on genuinely LIVE channels. OFF (default) and non-live channels
+# always stay drafts. Fresh premium tenant + a mandate avoids cadence/state collisions.
+print("Phase 2 trust dial")
+_tp = messaging.in_quiet_hours
+messaging.in_quiet_hours = lambda *a, **k: False   # this block is about the dial, not the clock
+_ap_biz = db.create_business({"name": "Trust Dial Co", "trade": "painting"})
+db.set_plan(_ap_biz, "premium")
+db.save_mandate(_ap_biz, mandate.diagnose(db.get_business(_ap_biz), heritage_sig)["plays"])
+db.set_election(_ap_biz, "get_found", "take_over")
+db.set_election(_ap_biz, "show_work", "take_over")
+db.set_election(_ap_biz, "reviews", "off")
+db.set_election(_ap_biz, "reactivation", "off")
+db.set_election(_ap_biz, "referrals", "off")
+check("auto_publish defaults OFF on a fresh tenant", db.get_auto_publish(_ap_biz) is False)
+
+# The route toggles it (Premium tenant = business 1, the logged-in client).
+db.set_plan(1, "premium")
+r = c.post("/mandate/autopilot-publish", data={"on": "1"})
+check("the trust-dial route turns auto_publish ON", r.status_code == 302 and db.get_auto_publish(1) is True)
+r = c.post("/mandate/autopilot-publish", data={"on": "0"})
+check("the trust-dial route turns auto_publish back OFF", db.get_auto_publish(1) is False)
+# Defense in depth: a Pro tenant can never enable it, even by posting the form directly.
+db.set_plan(1, "pro")
+c.post("/mandate/autopilot-publish", data={"on": "1"})
+check("a Pro tenant is blocked from enabling auto-publish", db.get_auto_publish(1) is False)
+db.set_plan(1, "premium")
+
+# OFF: the autopilot Google post is left a draft (unchanged behavior).
+db.set_auto_publish(_ap_biz, False)
+autopilot.run_for(_ap_biz, origin="cron")
+_g = [p for p in db.list_posts(_ap_biz) if p["platform"] == "google"]
+check("auto_publish OFF -> autopilot Google post is a draft", _g and _g[0]["status"] == "draft")
+
+# ON but GBP NOT connected: still a draft (honest -- never auto-publish to a non-live channel).
+_apb2 = db.create_business({"name": "Trust Dial Two", "trade": "painting"})
+db.set_plan(_apb2, "premium")
+db.save_mandate(_apb2, mandate.diagnose(db.get_business(_apb2), heritage_sig)["plays"])
+db.set_election(_apb2, "get_found", "take_over")
+db.set_election(_apb2, "show_work", "take_over")
+for _pb in ("reviews", "reactivation", "referrals"):
+    db.set_election(_apb2, _pb, "off")
+db.set_auto_publish(_apb2, True)
+autopilot.run_for(_apb2, origin="cron")
+_g2 = [p for p in db.list_posts(_apb2) if p["platform"] == "google"]
+check("auto_publish ON but GBP not connected -> Google post STILL a draft (honest)",
+      _g2 and _g2[0]["status"] == "draft")
+# Instagram/show_work is "assisted" by definition -> stays a draft even with auto_publish ON.
+_ig2 = [p for p in db.list_posts(_apb2) if p["platform"] == "instagram"]
+check("auto_publish ON -> Instagram (assisted) show_work post stays a draft",
+      _ig2 and _ig2[0]["status"] == "draft")
+
+# ON and GBP connected: the Google post is auto-SCHEDULED, then a tick publishes it.
+_apb3 = db.create_business({"name": "Trust Dial Live", "trade": "painting"})
+db.set_plan(_apb3, "premium")
+db.save_mandate(_apb3, mandate.diagnose(db.get_business(_apb3), heritage_sig)["plays"])
+db.set_election(_apb3, "get_found", "take_over")
+for _pb in ("show_work", "reviews", "reactivation", "referrals"):
+    db.set_election(_apb3, _pb, "off")
+db.set_auto_publish(_apb3, True)
+db.set_connection(_apb3, "gbp", {"access_token": "tok", "location_id": "loc"})
+autopilot.run_for(_apb3, origin="cron")
+_g3 = [p for p in db.list_posts(_apb3) if p["platform"] == "google"]
+check("auto_publish ON + GBP connected -> autopilot Google post is scheduled",
+      _g3 and _g3[0]["status"] == "scheduled")
+# Age the schedule into the past so the tick treats it as due, then publish it. Stub the
+# real GBP HTTP call (the network is out of scope here) so the live publish path runs.
+_age = db.get_conn()
+_age.execute("UPDATE content_posts SET scheduled_for='2020-01-01T09:00' WHERE id=?",
+             (_g3[0]["id"],))
+_age.commit(); _age.close()
+_gbp_orig = publishing._gbp_post
+publishing._gbp_post = lambda creds, post: True
+publishing.publish_post(_apb3, db.get_post(_g3[0]["id"], _apb3))
+publishing._gbp_post = _gbp_orig
+check("the auto-scheduled live Google post then publishes",
+      db.get_post(_g3[0]["id"], _apb3)["status"] == "published")
+messaging.in_quiet_hours = _tp
 
 # --- Loop 2: engine outcomes -> ROI (closed loop) --------------------------
 print("Closed loop (lead booked -> conversion)")
@@ -823,6 +1062,11 @@ check("webhook without token is forbidden when a token is set", r.status_code ==
 r = cc.post("/webhooks/booking", data={"business_id": "1", "channel": "social",
                                         "value": "10", "token": "s3cret"})
 check("webhook with the correct token is accepted", r.status_code == 201)
+# The autonomy heartbeat is server-to-server too: same shared-secret gate, no CSRF.
+r = cc.post("/tasks/tick", data={})
+check("/tasks/tick without the token is forbidden when one is set", r.status_code == 403)
+r = cc.post("/tasks/tick", data={"token": "s3cret"})
+check("/tasks/tick with the correct token is accepted", r.status_code == 200)
 appmod.WEBHOOK_TOKEN = ""
 appmod.app.testing = True
 
@@ -860,6 +1104,202 @@ check("a delivered send IS recorded as already-contacted",
 db.add_conversion(_rb, "google_ads", status="won", value=-1000)
 check("a negative conversion value is clamped to 0 (no negative revenue)",
       db.roi_summary(_rb)["totals"]["revenue"] >= 0)
+
+# --- Public marketing site --------------------------------------------------
+# The site is the price-point surface; assert the home/pricing/contact pages
+# actually render the pitch, the real plans from plans.py, and a working form.
+print("Public marketing site")
+pc = client()
+r = pc.get("/")
+check("home renders the hero line",
+      r.status_code == 200 and b"Already on" in r.data and b"next job" in r.data)
+check("home shows real plans from plans.py", b"Mason Premium" in r.data and b"$299" in r.data)
+check("home lists the engine modules", b"Cost per booked job" in r.data)
+r = pc.get("/pricing")
+check("pricing renders all three tiers",
+      r.status_code == 200 and b"Mason Pro" in r.data and b"Mason Premium" in r.data
+      and b"Mason Scale" in r.data)
+r = pc.get("/how-it-works")
+check("how-it-works renders", r.status_code == 200 and b"game plan" in r.data.lower())
+r = pc.get("/contact")
+check("contact renders a form", r.status_code == 200 and b"on your mind" in r.data)
+r = pc.post("/contact", data={"name": "", "email": "bad", "message": ""})
+check("contact rejects an incomplete submission", b"Add your name" in r.data)
+r = pc.post("/contact", data={"name": "Test Painter", "email": "t@example.com",
+                              "trade": "Painting", "message": "Interested in Mason."})
+check("contact accepts a valid submission", r.status_code == 200 and b"be in touch" in r.data)
+
+# --- Mason's home: the command center (chat) + the manual Queue -------------
+# The signed-in home is now the conversational command center; the briefing,
+# approval queue and at-a-glance strip moved to /queue (the manual view).
+print("Mason's command center")
+# Reuse the client logged in at the top of the suite (the seed owner's password
+# is rotated mid-suite, but its existing session stays valid).
+r = c.get("/dashboard")
+check("home is the command center surface",
+      r.status_code == 200 and b"command-shell" in r.data and b"commandInput" in r.data)
+check("command center loads the orb + assistant assets",
+      b"assistant.js" in r.data and b'id="orb"' in r.data)
+r = c.get("/queue")
+check("queue still shows Mason's briefing",
+      r.status_code == 200 and b"brief-hi" in r.data and b"on the clock" in r.data)
+check("queue keeps the approval queue", b"Awaiting your review" in r.data)
+check("queue shows the at-a-glance strip", b"Total created" in r.data)
+
+# --- The assistant agent ----------------------------------------------------
+# Read tools answer directly; gated tools come back as a pending_action that is
+# NOT executed until confirmed; confirm runs through the real seam.
+print("Mason's command center -- the agent")
+import assistant as asst
+biz1 = db.get_business(1)
+out = asst.run(biz1, "how many leads came in this week?")
+check("stats command returns a stat card",
+      out["pending_action"] is None and any(c["type"] == "stat" for c in out["cards"]))
+out = asst.run(biz1, "connect my google calendar")
+check("connect command returns a link to the connections hub",
+      any(c.get("type") == "link" and "/connections" in c.get("href", "") for c in out["cards"]))
+out = asst.run(biz1, "draft an instagram post about a finished exterior")
+ig = [c for c in out["cards"] if c["type"] == "draft"]
+check("draft command writes and saves a draft post",
+      bool(ig) and ig[0]["platform"] == "instagram" and ig[0]["post_id"])
+out = asst.run(biz1, "blast a review request to my customers")
+check("review blast is GATED behind a confirm (not auto-sent)",
+      out["pending_action"] is not None and out["pending_action"]["tool"] == "request_reviews"
+      and out["cards"] == [])
+# Capability honesty: an unsupported ask routes to a real page, never a dead "feature request".
+out = asst.run(biz1, "can I change my billing plan")
+check("a billing question routes to Plan & Pricing (no dead-end)",
+      out["pending_action"] is None and any(c.get("href") == "/plan" for c in out["cards"]))
+out = asst.run(biz1, "I don't want my posts back to back, space them out")
+check("a posting-cadence question routes to the Queue (no dead-end)",
+      any(c.get("href") == "/queue" for c in out["cards"]))
+# A read tool via the HTTP route (form-encoded, like the browser).
+r = c.post("/assistant", data={"message": "show me my game plan"})
+check("/assistant route returns JSON", r.status_code == 200 and r.is_json)
+# A gated action only fires through /assistant/confirm, and still respects the
+# gated seam (no review link on the seed business -> nothing is sent for real).
+r = c.post("/assistant/confirm", data={"tool": "request_reviews", "args": "{}"})
+check("/assistant/confirm runs the gated action", r.status_code == 200 and r.is_json)
+
+# --- Command-center memory: record real questions, flag the weak spots, learn ---
+print("Mason's command center -- memory + self-learning")
+import convos as _cv
+# A real question, recorded through the HTTP route (the smoke test of a real question).
+c.post("/assistant", data={"message": "how many leads came in this week?", "convo_key": "memk1"})
+check("the conversation is recorded with turns",
+      any(cv["turns"] >= 2 for cv in db.list_convos(1)))
+# A capability gap is called out automatically.
+c.post("/assistant", data={"message": "can I change my billing plan", "convo_key": "memk1"})
+check("a capability gap is flagged", db.flag_counts(1).get("capability_gap", 0) >= 1)
+# Re-asking the same thing is called out as a repeat.
+c.post("/assistant", data={"message": "can I change my billing plan", "convo_key": "memk1"})
+check("a repeated ask is flagged", db.flag_counts(1).get("repeat", 0) >= 1)
+# Teach a correction, then Mason honors it deterministically (before the brain).
+_cv.teach(1, "pause everything", "answer",
+          "Paused all your campaigns. Say resume to turn them back on.")
+_lr = asst.run(db.get_business(1), "please pause everything for me")
+check("a taught correction is honored on the next ask",
+      _lr.get("meta", {}).get("status") == "learned" and "Paused" in _lr["reply"])
+# Teaching a tool mapping routes a phrase straight to that tool.
+_cv.teach(1, "weekly numbers", "get_stats")
+_lt = asst.run(db.get_business(1), "give me my weekly numbers")
+check("a taught tool mapping runs that tool",
+      any(card["type"] == "stat" for card in _lt.get("cards", [])))
+# The Training page renders, and teaching through it resolves the flag + adds a learning.
+r = c.get("/training")
+check("training page renders the memory surface",
+      r.status_code == 200 and b"Mason's Memory" in r.data)
+_fl = db.list_flags(1, resolved=0, limit=5)
+if _fl:
+    _fid = _fl[0]["id"]
+    r = c.post("/training/teach",
+               data={"pattern": "show my pipeline", "action": "get_stats", "flag_id": str(_fid)})
+    check("teaching through the page adds a learning and resolves the flag",
+          r.status_code == 302
+          and any(l["pattern"] == "show my pipeline" for l in db.list_learnings(1))
+          and db.get_flag(1, _fid)["resolved"] == 1)
+_cvs = db.list_convos(1, limit=1)
+if _cvs:
+    check("a saved conversation can be replayed",
+          c.get("/training/convo/%d" % _cvs[0]["id"]).status_code == 200)
+
+# LLM grading: catch subtle misses the heuristics pass. Stub the brain's verdict so the
+# test is deterministic (the real grader runs in a background thread in production).
+_grade_orig = _cv._grade
+_gcv = db.start_or_get_convo(1, "gradekey")
+_gtid = db.log_turn(_gcv, 1, "user", "what's my best lead source")
+_cv._grade = lambda m, r: {"verdict": "miss", "reason": "Did not answer the real question."}
+_b = db.flag_counts(1).get("unhelpful", 0)
+_cv.grade_exchange(1, _gcv, _gtid, "what's my best lead source", "Here are your stats.", {"status": "ok"})
+check("an LLM 'miss' verdict adds an unhelpful flag with the reason",
+      db.flag_counts(1).get("unhelpful", 0) == _b + 1)
+_cv._grade = lambda m, r: {"verdict": "good", "reason": "answered"}
+_b = db.flag_counts(1).get("unhelpful", 0)
+_cv.grade_exchange(1, _gcv, _gtid, "show my stats", "Here are your numbers.", {"status": "ok"})
+check("an LLM 'good' verdict adds no flag", db.flag_counts(1).get("unhelpful", 0) == _b)
+_cv._grade = lambda m, r: {"verdict": "miss", "reason": "x"}
+_b = db.flag_counts(1).get("unhelpful", 0)
+_cv.grade_exchange(1, _gcv, _gtid, "blast reviews", "Ready when you are.", {"status": "pending"})
+check("a pending/confirm turn is never graded", db.flag_counts(1).get("unhelpful", 0) == _b)
+_cv._grade = _grade_orig
+check("the LLM-graded miss surfaces on the training page",
+      b"missed the mark" in c.get("/training").data)
+
+# Weekly digest + ranked "build these next" gaps (next-steps surfacing).
+_dg = _cv.digest(1)
+check("the digest summarizes recent activity",
+      _dg["has_content"] and _dg["line"].startswith("This week"))
+_tu = _cv.top_unmet(1)
+check("top unmet ranks recurring gaps by frequency",
+      isinstance(_tu, list) and (not _tu or _tu[0]["count"] >= 1))
+check("the command center surfaces the digest line",
+      b"convo-digest" in c.get("/dashboard").data)
+check("the training page ranks what to build next",
+      (not _tu) or b"Build these next" in c.get("/training").data)
+
+# Proactive teaching: after a recurring gap, Mason offers to remember the route he takes.
+_biz1 = db.get_business(1)
+_o1 = asst.run(_biz1, "can I change my billing plan")
+_cv.record_exchange(1, "coachk", "can I change my billing plan", _o1)
+_o2 = asst.run(_biz1, "can I change my billing plan")
+_cid, _ = _cv.record_exchange(1, "coachk", "can I change my billing plan", _o2)
+_offer = _cv.coach_offer(1, _cid, "thanks, that's all")
+check("Mason proactively offers to remember a recurring gap at the end of a chat",
+      bool(_offer) and _offer["action"] == "route" and _offer["value"] == "/plan"
+      and _offer["count"] >= 2)
+check("Mason offers at most once per conversation",
+      _cv.coach_offer(1, _cid, "thanks again") is None)
+# accepting via the route teaches the route + resolves the gap, and the next ask uses it
+r = c.post("/assistant/learn", data={"pattern": _offer["pattern"], "action": "route",
+                                     "value": _offer["value"]})
+check("accepting the offer teaches the route", r.status_code == 200 and r.get_json()["ok"])
+_o3 = asst.run(_biz1, "can I change my billing plan")
+check("the self-taught route is now honored deterministically",
+      _o3.get("meta", {}).get("status") == "learned"
+      and any(card.get("href") == "/plan" for card in _o3.get("cards", [])))
+
+# Tool-mapping offer: when the brain is confident an existing tool fits, Mason offers it.
+_t1 = asst.run(_biz1, "space my posts out please")
+_cv.record_exchange(1, "toolk", "space my posts out please", _t1)
+_t2 = asst.run(_biz1, "space my posts out please")
+_tcid, _ = _cv.record_exchange(1, "toolk", "space my posts out please", _t2)
+_orig_hook = getattr(_cv, "_tool_suggest_hook", None)
+_cv._tool_suggest_hook = lambda msg: "list_drafts"      # stub a confident verdict
+_toffer = _cv.coach_offer(1, _tcid, "thanks bye")
+check("Mason offers a TOOL mapping when the brain is confident one fits",
+      bool(_toffer) and _toffer["action"] == "list_drafts")
+_cv._tool_suggest_hook = _orig_hook
+
+# Emailed weekly digest: builder + per-owner send + the cron route.
+_em = _cv.digest_email(db.get_business(1))
+check("the digest email has a subject and a body with the build list",
+      bool(_em["subject"]) and "Mason digest" in _em["body"])
+r = c.post("/digest/send", data={})
+check("emailing the digest goes through the gated seam (simulated until SMTP)",
+      r.status_code == 302 and "digest=" in r.headers["Location"])
+r = c.post("/tasks/digest", data={})
+check("the weekly digest cron emails every tenant owner",
+      r.status_code == 200 and r.get_json()["sent"] >= 1)
 
 # --- Cleanup ----------------------------------------------------------------
 try:

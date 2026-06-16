@@ -9,15 +9,21 @@ your brand voice, review them in an approval queue, and (gated) publish. Mirrors
 RingBack's structure so the two stay siblings.
 """
 import hmac
+import json
 import re
 import secrets
+from datetime import datetime
 from functools import wraps
+from urllib.parse import quote
 
-from flask import (Flask, render_template, request, redirect, session, url_for, abort)
+from flask import (Flask, render_template, request, redirect, session, url_for, abort,
+                   jsonify)
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import db
 import ai
+import assistant
+import convos
 import mandate
 import autopilot
 import plans
@@ -31,13 +37,14 @@ import crypto
 import billing
 import messaging
 import publishing
+import posting
 import seo
 import roi
 import ads
 import outreach
 from config import (APP_NAME, TAGLINE, DEBUG, PORT, SECRET_KEY, SESSION_COOKIE_SECURE,
                     SEED_OWNER_EMAIL, SEED_OWNER_PASSWORD, PLATFORMS, DEFAULT_PLATFORM,
-                    WEBHOOK_TOKEN)
+                    WEBHOOK_TOKEN, BASE_DIR)
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -45,6 +52,14 @@ app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE
 db.init_db()
+
+# Wire the command-center memory into the assistant without an import cycle: the router
+# consults taught corrections (convos.lookup) before the brain, and folds the tenant's
+# confirmed corrections into its routing prompt (convos.learnings_for_prompt).
+assistant._learning_lookup = convos.lookup
+assistant._learning_examples_hook = convos.learnings_for_prompt
+# When a gap recurs, let Mason check if a real tool now fits it (proactive self-teaching).
+convos._tool_suggest_hook = assistant.suggest_tool_for
 
 # Seed an owner login for "client zero" (business 1 = Heritage) on first run.
 if db.count_users() == 0:
@@ -81,11 +96,11 @@ def csrf_token():
 def _csrf_protect():
     if app.testing or request.method not in ("POST", "PUT", "PATCH", "DELETE"):
         return
-    if request.path.startswith("/webhooks/"):
+    if request.path.startswith("/webhooks/") or request.path.startswith("/tasks/"):
         # Stripe webhooks authenticate by their own signature header, not our token/CSRF.
         if request.path == "/webhooks/stripe":
             return
-        # other server-to-server (e.g. Twilio); authenticated by shared-secret token.
+        # other server-to-server (webhooks, the digest cron); shared-secret token, no CSRF.
         if WEBHOOK_TOKEN and request.values.get("token") != WEBHOOK_TOKEN:
             abort(403)
         return
@@ -131,21 +146,100 @@ def _new_tenant_fields(name, trade):
     }
 
 
+# ---- Section navigation ----
+# Each sidebar group, as ordered (href, label) tabs. Rendered as a horizontal
+# tab bar at the top of every signed-in page so you can switch between the tools
+# in a section without going back to the sidebar. Single source of truth.
+NAV_SECTIONS = [
+    ("Home", [("/dashboard", "Command Center"), ("/queue", "Queue"),
+              ("/mandate", "Game Plan"), ("/training", "Memory")]),
+    ("Get Found", [("/getfound", "Get Found"), ("/reviews", "Reviews"),
+                   ("/showwork", "Show Work"), ("/compose", "Compose"),
+                   ("/local", "Local SEO")]),
+    ("Win the Job", [("/speed", "Speed-to-Lead"), ("/reactivation", "Reactivation"),
+                     ("/referrals", "Referrals"), ("/offer", "Offer")]),
+    ("Advertise", [("/ads", "Ads"), ("/outreach", "Outreach"), ("/cold", "Cold Outreach")]),
+    ("My Business", [("/plan", "Plan & Pricing"), ("/connections", "Connections"),
+                     ("/roi", "Results"), ("/contacts", "Contacts"),
+                     ("/settings", "Business Brain")]),
+]
+
+
+def _section_for(path):
+    """Return (section_name, tabs, active_href) for the current path, or blanks
+    for pages that aren't in a section (e.g. the public site)."""
+    if path.startswith("/walkthrough"):  # the Walkthrough lives under Game Plan
+        path = "/mandate"
+    for name, items in NAV_SECTIONS:
+        for href, _label in items:
+            if path == href or path.startswith(href + "/"):
+                return name, items, href
+    return None, [], None
+
+
 @app.context_processor
 def inject_globals():
     u = current_user()
     biz = db.get_business(u["business_id"]) if u else db.get_business(1)
+    _sec = _section_for(request.path)
     return {"app_name": APP_NAME, "tagline": TAGLINE, "brain": ai.brain_mode(),
             "business": biz, "current_user": u, "platforms": PLATFORMS,
-            "csrf_token": csrf_token(),
+            "csrf_token": csrf_token(), "year": datetime.now().year,
+            # Theme preference (cookie, default dark) — rendered server-side so the
+            # correct theme paints on first load with no flash.
+            "theme": request.cookies.get("jm_theme", "dark"),
+            # Section tab bar (the current group's sibling pages).
+            "section_name": _sec[0], "section_tabs": _sec[1], "section_active": _sec[2],
             # Sidebar shows "Start Here" until a Game Plan exists, then "Game Plan".
             "has_mandate": db.has_mandate(biz["id"]) if biz else False}
 
 
-# ---- Pages ----
+# ---- Public marketing site ----
+def _site_ctx(**extra):
+    """Shared context for the public (logged-out) marketing pages."""
+    ctx = {"plans_data": plans.PLANS, "plan_order": plans.ORDER}
+    ctx.update(extra)
+    return ctx
+
+
 @app.route("/")
 def index():
-    return redirect("/dashboard" if session.get("uid") else "/login")
+    # The public home is the front door. Logged-in visitors still see it (the nav
+    # swaps to "Open Mason"); the app lives at /dashboard.
+    return render_template("site_home.html", **_site_ctx())
+
+
+@app.route("/pricing")
+def pricing():
+    return render_template("site_pricing.html", **_site_ctx())
+
+
+@app.route("/how-it-works")
+def how_it_works():
+    return render_template("site_how.html", **_site_ctx())
+
+
+@app.route("/contact", methods=["GET", "POST"])
+def contact():
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        email = (request.form.get("email") or "").strip()
+        message = (request.form.get("message") or "").strip()
+        if not name or not _EMAIL_RE.match(email) or not message:
+            return render_template("site_contact.html",
+                                   error="Add your name, a valid email, and a short message.",
+                                   **_site_ctx())
+        # No transactional email is wired yet, so record the inquiry honestly to a
+        # local inbox file rather than pretending it was emailed. (See SETUP_NEEDED.)
+        try:
+            trade = (request.form.get("trade") or "").strip()
+            with open(BASE_DIR / "contact_inbox.log", "a", encoding="utf-8") as fh:
+                fh.write(f"{datetime.now().isoformat()}\t{name}\t{email}\t{trade}\t"
+                         f"{message.replace(chr(9), ' ').replace(chr(10), ' ')}\n")
+        except OSError:
+            pass
+        return render_template("site_contact.html", sent=True, **_site_ctx())
+    return render_template("site_contact.html", **_site_ctx())
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -194,19 +288,250 @@ def logout():
     return redirect("/login")
 
 
+def _briefing(biz, stats, drafts, due_count, mandate_ready):
+    """Mason's morning brief — derived only from real state, never fabricated.
+    Returns the greeting, a one-line status, and the single thing to do today."""
+    hour = datetime.now().hour
+    part = "Morning" if hour < 12 else ("Afternoon" if hour < 17 else "Evening")
+    owner = (biz.get("owner_name") or "").strip()
+    hello = f"{part}, {owner.split()[0]}." if owner else f"{part}."
+
+    n_draft = stats.get("draft", 0)
+    if not mandate_ready:
+        line = ("I'm ready when you are. Run the walkthrough and I'll build your game plan, "
+                "tell you what to do first, and what to skip.")
+        todo = ("Run the walkthrough", "/walkthrough")
+    elif due_count:
+        line = (f"{due_count} scheduled post{'s' if due_count != 1 else ''} "
+                f"{'are' if due_count != 1 else 'is'} due to go out. Say the word.")
+        todo = ("Review what's going out", "#queue")
+    elif n_draft:
+        line = (f"I wrote {n_draft} post{'s' if n_draft != 1 else ''} for you. "
+                f"{'They' if n_draft != 1 else 'It'} need your okay before "
+                f"{'they' if n_draft != 1 else 'it'} go{'' if n_draft != 1 else 'es'} out.")
+        todo = (f"Approve {n_draft} draft{'s' if n_draft != 1 else ''}", "#review")
+    else:
+        line = ("You're all caught up. I'm lining up your next posts. "
+                "Nothing needs you right now.")
+        todo = ("Write something new", "/compose")
+    return {"hello": hello, "line": line, "todo_label": todo[0], "todo_href": todo[1],
+            "awaiting": n_draft}
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    """The signed-in home is now Mason's command center: an AI control surface where the
+    owner runs the whole product by conversation. The card-based view still lives at
+    /queue for working by hand."""
+    biz = current_business()
+    stats = db.content_stats(biz["id"])
+    mandate_ready = db.has_mandate(biz["id"])
+    posts = db.list_posts(biz["id"])
+    drafts = [p for p in posts if p["status"] == "draft"]
+    now = db.now_iso()
+    due_count = sum(1 for p in posts if p["status"] == "scheduled"
+                    and (p["scheduled_for"] or "") <= now)
+    brief = _briefing(biz, stats, drafts, due_count, mandate_ready)
+    return render_template("command.html", brief=brief, stats=stats,
+                           mandate_ready=mandate_ready,
+                           digest=convos.digest(biz["id"]),
+                           suggestions=assistant.suggestions())
+
+
+@app.route("/queue")
+@login_required
+def queue():
+    """The manual view: Mason's morning brief, the approval queue, and the schedule.
+    Everything the command center can do by chat, you can still do here by hand."""
     biz = current_business()
     posts = db.list_posts(biz["id"])
     stats = db.content_stats(biz["id"])
     drafts = [p for p in posts if p["status"] == "draft"]
-    queue = [p for p in posts if p["status"] in ("approved", "scheduled", "published")]
+    queue_items = [p for p in posts if p["status"] in ("approved", "scheduled", "published")]
     now = db.now_iso()
     due_count = sum(1 for p in posts if p["status"] == "scheduled"
                     and (p["scheduled_for"] or "") <= now)
-    return render_template("dashboard.html", drafts=drafts, queue=queue, stats=stats,
-                           due_count=due_count, mandate_ready=db.has_mandate(biz["id"]))
+    mandate_ready = db.has_mandate(biz["id"])
+    brief = _briefing(biz, stats, drafts, due_count, mandate_ready)
+    return render_template("dashboard.html", drafts=drafts, queue=queue_items, stats=stats,
+                           due_count=due_count, mandate_ready=mandate_ready, brief=brief)
+
+
+@app.route("/assistant", methods=["POST"])
+@login_required
+def assistant_chat():
+    """One natural-language turn against Mason's command center. Form-encoded (so the
+    existing CSRF gate applies unchanged); returns the reply, any inline cards, and an
+    optional pending_action that needs an explicit confirm before it runs."""
+    biz = current_business()
+    message = (request.form.get("message") or "").strip()
+    try:
+        history = json.loads(request.form.get("history") or "[]")
+        if not isinstance(history, list):
+            history = []
+    except (ValueError, TypeError):
+        history = []
+    out = assistant.run(biz, message, history[-12:])
+    # Record the exchange + auto-flag the weak spots (so we can learn from them later).
+    if message:
+        convo_id, _ = convos.record_exchange(biz["id"], request.form.get("convo_key", ""),
+                                             message, out)
+        # At a natural close, let Mason proactively offer to remember a recurring gap.
+        out["coach"] = convos.coach_offer(biz["id"], convo_id, message)
+    return jsonify(out)
+
+
+@app.route("/assistant/confirm", methods=["POST"])
+@login_required
+def assistant_confirm():
+    """Run a gated action the owner just approved (publish, review blast, autopilot).
+    The action still flows through the same consent/publishing seams a button would."""
+    biz = current_business()
+    tool = (request.form.get("tool") or "").strip()
+    try:
+        args = json.loads(request.form.get("args") or "{}")
+        if not isinstance(args, dict):
+            args = {}
+    except (ValueError, TypeError):
+        args = {}
+    out = assistant.execute(biz, tool, args)
+    convos.record_exchange(biz["id"], request.form.get("convo_key", ""),
+                           f"[confirmed: {tool}]", out)
+    return jsonify(out)
+
+
+@app.route("/assistant/learn", methods=["POST"])
+@login_required
+def assistant_learn():
+    """Accept Mason's proactive teaching offer: store the learning + resolve the gap."""
+    biz = current_business()
+    pattern = (request.form.get("pattern") or "").strip()
+    action = (request.form.get("action") or "route").strip()
+    value = (request.form.get("value") or "").strip()
+    if pattern:
+        convos.accept_coach(biz["id"], pattern, action, value)
+    return jsonify({"ok": bool(pattern)})
+
+
+# ---- Mason's Memory / Training: review conversations, call out issues, teach ----
+_ISSUE_LABEL = {"capability_gap": "Mason had no tool for this",
+                "empty": "A tool returned nothing", "repeat": "You had to re-ask",
+                "negative": "You pushed back on the answer",
+                "unhelpful": "Mason's answer missed the mark"}
+
+
+@app.route("/training")
+@login_required
+def training():
+    """What Mason has heard, where he fell short, and what you've taught him. The owner
+    turns a flagged exchange into a learning Mason honors next time."""
+    biz = current_business()
+    return render_template("training.html",
+                           flags=db.list_flags(biz["id"], resolved=0, limit=40),
+                           counts=db.flag_counts(biz["id"]),
+                           convos=db.list_convos(biz["id"], limit=12),
+                           learnings=db.list_learnings(biz["id"]),
+                           digest=convos.digest(biz["id"]),
+                           top_unmet=convos.top_unmet(biz["id"]),
+                           tools=sorted(assistant.TOOLS.keys()),
+                           issue_label=_ISSUE_LABEL)
+
+
+@app.route("/training/convo/<int:convo_id>")
+@login_required
+def training_convo(convo_id):
+    """Replay one saved conversation (tenant-scoped)."""
+    biz = current_business()
+    turns = db.get_convo_turns(convo_id, biz["id"])
+    if not turns:
+        return redirect("/training")
+    return render_template("training_convo.html", convo_id=convo_id, turns=turns)
+
+
+@app.route("/training/teach", methods=["POST"])
+@login_required
+def training_teach():
+    """Teach Mason a correction from a flagged exchange (and resolve the flag)."""
+    biz = current_business()
+    pattern = (request.form.get("pattern") or "").strip()
+    action = (request.form.get("action") or "").strip()
+    value = (request.form.get("value") or "").strip()
+    if not pattern or not action:
+        return redirect("/training")
+    # action is a tool name, or 'route' (value = page path), or 'answer' (value = reply text)
+    if action in assistant.TOOLS:
+        convos.teach(biz["id"], pattern, action)
+    elif action in ("route", "answer"):
+        convos.teach(biz["id"], pattern, action, answer=value)
+    flag_id = request.form.get("flag_id")
+    if flag_id and flag_id.isdigit():
+        db.resolve_flag(biz["id"], int(flag_id))
+    return redirect("/training?taught=1")
+
+
+@app.route("/training/resolve", methods=["POST"])
+@login_required
+def training_resolve():
+    """Dismiss a flag without teaching anything."""
+    biz = current_business()
+    flag_id = request.form.get("flag_id")
+    if flag_id and flag_id.isdigit():
+        db.resolve_flag(biz["id"], int(flag_id))
+    return redirect("/training")
+
+
+@app.route("/digest/send", methods=["POST"])
+@login_required
+def digest_send():
+    """Email this owner their weekly digest now, through the gated email seam (honest
+    simulated-vs-live until SMTP is configured)."""
+    biz = current_business()
+    user = current_user()
+    em = convos.digest_email(biz)
+    res = messaging.send_email(biz["id"], user["email"], em["subject"], em["body"],
+                               kind="transactional", purpose="digest")
+    return redirect(f"/training?digest={res['status']}")
+
+
+@app.route("/tasks/digest", methods=["POST"])
+def tasks_digest():
+    """The weekly-digest cron: email every tenant's owner their digest. Token-gated
+    (JOBMAGNET_WEBHOOK_TOKEN); a scheduler hits this once a week."""
+    sent = 0
+    for bid, email in db.all_owner_recipients():
+        biz = db.get_business(bid)
+        em = convos.digest_email(biz)
+        messaging.send_email(bid, email, em["subject"], em["body"],
+                             kind="transactional", purpose="digest")
+        sent += 1
+    return jsonify({"sent": sent})
+
+
+@app.route("/tasks/tick", methods=["POST"])
+def tasks_tick():
+    """The autonomy heartbeat. A scheduler hits this on an interval; token-gated
+    (JOBMAGNET_WEBHOOK_TOKEN), idempotent, and multi-tenant. For every tenant it
+      1. publishes any scheduled posts whose time has arrived, and
+      2. runs the take_over plays through the same consent-gated seams the buttons use.
+    Safe to call repeatedly: due_posts only returns still-scheduled posts, and the
+    no-repeat guards + caps keep sends from doubling. See SETUP_NEEDED (Scheduler cron).
+
+    NOTE (Phase 0): until Phase 1 adds content cadence, get_found/show_work draft a fresh
+    post each run, so run this hourly+ (not every few minutes) for now."""
+    published = 0
+    for post in db.due_posts():
+        publishing.publish_post(post["business_id"], post)
+        published += 1
+    ran = posts = msgs = capped = 0
+    for bid in db.all_business_ids():
+        rep = autopilot.run_for(bid, origin="cron")
+        if rep["blocked"]:
+            continue
+        ran += 1
+        posts += rep["posts"]; msgs += rep["msgs"]; capped += rep["capped"]
+    return jsonify({"ok": True, "published": published, "ran": ran,
+                    "posts": posts, "msgs": msgs, "capped": capped})
 
 
 @app.route("/walkthrough", methods=["GET", "POST"])
@@ -239,71 +564,25 @@ def mandate_page():
                            result=mandate.diagnose(biz, signals),
                            election_labels=mandate.ELECTION_LABELS,
                            ap_summary=autopilot.summary(ap_plan),
-                           can_autopilot=plans.can_autopilot(db.get_plan(biz["id"])))
+                           can_autopilot=plans.can_autopilot(db.get_plan(biz["id"])),
+                           auto_publish=db.get_auto_publish(biz["id"]),
+                           last_run=db.last_autopilot_run(biz["id"]))
 
 
 @app.route("/autopilot/run", methods=["POST"])
 @login_required
 def autopilot_run():
-    """Run every play the owner set to 'Take it over'. Each action goes through the same
-    consent-gated seam / approval queue a manual click would -- autonomy inside the
-    guardrails. Drafts wait for approval; sends respect consent + quiet hours + opt-out."""
+    """Run every play the owner set to 'Take it over'. Delegates to autopilot.run_for --
+    the SAME code path the cron heartbeat (/tasks/tick) uses -- so manual and autonomous
+    runs are identical and both flow through the consent-gated seam / approval queue.
+    Drafts wait for approval; sends respect consent + quiet hours + opt-out."""
     biz = current_business()
-    plan = db.get_plan(biz["id"])
-    if not plans.can_autopilot(plan):
+    rep = autopilot.run_for(biz["id"], origin="manual")
+    if rep["blocked"]:
         return redirect("/mandate?ap_blocked=1")     # autopilot is a Premium+ capability
-    # Honor the plan's monthly text allowance.
-    remaining = max(0, plans.text_cap(plan) - db.messages_this_month(biz["id"]))
-    elections = {p["playbook"]: p["election"] for p in db.get_mandate(biz["id"])}
-    posts = msgs = 0
-    link = (biz.get("google_review_link") or "").strip()
-
-    def _text(cu, body, kind, purpose):
-        nonlocal msgs, remaining
-        if remaining <= 0:
-            return False
-        messaging.send_sms(biz["id"], cu["phone"], body, kind=kind, purpose=purpose, contact=cu)
-        msgs += 1
-        remaining -= 1
-        return True
-
-    def _eligible(cu):
-        return (cu.get("phone") and not cu.get("suppressed")
-                and cu.get("consent_status") != "opted_out")
-
-    for item in autopilot.plan(elections):
-        if item["status"] != "run":
-            continue
-        pb = item["playbook"]
-        if pb == "get_found":
-            db.add_post(biz["id"], "google", "Weekly update",
-                        ai.generate_post(biz, "", "google"), status="draft"); posts += 1
-        elif pb == "show_work":
-            db.add_post(biz["id"], "instagram", "Project showcase",
-                        ai.generate_post(biz, "Before and after project showcase",
-                                         "instagram"), status="draft"); posts += 1
-        elif pb == "reviews" and link:
-            asked = db.requested_contact_ids(biz["id"])
-            for cu in db.list_contacts(biz["id"], kind="customer"):
-                if _eligible(cu) and cu["id"] not in asked:
-                    _text(cu, ai.review_request_message(biz, cu.get("name", "")) + " " + link,
-                          "transactional", "review_request")
-        elif pb == "reactivation":
-            reacted = db.contacted_ids(biz["id"], "reactivation")
-            for cu in db.list_contacts(biz["id"], kind="customer"):
-                if (_eligible(cu) and cu["id"] not in reacted
-                        and reactivation.is_due(cu.get("last_service"), cu.get("last_job_at"))):
-                    yrs = reactivation.years_since(cu.get("last_job_at"))
-                    _text(cu, reactivation.reactivation_message(biz, cu.get("name", ""),
-                                                                cu.get("last_service", ""), yrs),
-                          "marketing", "reactivation")
-        elif pb == "referrals":
-            asked = db.contacted_ids(biz["id"], "referral_request")
-            for cu in db.list_contacts(biz["id"], kind="customer"):
-                if _eligible(cu) and cu["id"] not in asked:
-                    _text(cu, referrals.referral_ask_sms(biz, cu.get("name", "")),
-                          "marketing", "referral_request")
-    return redirect(f"/mandate?ap_posts={posts}&ap_msgs={msgs}")
+    return redirect(f"/mandate?ap_posts={rep['posts']}&ap_msgs={rep['msgs']}"
+                    f"&ap_sms={rep['sms_mode']}"
+                    + (f"&ap_capped={rep['capped']}" if rep["capped"] else ""))
 
 
 @app.route("/mandate/election", methods=["POST"])
@@ -314,6 +593,19 @@ def mandate_election():
     biz = current_business()
     db.set_election(biz["id"], request.form.get("playbook") or "",
                     request.form.get("election") or "")
+    return redirect("/mandate")
+
+
+@app.route("/mandate/autopilot-publish", methods=["POST"])
+@login_required
+def mandate_autopilot_publish():
+    """The trust dial (Phase 2): owner opts in to let Mason auto-schedule & publish
+    autopilot content -- but only on connected (live) channels; everything else still
+    drafts for approval. Premium+ only; defense in depth so a Pro tenant can never
+    enable it even by posting the form directly."""
+    biz = current_business()
+    if plans.can_autopilot(db.get_plan(biz["id"])):
+        db.set_auto_publish(biz["id"], request.form.get("on") == "1")
     return redirect("/mandate")
 
 
@@ -381,7 +673,10 @@ def speed_lead():
     if phone:
         res = messaging.send_sms(biz["id"], phone, speedtolead.first_response_sms(biz, name),
                                  kind="transactional", purpose="speed_to_lead")
-        db.mark_lead_responded(biz["id"], lid)
+        # Only count the lead as auto-responded if the text actually went out (live or
+        # simulated-delivery). A blocked send (opt-out) shouldn't show as "Responded".
+        if res.get("status") in ("sent", "simulated"):
+            db.mark_lead_responded(biz["id"], lid)
         return redirect(f"/speed?sent={res['status']}")
     return redirect("/speed?msg=logged")
 
@@ -513,7 +808,7 @@ def compose():
             body = (request.form.get("body") or "").strip()
             if body:
                 db.add_post(biz["id"], platform, topic, body, status="draft")
-            return redirect("/dashboard")
+            return redirect("/queue")
         # action == "generate" (default): draft a post and show it for review.
         draft = ai.generate_post(biz, topic, platform)
         image = ai.generate_image(biz, topic, platform)
@@ -530,7 +825,7 @@ def post_status(post_id):
     status = request.form.get("status") or ""
     if status in db.POST_STATUSES:
         db.set_post_status(post_id, biz["id"], status)
-    return redirect(request.form.get("next") or "/dashboard")
+    return redirect(request.form.get("next") or "/queue")
 
 
 @app.route("/posts/<int:post_id>/edit", methods=["POST"])
@@ -540,18 +835,30 @@ def post_edit(post_id):
     body = (request.form.get("body") or "").strip()
     if body:
         db.update_post_body(post_id, biz["id"], body)
-    return redirect("/dashboard")
+    return redirect("/queue")
 
 
 @app.route("/posts/<int:post_id>/schedule", methods=["POST"])
 @login_required
 def post_schedule(post_id):
-    """Approve a post for a future time. Expects a datetime-local value."""
+    """Approve a post for a future time. Expects a datetime-local value. The posting
+    guardrail keeps the publish out of quiet hours and from stacking on another post,
+    adjusting the time and saying so honestly."""
     biz = current_business()
     when = (request.form.get("scheduled_for") or "").strip()
+    adjusted = ""
     if db.get_post(post_id, biz["id"]) and when:
+        try:
+            dt, changed, reason = posting.safe_schedule_time(
+                biz["id"], datetime.fromisoformat(when))
+            when = dt.strftime("%Y-%m-%dT%H:%M")
+            adjusted = reason if changed else ""
+        except ValueError:
+            pass  # unparseable -> store as given (old behavior)
         db.schedule_post(post_id, biz["id"], when)
-    return redirect("/dashboard")
+    if adjusted:
+        return redirect(f"/queue?sched={quote(adjusted)}&when={quote(when)}")
+    return redirect("/queue")
 
 
 @app.route("/posts/<int:post_id>/publish", methods=["POST"])
@@ -561,9 +868,9 @@ def post_publish(post_id):
     biz = current_business()
     post = db.get_post(post_id, biz["id"])
     if not post:
-        return redirect("/dashboard")
+        return redirect("/queue")
     res = publishing.publish_post(biz["id"], post)
-    return redirect(f"/dashboard?pub={res['mode']}&platform={res['platform']}")
+    return redirect(f"/queue?pub={res['mode']}&platform={res['platform']}")
 
 
 @app.route("/scheduler/run", methods=["POST"])
@@ -577,7 +884,7 @@ def scheduler_run():
         if post["business_id"] == biz["id"]:
             publishing.publish_post(biz["id"], post)
             n += 1
-    return redirect(f"/dashboard?due={n}")
+    return redirect(f"/queue?due={n}")
 
 
 @app.route("/local", methods=["GET"])
@@ -681,15 +988,18 @@ def reviews_request_all():
     if not link:
         return redirect("/reviews?msg=nolink")
     asked = db.requested_contact_ids(biz["id"])
-    n = 0
+    n = capped = 0
     for cu in db.list_contacts(biz["id"], kind="customer"):
         if (cu.get("phone") and not cu.get("suppressed")
                 and cu.get("consent_status") != "opted_out" and cu["id"] not in asked):
             body = ai.review_request_message(biz, cu.get("name", "")) + " " + link
-            messaging.send_sms(biz["id"], cu["phone"], body, kind="transactional",
-                               purpose="review_request", contact=cu)
-            n += 1
-    return redirect(f"/reviews?msg=bulk_{n}")
+            r = messaging.send_sms(biz["id"], cu["phone"], body, kind="transactional",
+                                   purpose="review_request", contact=cu)
+            if r["status"] == "blocked_cap":
+                capped += 1
+            else:
+                n += 1
+    return redirect(f"/reviews?msg=bulk_{n}" + (f"&capped={capped}" if capped else ""))
 
 
 @app.route("/reviews/import", methods=["POST"])

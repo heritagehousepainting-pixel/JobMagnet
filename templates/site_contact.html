@@ -1,0 +1,73 @@
+{% extends "site_base.html" %}
+{% block title %}Contact — talk to a human{% endblock %}
+{% block meta_desc %}Questions about JobMagnet or Mason? Talk to a real human. We build for the trades, in PA.{% endblock %}
+
+{% block body %}
+<header class="hero" style="padding-bottom:var(--space-12)">
+  <div class="hero-glow" style="height:480px"></div>
+  <div class="ember-field"><canvas data-ember></canvas></div>
+  <div class="wrap hero-inner" data-reveal-stagger="90">
+    <span class="hero-badge" data-reveal><span class="dot"></span> A real person, not a bot wall</span>
+    <h1 data-reveal style="font-size:clamp(2.4rem,6vw,4rem)">Let's talk shop.</h1>
+    <p class="hero-sub" data-reveal>Wondering if Mason fits your trade or your town? Ask. We'd rather tell you the
+      honest answer than sell you the wrong thing.</p>
+  </div>
+</header>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap contact-grid" data-reveal-stagger="100">
+    <div data-reveal>
+      <span class="eyebrow">How to reach us</span>
+      <h2 class="h-section" style="margin-top:var(--space-3)">We answer like Mason does — fast.</h2>
+      <ul class="contact-points">
+        <li>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+          <span><span class="k">Email</span><br><a class="v" style="color:var(--accent-strong);text-decoration:none" href="mailto:hello@jobmagnet.app">hello@jobmagnet.app</a></span>
+        </li>
+        <li>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+          <span><span class="k">Response time</span><br><span class="v">Same business day, usually within hours.</span></span>
+        </li>
+        <li>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <span><span class="k">Home base</span><br><span class="v">Built for the trades, in Pennsylvania. Shipping wide.</span></span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="contact-card" data-reveal>
+      {% if sent %}
+      <div class="empty" style="padding:var(--space-12) var(--space-4)">
+        <span class="empty-icon" style="background:var(--accent-bg);color:var(--accent-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <p class="empty-title" style="color:var(--ink)">Got it. We'll be in touch.</p>
+        <p class="empty-msg" style="color:var(--ink-soft)">Thanks for reaching out. A real person will reply to you by email, fast.</p>
+        <a class="btn btn-secondary empty-action" href="/">Back to home</a>
+      </div>
+      {% else %}
+      <form class="auth-form" method="post" action="/contact" style="display:flex;flex-direction:column;gap:var(--space-4)">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        {% if error %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);font-size:var(--text-sm)">{{ error }}</div>{% endif %}
+        <div class="field">
+          <label class="field-label" for="name">Your name</label>
+          <input class="field-control" id="name" name="name" placeholder="Jordan Mason" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="email">Email</label>
+          <input class="field-control" id="email" name="email" type="email" placeholder="you@business.com" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="trade">Your trade <span style="color:var(--ink-faint);font-weight:400">(optional)</span></label>
+          <input class="field-control" id="trade" name="trade" placeholder="Painter, roofer, HVAC…">
+        </div>
+        <div class="field">
+          <label class="field-label" for="message">What's on your mind?</label>
+          <textarea class="field-control" id="message" name="message" rows="4" placeholder="Tell us about your business and what you're hoping Mason can do." required></textarea>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Send it</button>
+        <p style="margin:0;text-align:center;font-size:var(--text-xs);color:var(--ink-faint)">No spam, ever. We hate it as much as you do.</p>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
+{% block title %}Mason's Memory{% endblock %}
+{% block page_title %}Mason's Memory{% endblock %}
+{% block page_sub %}<p class="page-sub">Every conversation you have with Mason is saved here. He calls out where he fell short, and you teach him so he gets it right next time.</p>{% endblock %}
+
+{% block content %}
+{% if request.args.get('taught') %}<div class="save-banner" style="margin:0">Got it. Mason learned that and will use it from now on.</div>{% endif %}
+{% set _dg = request.args.get('digest') %}
+{% if _dg == 'sent' %}<div class="save-banner" style="margin:0">Emailed your digest.</div>{% elif _dg == 'simulated' %}<div class="save-banner" style="margin:0">Digest prepared (simulated). Connect email in Connections to actually send it.</div>{% elif _dg %}<div class="save-banner" style="margin:0">Couldn't email the digest just now.</div>{% endif %}
+
+{# ---- Issues Mason hit ---- #}
+<div class="glance">
+  <div class="glance-tile"><span class="glance-k">No tool yet</span><span class="glance-v">{{ counts.get('capability_gap', 0) }}</span><span class="glance-s">couldn't act</span></div>
+  <div class="glance-tile"><span class="glance-k">Re-asks</span><span class="glance-v">{{ counts.get('repeat', 0) }}</span><span class="glance-s">you repeated yourself</span></div>
+  <div class="glance-tile"><span class="glance-k">Pushback</span><span class="glance-v">{{ counts.get('negative', 0) }}</span><span class="glance-s">you corrected him</span></div>
+  <div class="glance-tile"><span class="glance-k">Learned</span><span class="glance-v">{{ learnings|length }}</span><span class="glance-s">things you taught</span></div>
+</div>
+
+{% if digest and digest.has_content %}<div class="save-banner" style="margin:0;display:flex;justify-content:space-between;align-items:center;gap:var(--space-3)"><span>{{ digest.line }} Over the last {{ digest.days }} days across {{ digest.convos }} conversation(s).</span>
+  <form method="post" action="/digest/send" style="margin:0"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="btn btn-secondary btn-sm" type="submit">Email me this</button></form>
+</div>{% endif %}
+
+{# ---- What to build next (ranked recurring gaps) ---- #}
+{% if top_unmet %}
+<div class="card">
+  <div class="card-head"><div class="section-label"><h2 class="card-title">Build these next</h2></div></div>
+  <div class="card-body">
+    <p class="card-body" style="padding-top:0">The requests Mason couldn't handle, most frequent first. Teach him below, or build the tool.</p>
+    {% for u in top_unmet %}
+    <div class="card" style="margin-bottom:var(--space-2)">
+      <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-3)">
+        <span class="post-body" style="margin:0">"{{ u.sample }}"</span>
+        <span class="pill pill-warning">{{ u.count }}x</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ---- Issues to review + teach ---- #}
+<div class="card">
+  <div class="card-head"><div class="section-label"><h2 class="card-title">Worth a look</h2>{% if flags %}<span class="count">{{ flags|length }}</span>{% endif %}</div></div>
+  <div class="card-body">
+    {% if flags %}
+      {% for f in flags %}
+      <div class="card" style="margin-bottom:var(--space-4)">
+        <div class="card-head">
+          <span class="pill pill-warning"><span class="pill-dot"></span>{{ issue_label.get(f.kind, f.kind) }}</span>
+        </div>
+        <div class="card-body">
+          {% if f.detail and f.kind == 'unhelpful' %}<p class="dt-muted" style="margin-bottom:var(--space-2)">Mason's review: {{ f.detail }}</p>{% endif %}
+          {% if f.turn_content %}<p class="post-topic">You said:</p><p class="post-body">{{ f.turn_content }}</p>{% endif %}
+          <details class="post-edit">
+            <summary>Teach Mason what to do when you say this</summary>
+            <form method="post" action="/training/teach" style="margin-top:var(--space-3);display:flex;flex-direction:column;gap:var(--space-2)">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="flag_id" value="{{ f.id }}">
+              <label class="field-label">When I say something like</label>
+              <input class="field-control" name="pattern" value="{{ f.turn_content }}">
+              <label class="field-label">Mason should</label>
+              <select class="field-control" name="action">
+                <optgroup label="Run a tool">
+                  {% for t in tools %}<option value="{{ t }}">Run: {{ t }}</option>{% endfor %}
+                </optgroup>
+                <option value="route">Point me to a page</option>
+                <option value="answer">Say this</option>
+              </select>
+              <input class="field-control" name="value" placeholder="Page path (e.g. /plan) or the exact reply -- leave blank when running a tool">
+              <button class="btn btn-primary btn-sm" type="submit" style="align-self:flex-start">Teach Mason</button>
+            </form>
+          </details>
+          <form method="post" action="/training/resolve" style="display:inline;margin-top:var(--space-2)">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="flag_id" value="{{ f.id }}">
+            <button class="btn btn-ghost btn-sm" type="submit">Dismiss</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      {{ ui.empty("Nothing to review", "When Mason can't do something, has to ask twice, or you correct him, it shows up here to teach.") }}
+    {% endif %}
+  </div>
+</div>
+
+{# ---- What Mason has learned ---- #}
+<div class="card">
+  <div class="card-head"><div class="section-label"><h2 class="card-title">What you've taught Mason</h2></div></div>
+  <div class="card-body">
+    {% if learnings %}
+      {% for l in learnings %}
+      <div class="card" style="margin-bottom:var(--space-3)">
+        <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-3)">
+          <span>When you say <strong>"{{ l.pattern }}"</strong>, {{ ('run ' ~ l.action) if l.action not in ('route','answer') else ('go to ' ~ l.answer if l.action == 'route' else 'reply: "' ~ l.answer ~ '"') }}.</span>
+          <span class="pill pill-neutral">used {{ l.uses }}x</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="card-body">Nothing taught yet. Teach Mason from a flagged exchange above and it lands here.</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ---- Recent conversations ---- #}
+<div class="card">
+  <div class="card-head"><div class="section-label"><h2 class="card-title">Recent conversations</h2></div></div>
+  <div class="card-body">
+    {% if convos %}
+      {% for cv in convos %}
+      <a class="card" href="/training/convo/{{ cv.id }}" style="margin-bottom:var(--space-2);display:flex;justify-content:space-between;align-items:center;gap:var(--space-3);text-decoration:none">
+        <span>Conversation #{{ cv.id }} <span class="dt-muted">· {{ cv.turns }} turns</span></span>
+        {% if cv.flags %}<span class="pill pill-warning">{{ cv.flags }} flagged</span>{% else %}<span class="pill pill-neutral">clean</span>{% endif %}
+      </a>
+      {% endfor %}
+    {% else %}
+      <p class="card-body">No conversations yet. Talk to Mason on the <a href="/dashboard">Command Center</a> and they'll be saved here.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

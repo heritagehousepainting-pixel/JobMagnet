@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Mason — your AI marketing foreman for the trades{% endblock %} · {{ app_name }}</title>
+  <meta name="description" content="{% block meta_desc %}JobMagnet is the AI marketing crew built for the trades. Mason creates the demand and helps you book the job, and proves it in cost per booked job.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/ui.css">
+  <link rel="stylesheet" href="/static/site.css">
+  <script>
+    // Flag reveal-ready only when motion is allowed and IntersectionObserver
+    // exists, so [data-reveal] hides with no flash; reduced-motion / no-JS show all.
+    (function(){try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches
+      && 'IntersectionObserver' in window){document.documentElement.classList.add('js-reveal');}}catch(e){}})();
+  </script>
+  <script defer src="/static/motion.js"></script>
+</head>
+<body class="site-body">
+{% set logged_in = current_user is not none %}
+{% set brandmark %}<span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"/><path d="m5 8 4 4"/><path d="m12 15 4 4"/></svg></span>{% endset %}
+
+<nav class="site-nav">
+  <div class="wrap site-nav-inner">
+    <a class="site-brand" href="/">{{ brandmark }}{{ app_name }}</a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false"
+            onclick="var l=document.getElementById('site-links');var o=l.classList.toggle('is-open');this.setAttribute('aria-expanded',o)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="site-links" id="site-links">
+      <a class="site-link" href="/how-it-works">How it works</a>
+      <a class="site-link" href="/#engine">What Mason runs</a>
+      <a class="site-link" href="/pricing">Pricing</a>
+      <a class="site-link" href="/contact">Contact</a>
+      <div class="site-nav-cta">
+        {% if logged_in %}
+          <a class="btn btn-primary btn-sm" href="/dashboard">Open Mason</a>
+        {% else %}
+          <a class="site-link" href="/login">Log in</a>
+          <a class="btn btn-primary btn-sm" href="/signup">Start free</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+
+{% block body %}{% endblock %}
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="site-brand" href="/">{{ brandmark }}{{ app_name }}</a>
+        <p>The AI marketing crew built for the trades. Mason creates the demand and helps you book the job, and proves it in cost per booked job.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Product</h4>
+        <a href="/how-it-works">How it works</a>
+        <a href="/#engine">What Mason runs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/#mason">Meet Mason</a>
+      </div>
+      <div class="foot-col">
+        <h4>Company</h4>
+        <a href="/contact">Contact</a>
+        <a href="/#proof">Why it works</a>
+        <a href="/login">Log in</a>
+        <a href="/signup">Start free</a>
+      </div>
+      <div class="foot-col">
+        <h4>Trust</h4>
+        <a href="/#faq">FAQ</a>
+        <a href="/contact">Talk to a human</a>
+        <a href="/pricing">Plans</a>
+      </div>
+    </div>
+    <div class="foot-bar">
+      <span>© {{ year }} {{ app_name }}. Built for the trades, in PA.</span>
+      <span>Mason. Already on the next job.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

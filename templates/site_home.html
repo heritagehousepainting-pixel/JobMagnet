@@ -1,0 +1,214 @@
+{% extends "site_base.html" %}
+{% block title %}Mason. Already on the next job{% endblock %}
+
+{% block body %}
+{# ---------------- HERO ---------------- #}
+<header class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="ember-field"><canvas data-ember></canvas></div>
+  <div class="wrap hero-inner" data-reveal-stagger="90">
+    <span class="hero-badge" data-reveal><span class="dot"></span> Powered by Mason · your AI marketing foreman</span>
+    <h1 data-reveal>Already on<br>the <span class="accent">next job.</span></h1>
+    <p class="hero-sub" data-reveal>JobMagnet is the AI marketing crew built for the trades. Mason runs your
+      social, reviews, local search and outreach, helps you win and book the work, and proves every dollar in
+      cost per booked job. You handle the work. He handles where the next job comes from.</p>
+    <div class="hero-cta" data-reveal>
+      <a class="btn btn-primary btn-lg" href="/signup">Hire Mason free</a>
+      <a class="btn btn-secondary btn-lg" href="/how-it-works">See how it works</a>
+    </div>
+    <div class="hero-trust" data-reveal>
+      <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> No card to start</span>
+      <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Built for trades, not tech</span>
+      <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Nothing sends without your OK</span>
+    </div>
+  </div>
+</header>
+
+{# ---------------- PROOF STRIP ---------------- #}
+<section class="section-sm" id="proof">
+  <div class="wrap">
+    <p class="marquee-note" data-reveal>Replaces a $2,000–3,000/mo agency — for a fraction of the price</p>
+    <div class="proof" style="margin-top:var(--space-8)" data-reveal-stagger="90">
+      <div class="proof-cell" data-reveal><div class="proof-num" data-countup="53" data-prefix="$">$53</div><div class="proof-lab">Target cost per qualified lead, the cheapest channels first</div></div>
+      <div class="proof-cell" data-reveal><div class="proof-num">24/7</div><div class="proof-lab">Mason works nights and weekends. Leads don't wait for office hours</div></div>
+      <div class="proof-cell" data-reveal><div class="proof-num" data-countup="1">1</div><div class="proof-lab">One AI hire instead of five point tools you have to wire together</div></div>
+    </div>
+  </div>
+</section>
+
+{# ---------------- HOW IT WORKS ---------------- #}
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="section-head" data-reveal>
+      <span class="section-index"><b>[ 01 / 06 ]</b> &nbsp;THE FIRST WEEK</span>
+      <span class="eyebrow">How it works</span>
+      <h2 class="h-section">Hire him Monday. Booked work by Friday.</h2>
+      <p class="lede">No dashboard to learn. Mason interviews you once, builds the plan, and gets to work.</p>
+    </div>
+    <div class="steps" data-reveal-stagger="100">
+      <div class="step" data-reveal>
+        <h3>The walkthrough</h3>
+        <p>Mason asks about your trade, your territory, and the jobs you actually want more of. Ten minutes, plain English, no marketing jargon.</p>
+      </div>
+      <div class="step" data-reveal>
+        <h3>The game plan</h3>
+        <p>He hands you one page: exactly what he'll do first, what to skip, and what it should book. You say "take it over" or "ask me first" per channel.</p>
+      </div>
+      <div class="step" data-reveal>
+        <h3>He goes to work</h3>
+        <p>Posts go up, reviews come in, your Google listing gets in shape, leads get answered fast. Every morning he tells you what he did and what booked.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------------- THE ENGINE / MODULES ---------------- #}
+<section class="section" id="engine">
+  <div class="wrap">
+    <div class="section-head" data-reveal>
+      <span class="section-index"><b>[ 02 / 06 ]</b> &nbsp;THE ENGINE</span>
+      <span class="eyebrow">One hire, the whole crew</span>
+      <h2 class="h-section">Everything a great marketing company does — in one Mason.</h2>
+      <p class="lede">Not a toolbox you assemble. Not shared leads. One AI that runs the channels that actually book trade work.</p>
+    </div>
+    <div class="feat-grid" data-reveal-stagger="70">
+      {% set isvg = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"' %}
+      <div class="feat" data-reveal>
+        <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <h3>Social content</h3>
+        <p>Posts in your voice, on a cadence — before-and-afters that make the phone ring. You approve, he publishes.</p>
+      </div>
+      <div class="feat" data-reveal>
+        <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+        <h3>Reviews &amp; reputation</h3>
+        <p>Texts your finished customers for a review at the right moment, drafts every reply. The cheapest lever there is.</p>
+      </div>
+      <div class="feat" data-reveal>
+        <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <h3>Local SEO &amp; AI search</h3>
+        <p>Google profile tune-up, schema markup and answer-first pages so you show up when someone three streets over searches "near me."</p>
+      </div>
+      <div class="feat" data-reveal>
+        <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+        <h3>Speed-to-lead</h3>
+        <p>A new lead gets a reply in seconds, not hours. The first contractor to answer usually wins the job.</p>
+      </div>
+      <div class="feat" data-reveal>
+        <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+        <h3>Partner outreach</h3>
+        <p>Compliant cold email to realtors, property managers and GCs — the safest, warmest source of repeat trade work.</p>
+      </div>
+      <div class="feat" data-reveal>
+        <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+        <h3>Cost per booked job</h3>
+        <p>The number no point tool can show you: what each channel actually costs to book a real job. That is the moat.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------------- MEET MASON ---------------- #}
+<section class="section" id="mason">
+  <div class="wrap mason">
+    <div class="mason-copy" data-reveal>
+      <span class="section-index"><b>[ 03 / 06 ]</b> &nbsp;THE FOREMAN</span>
+      <span class="eyebrow">Meet Mason</span>
+      <h2 class="h-section">Not a dashboard. A right-hand who shows up with it done.</h2>
+      <p class="lede">Mason talks like the trades, not like marketing. He's the apprentice already walking
+        to the truck for the reload before the nailer runs dry — and he'll tell you when <em>not</em> to spend.</p>
+      <ul class="mason-traits">
+        <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span><span><strong>Anticipatory.</strong> Leads with "already drafted it," not "should we?"</span></li>
+        <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span><span><strong>Blue-collar fluent.</strong> Knows an LVP from an LVL. No jargon, ever.</span></li>
+        <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span><span><strong>On your side of the table.</strong> Honest about what's working and what isn't.</span></li>
+        <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span><span><strong>Asks before he crosses a line.</strong> Your customers, your call — always.</span></li>
+      </ul>
+    </div>
+    <div class="brief" data-reveal>
+      <div class="brief-top">
+        <span class="brief-av">M</span>
+        <span class="brief-id">
+          <span class="n">Mason</span>
+          <span class="s"><span class="dot"></span> Your marketing foreman</span>
+        </span>
+      </div>
+      <div class="brief-msgs">
+        <p class="brief-msg">Morning. Tuesday's before-and-after is up — <span class="em">40 folks saw it by noon.</span></p>
+        <p class="brief-msg">Two reviews came in. I wrote the thank-yous, waiting on your okay.</p>
+        <p class="brief-msg">One thing today: call Henderson back, he asked twice.</p>
+        <p class="brief-msg">That spring-cleanup post you almost skipped? <span class="em">Booked you two gutter jobs.</span> Told you.</p>
+      </div>
+      <div class="brief-quick">
+        <span class="brief-chip">Approve the thank-yous</span>
+        <span class="brief-chip">Show me the post</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------------- PRICING TEASER ---------------- #}
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="section-head" data-reveal>
+      <span class="section-index"><b>[ 04 / 06 ]</b> &nbsp;PRICING</span>
+      <span class="eyebrow">Simple pricing</span>
+      <h2 class="h-section">One booked job pays it back many times over.</h2>
+      <p class="lede">Mason is in every plan — he <em>is</em> the product. Plans differ by how much he's allowed to do on his own.</p>
+    </div>
+    <div class="price-grid" data-reveal-stagger="90">
+      {% for key in plan_order %}
+        {% set p = plans_data[key] %}
+        <div class="price-card {{ 'featured' if key == 'premium' }}" data-reveal>
+          {% if key == 'premium' %}<span class="price-flag">Most popular</span>{% endif %}
+          <div class="price-name">{{ p.name }}</div>
+          <div class="price-amt"><span class="n">${{ p.price }}</span><span class="per">/mo</span></div>
+          <div class="price-tag">{{ p.tagline }}</div>
+          <ul class="price-list">
+            {% for f in p.features %}
+            <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span>{{ f }}</li>
+            {% endfor %}
+          </ul>
+          <a class="btn {{ 'btn-primary' if key == 'premium' else 'btn-secondary' }} btn-block" href="/signup">Start with {{ p.name }}</a>
+        </div>
+      {% endfor %}
+    </div>
+    <p class="price-note">Every plan starts free. No card to begin. <a href="/pricing" style="color:var(--accent-strong);text-decoration:none;font-weight:600">Compare plans in detail →</a></p>
+  </div>
+</section>
+
+{# ---------------- FAQ ---------------- #}
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="section-head" data-reveal>
+      <span class="section-index"><b>[ 05 / 06 ]</b> &nbsp;STRAIGHT ANSWERS</span>
+      <span class="eyebrow">Straight answers</span>
+      <h2 class="h-section">The questions every contractor asks.</h2>
+    </div>
+    <div class="faq" data-reveal-stagger="60">
+      <details data-reveal><summary>Will it post things I didn't approve?</summary><p>No. On Pro, Mason drafts everything and you approve every send. On Premium he can act on his own for your own channels — social, your Google listing, review requests to your own past customers — but he never sends a cold text or email without a rule you set or a one-tap okay. Your customers, your call.</p></details>
+      <details data-reveal><summary>I'm not a computer person. Is this hard?</summary><p>There's no dashboard to learn. Mason interviews you once in plain English, then tells you each morning what he did and what booked. If you can text, you can run Mason.</p></details>
+      <details data-reveal><summary>How is this different from an agency?</summary><p>An agency charges $2,000–3,000 a month, works 9-to-5, and doesn't know your trade. Mason costs a fraction, works around the clock, speaks the trades, and proves every dollar in cost per booked job. No agency hits all four.</p></details>
+      <details data-reveal><summary>Does it actually book jobs or just post?</summary><p>Booking work is the whole job. Mason is measured on cost per booked job, not posts made. Social and reviews create the demand; speed-to-lead and outreach help capture it; the dashboard proves it.</p></details>
+      <details data-reveal><summary>What about spam and the rules?</summary><p>Compliance is built into the code, not bolted on. Cold texting and AI voice stay hard-off until there's written consent and an attorney sign-off. Marketing email carries a real address and a working unsubscribe. Mason keeps you out of the ditch.</p></details>
+    </div>
+  </div>
+</section>
+
+{# ---------------- FINAL CTA ---------------- #}
+<section class="section">
+  <div class="wrap">
+    <div class="cta-band" data-reveal>
+      <div class="hero-glow" style="height:100%;inset:0"></div>
+      <div class="ember-field"><canvas data-ember></canvas></div>
+      <div style="position:relative;z-index:1">
+        <h2>You handle the work.<br>Mason handles the next job.</h2>
+        <p>Ten minutes to hire him. Then he's already on it.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="/signup">Hire Mason free</a>
+          <a class="btn btn-secondary btn-lg" href="/pricing">See pricing</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
