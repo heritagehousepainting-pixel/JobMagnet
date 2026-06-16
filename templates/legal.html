@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ biz.name }} — {{ heading }}</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/static/ui.css">
+  <link rel="stylesheet" href="/static/legal.css">
+</head>
+<body>
+<main class="legal">
+  <header class="legal-head">
+    <h1><span class="legal-biz">{{ biz.name }}</span></h1>
+    <p class="legal-sub">{{ heading }}</p>
+    <p class="legal-updated">Last updated {{ updated }}</p>
+  </header>
+
+  {% if kind == "privacy" %}
+  <p>This policy explains how {{ biz.name }} ("we," "us") handles information in connection with our
+     text-messaging program. By providing your phone number or texting us, you agree to this policy.</p>
+
+  <h2>Information we collect</h2>
+  <p>We collect only what you give us or what's needed to communicate with you about our services: your
+     <strong>name</strong>, <strong>mobile phone number</strong>, and the <strong>content of your
+     messages</strong> with us (and, if you share it, your service address or project details).</p>
+
+  <h2>How we use it</h2>
+  <p>We use your information solely to communicate with you about {{ biz.name }} services: to reply to a call
+     or text, schedule and confirm free estimates, send appointment reminders and follow-ups, and (for past
+     customers) occasionally ask for a review or referral.</p>
+
+  <h2>How we share it — we don't</h2>
+  <div class="legal-callout">
+    <p><strong>We do not sell, rent, or share your information with third parties or affiliates for their
+       marketing or promotional purposes.</strong> No mobile information is shared with third parties for
+       marketing. We use service providers (such as our messaging carrier) only to deliver our own messages
+       to you; they may not use your information for any other purpose.</p>
+  </div>
+
+  <h2>Your choices</h2>
+  <p>You can opt out at any time by replying <strong>STOP</strong> to any message; reply <strong>HELP</strong>
+     for help. Message and data rates may apply. We honor opt-outs immediately.</p>
+
+  <h2>Contact</h2>
+  <p class="legal-contact">Questions about your information? Contact {{ biz.name }} at
+     <strong>{{ biz.phone }}</strong> or <strong>{{ biz.email }}</strong>.</p>
+
+  {% else %}
+  <p>These terms govern the {{ biz.name }} text-messaging program. By providing your mobile number or texting
+     us, you agree to receive text messages from {{ biz.name }} at the number provided.</p>
+
+  <h2>Program description</h2>
+  <p>{{ biz.name }} sends transactional and conversational text messages to customers and to people who
+     contact us: replies to your calls and texts, free-estimate and appointment reminders, follow-ups, and
+     occasional review or referral requests for past customers.</p>
+
+  <h2>Costs and frequency</h2>
+  <p><strong>Message and data rates may apply.</strong> Message frequency varies based on your interactions
+     with us.</p>
+
+  <h2>Opt-out and help</h2>
+  <div class="legal-callout">
+    <p>Reply <strong>STOP</strong> at any time to unsubscribe and stop receiving messages. Reply
+       <strong>HELP</strong> for help. You can also contact us using the details below.</p>
+  </div>
+
+  <h2>Support</h2>
+  <p class="legal-contact">Questions about this messaging program? Contact {{ biz.name }}:
+     phone/text <strong>{{ biz.phone }}</strong>, email <strong>{{ biz.email }}</strong>.</p>
+
+  <h2>Liability</h2>
+  <p>Carriers are not liable for delayed or undelivered messages. {{ biz.name }} provides this program "as
+     is." See our <a href="/legal/{{ biz.slug }}/sms-privacy">SMS Privacy Policy</a> for how we handle your
+     information.</p>
+  {% endif %}
+
+  <footer class="legal-foot">{{ biz.name }} · {{ biz.phone }} · {{ biz.email }}</footer>
+</main>
+</body>
+</html>

@@ -199,6 +199,39 @@ def how_it_works():
     return render_template("site_how.html", **_site_ctx())
 
 
+# ---- Per-tenant hosted SMS compliance pages (A2P 10DLC privacy + terms) ----
+# Carriers fetch these during campaign review, so every contractor needs their own
+# real, compliant pages. Keyed by slug so it generalizes; onboarding will populate
+# this from tenant data instead of the hand-entered map below.
+LEGAL_UPDATED = "June 16, 2026"
+LEGAL_BUSINESSES = {
+    "heritage-house-painting": {
+        "slug": "heritage-house-painting",
+        "name": "Heritage House Painting",
+        "phone": "(267) 756-2454",
+        "email": "heritagehousepainting@gmail.com",
+    },
+}
+
+
+@app.route("/legal/<slug>/sms-privacy")
+def legal_sms_privacy(slug):
+    biz = LEGAL_BUSINESSES.get(slug)
+    if not biz:
+        abort(404)
+    return render_template("legal.html", biz=biz, kind="privacy",
+                           heading="SMS Privacy Policy", updated=LEGAL_UPDATED)
+
+
+@app.route("/legal/<slug>/sms-terms")
+def legal_sms_terms(slug):
+    biz = LEGAL_BUSINESSES.get(slug)
+    if not biz:
+        abort(404)
+    return render_template("legal.html", biz=biz, kind="terms",
+                           heading="SMS Terms & Conditions", updated=LEGAL_UPDATED)
+
+
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
     if request.method == "POST":
