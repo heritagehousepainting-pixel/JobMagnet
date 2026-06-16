@@ -21,15 +21,11 @@ from datetime import datetime
 import db
 import plans
 import connections
+import consent  # trades_core kernel: natural-language opt-out detection
 from config import (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM,
                     EMAIL_FROM, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD,
                     QUIET_HOURS_START, QUIET_HOURS_END,
                     COLD_SMS_ENABLED, COLD_VOICE_ENABLED)
-
-# Inbound keywords that toggle consent (carrier convention).
-STOP_WORDS = {"stop", "stopall", "unsubscribe", "cancel", "end", "quit", "optout", "opt-out"}
-START_WORDS = {"start", "unstop", "yes", "optin", "opt-in"}
-
 
 # ---- Provider credentials (per-tenant connection first, then global env) ----
 def _sms_creds(business_id=None):
@@ -255,10 +251,9 @@ def place_cold_voice(business_id, to, script, contact=None):
 
 # ---- Inbound (opt-out / opt-in handling) ----
 def handle_inbound_sms(business_id, from_phone, text):
-    """Process an inbound SMS reply: honour STOP/START so the consent ledger always
-    reflects the contact's wishes. Returns the action taken."""
-    word = (text or "").strip().lower().split()
-    first = word[0] if word else ""
+    """Process an inbound SMS reply: honour opt-out / opt-in (natural-language, via the
+    shared trades_core detector) so the consent ledger always reflects the contact's
+    wishes. Returns the action taken."""
     contact = db.find_contact_by_phone(business_id, from_phone)
     db.log_message(business_id, "sms", from_phone, text or "", "received",
                    "inbound", kind="transactional", purpose="inbound",
@@ -266,12 +261,15 @@ def handle_inbound_sms(business_id, from_phone, text):
                    direction="inbound")
     if not contact:
         return "ignored_unknown"
-    if first in STOP_WORDS:
+    # Natural-language opt-out (trades_core): catches "please stop texting me" /
+    # "take me off your list", not just the exact STOP keyword. Opt-out wins ties.
+    intent = consent.classify_inbound(text)
+    if intent == "opt_out":
         db.set_contact_consent(business_id, contact["id"], "sms", "opted_out",
-                               source="inbound STOP")
+                               source="inbound opt-out")
         return "opted_out"
-    if first in START_WORDS:
+    if intent == "opt_in":
         db.set_contact_consent(business_id, contact["id"], "sms", "granted",
-                               source="inbound START")
+                               source="inbound opt-in")
         return "opted_in"
     return "no_action"

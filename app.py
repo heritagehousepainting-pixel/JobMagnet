@@ -10,10 +10,8 @@ RingBack's structure so the two stay siblings.
 """
 import hmac
 import json
-import re
 import secrets
 from datetime import datetime
-from functools import wraps
 from urllib.parse import quote
 
 from flask import (Flask, render_template, request, redirect, session, url_for, abort,
@@ -67,18 +65,9 @@ if db.count_users() == 0:
     db.create_user(SEED_OWNER_EMAIL, generate_password_hash(SEED_OWNER_PASSWORD), 1)
 
 
-# ---- Auth ----
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-def current_user():
-    uid = session.get("uid")
-    return db.get_user(uid) if uid else None
-
-
-def current_business():
-    u = current_user()
-    return db.get_business(u["business_id"]) if u else None
+# ---- Auth ----  (kernel: current_user/current_business/login_required/_safe_next/
+# _EMAIL_RE live in auth.py — edit trades_core/auth.py, then run trades_core/sync.py)
+from auth import current_user, current_business, login_required, _safe_next, _EMAIL_RE
 
 
 # ---- CSRF ----
@@ -102,28 +91,16 @@ def _csrf_protect():
         if request.path == "/webhooks/stripe":
             return
         # other server-to-server (webhooks, the digest cron); shared-secret token, no CSRF.
-        if WEBHOOK_TOKEN and request.values.get("token") != WEBHOOK_TOKEN:
+        # Fail CLOSED: an unset token must never leave these state-changing endpoints
+        # open to anonymous callers. Constant-time compare.
+        if not WEBHOOK_TOKEN or not hmac.compare_digest(
+                str(request.values.get("token", "")), str(WEBHOOK_TOKEN)):
             abort(403)
         return
     sent = request.form.get("_csrf", "")
     good = session.get("_csrf", "")
     if not good or not hmac.compare_digest(str(good), str(sent)):
         abort(400)
-
-
-def login_required(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        if not session.get("uid"):
-            return redirect(url_for("login", next=request.path))
-        return view(*args, **kwargs)
-    return wrapped
-
-
-def _safe_next(target):
-    """Only allow same-site relative redirects (never //evil.com)."""
-    return (target if (target and target.startswith("/")
-                       and not target.startswith("//")) else "/dashboard")
 
 
 def _new_tenant_fields(name, trade):

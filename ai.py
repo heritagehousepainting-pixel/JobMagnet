@@ -21,6 +21,9 @@ from config import (PROVIDER, PLATFORMS, DEFAULT_PLATFORM,
                     ANTHROPIC_API_KEY, CLAUDE_MODEL,
                     MINIMAX_API_KEY, MINIMAX_MODEL, MINIMAX_BASE_URL,
                     IMAGE_API_KEY)
+# Provider plumbing (MiniMax/Claude/demo selection + the HTTP/SDK call) lives in the
+# trades_core kernel; this file keeps JobMagnet's prompts + content shaping.
+from llm import active_provider as _active_provider, strip_think as _strip_think, complete as _complete
 
 
 def _platform_hint(platform):
@@ -66,33 +69,13 @@ def _user_prompt(topic):
 # REAL BRAINS
 # --------------------------------------------------------------------------
 def _claude_complete(system, user_text):
-    import anthropic  # imported lazily so the other paths need no install
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    resp = client.messages.create(
-        model=CLAUDE_MODEL, max_tokens=600, system=system,
-        messages=[{"role": "user", "content": user_text}])
-    return "".join(b.text for b in resp.content if b.type == "text").strip()
+    return _complete("claude", system, [{"role": "user", "content": user_text}],
+                     max_tokens=600)
 
 
 def _minimax_complete(system, user_text):
-    import requests  # bundles certifi so TLS verifies cleanly on macOS
-    resp = requests.post(
-        f"{MINIMAX_BASE_URL}/v1/chat/completions",
-        headers={"Authorization": f"Bearer {MINIMAX_API_KEY}",
-                 "Content-Type": "application/json"},
-        json={"model": MINIMAX_MODEL,
-              "messages": [{"role": "system", "content": system},
-                           {"role": "user", "content": user_text}],
-              "max_completion_tokens": 800, "temperature": 0.8,
-              "thinking": {"type": "disabled"}},
-        timeout=30)
-    resp.raise_for_status()
-    return _strip_think(resp.json()["choices"][0]["message"]["content"])
-
-
-def _strip_think(text):
-    """Remove a MiniMax reasoning block (even an unclosed one) so it never leaks."""
-    return re.sub(r"<think>.*?(?:</think>|$)", "", text or "", flags=re.DOTALL).strip()
+    return _complete("minimax", system, [{"role": "user", "content": user_text}],
+                     max_tokens=800, temperature=0.8)
 
 
 # --------------------------------------------------------------------------
@@ -128,15 +111,6 @@ def _clean_punct(text):
     text = re.sub(r",\s*,", ", ", text)                  # collapse doubled commas
     text = re.sub(r"[ \t]{2,}", " ", text)               # collapse runs of spaces
     return text.strip()
-
-
-def _active_provider():
-    """Which brain is actually usable right now (chosen provider + its key present)."""
-    if PROVIDER == "claude" and ANTHROPIC_API_KEY:
-        return "claude"
-    if PROVIDER == "minimax" and MINIMAX_API_KEY:
-        return "minimax"
-    return "demo"
 
 
 def generate_post(business, topic, platform=DEFAULT_PLATFORM):

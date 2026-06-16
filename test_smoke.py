@@ -17,6 +17,11 @@ _TMP_DB = tempfile.NamedTemporaryFile(prefix="jobmagnet-test-", suffix=".db", de
 _TMP_DB.close()
 os.environ["JOBMAGNET_DB_PATH"] = _TMP_DB.name
 os.environ["JOBMAGNET_PROVIDER"] = "demo"
+# Pin the seed identity and secrets the suite asserts against, so a populated local
+# .env (real owner password, secrets key) can't leak in. Real env wins over .env
+# (setdefault), so these stick. The suite drives crypto.SECRETS_KEY itself below.
+os.environ["JOBMAGNET_OWNER_PASSWORD"] = "jobmagnet123"
+os.environ["JOBMAGNET_SECRETS_KEY"] = ""
 
 import app as appmod
 import db
