@@ -1,0 +1,51 @@
+# Render Blueprint for JobMagnet.
+#
+# To deploy: this repo is on GitHub; in the Render dashboard choose "New +" ->
+# "Blueprint", point it at heritagehousepainting-pixel/JobMagnet, branch main.
+# Render reads this file and provisions the service + disk + env vars below. Add
+# the real SECRETS (AI brain key, Twilio, SMTP, Stripe) in the dashboard afterward
+# so they never enter git.
+#
+# Mirrors RingBack's deploy shape: an always-on Flask process + a persistent SQLite
+# disk. One worker so SQLite has a single writer; threads handle concurrency.
+
+services:
+  - type: web
+    name: jobmagnet
+    runtime: python
+    plan: starter                 # ~$7/mo, always-on (the free plan sleeps + has no disk)
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:$PORT
+    disk:
+      name: jobmagnet-data
+      mountPath: /var/data        # the SQLite DB lives here -> survives deploys
+      sizeGB: 1
+    healthCheckPath: /login
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: JOBMAGNET_DB_PATH
+        value: /var/data/jobmagnet.db
+      - key: JOBMAGNET_SECRET         # signs login cookies
+        generateValue: true
+      - key: JOBMAGNET_WEBHOOK_TOKEN  # guards /webhooks/* and /tasks/* (fails closed without it)
+        generateValue: true
+      - key: JOBMAGNET_SECRETS_KEY    # encrypts stored connection credentials at rest
+        generateValue: true
+      - key: JOBMAGNET_HTTPS          # secure session cookies (Render serves HTTPS)
+        value: "1"
+      # ---- Add these as SECRETS in the Render dashboard (Environment tab) ----
+      # The AI brain (pick one; no key => safe demo writer, fine for a first smoke test):
+      #   JOBMAGNET_PROVIDER = minimax   and  MINIMAX_API_KEY   = ...
+      #   JOBMAGNET_PROVIDER = claude    and  ANTHROPIC_API_KEY = sk-ant-...
+      #
+      # First-login owner (optional; defaults to a seeded login you then change):
+      #   JOBMAGNET_OWNER_EMAIL / JOBMAGNET_OWNER_PASSWORD
+      #
+      # Real outbound (later, see SETUP_NEEDED.md):
+      #   TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM   (SMS)
+      #   JOBMAGNET_EMAIL_FROM / SMTP_HOST / SMTP_USER / SMTP_PASSWORD   (email)
+      # Billing (optional): STRIPE_SECRET_KEY
+      #
+      # Scheduled work (autopilot tick + weekly digest) is driven by an external cron
+      # hitting /tasks/tick and /tasks/digest with ?token=$JOBMAGNET_WEBHOOK_TOKEN.

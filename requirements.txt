@@ -1,5 +1,6 @@
 # JobMagnet — runtime dependencies (kept deliberately light, like RingBack).
 Flask>=3.0
+gunicorn>=21.2          # production WSGI server (Render); the dev server is local-only
 requests>=2.31
 # Optional: only needed when RINGBACK/JOBMAGNET provider is "claude".
 # anthropic>=0.40
