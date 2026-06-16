@@ -17,10 +17,13 @@
       && 'IntersectionObserver' in window){document.documentElement.classList.add('js-reveal');}}catch(e){}})();
   </script>
   <script defer src="/static/motion.js"></script>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon-180.png">
+  <meta name="theme-color" content="#0B0E14">
 </head>
 <body class="site-body">
 {% set logged_in = current_user is not none %}
-{% set brandmark %}<span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"/><path d="m5 8 4 4"/><path d="m12 15 4 4"/></svg></span>{% endset %}
+{% set brandmark %}<span class="mark"><img src="/static/jobmagnet-mark-transparent.svg" width="30" height="30" alt=""></span>{% endset %}
 
 <nav class="site-nav">
   <div class="wrap site-nav-inner">

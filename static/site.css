@@ -81,12 +81,10 @@ html:has(.site-body){overflow-x:hidden}
   backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
 .site-nav-inner{display:flex;align-items:center;justify-content:space-between;
   height:68px;gap:var(--space-6)}
-.site-brand{display:flex;align-items:center;gap:10px;font-size:var(--text-md);
+.site-brand{display:flex;align-items:center;gap:6px;font-size:var(--text-md);
   font-weight:800;letter-spacing:-.02em;color:var(--ink);text-decoration:none}
-.site-brand .mark{display:flex;align-items:center;justify-content:center;width:30px;height:30px;
-  border-radius:8px;background:var(--accent);color:var(--accent-ink);
-  box-shadow:0 0 0 1px rgba(16,185,129,.4),0 6px 18px -6px var(--glow)}
-.site-brand .mark svg{width:18px;height:18px}
+.site-brand .mark{display:flex;align-items:center;justify-content:center;width:30px;height:30px}
+.site-brand .mark img,.site-brand .mark svg{width:100%;height:100%;display:block}
 .site-links{display:flex;align-items:center;gap:var(--space-2)}
 .site-link{padding:8px var(--space-3);border-radius:8px;font-size:var(--text-sm);
   font-weight:500;color:var(--ink-soft);text-decoration:none;transition:color .15s,background .15s}
