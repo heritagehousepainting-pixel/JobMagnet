@@ -1,0 +1,34 @@
+{% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
+{% block title %}Activity{% endblock %}
+{% block page_title %}Activity{% endblock %}
+{% block page_sub %}<p class="page-sub">Here's what Mason did. Every draft, message, and post shows up here, with an honest label so you always know what actually went out and what was only a preview.</p>{% endblock %}
+
+{% block content %}
+{% if digest and digest.has_content %}<div class="save-banner" style="margin:0">{{ digest.line }} Over the last {{ digest.days }} days across {{ digest.convos }} conversation(s).</div>{% endif %}
+
+<div class="card">
+  <div class="card-head"><div class="section-label"><h2 class="card-title">Recent activity</h2>{% if events %}<span class="count">{{ events|length }}</span>{% endif %}</div></div>
+  <div class="card-body">
+    {% if events %}
+      {% for e in events %}
+      <div class="card" style="margin-bottom:var(--space-2)">
+        <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-3)">
+          <span>
+            <span class="pill pill-neutral">{{ e.label }}</span>
+            {{ e.desc }}
+            {% if e.tag == 'simulated' %}<span class="pill pill-warning">simulated</span>
+            {% elif e.tag == 'assisted' %}<span class="pill pill-neutral">assisted</span>
+            {% elif e.tag == 'not sent' %}<span class="pill pill-warning">not sent</span>
+            {% else %}<span class="pill pill-booked">live</span>{% endif %}
+          </span>
+          <span class="dt-muted">{{ e.created_at }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      {{ ui.empty("Nothing yet", "Nothing yet. When Mason acts, it shows up here.") }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -12,6 +12,9 @@
 {% if msg == 'sent_sent' %}<div class="save-banner">Review request sent.</div>{% endif %}
 {% if msg and msg.startswith('sent_blocked') %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That contact has opted out, so nothing was sent.</div>{% endif %}
 {% if msg and msg.startswith('bulk_') %}<div class="save-banner">Sent {{ msg[5:] }} review request(s) to customers not yet asked.{% if request.args.get('capped') %} {{ request.args.get('capped') }} more are paced for the next few days to stay carrier-friendly, and will go out automatically.{% endif %}</div>{% endif %}
+{% set sync = request.args.get('sync') %}
+{% if sync == 'simulated' %}<div class="save-banner">Automatic review monitoring activates when you connect Google Business Profile. Until then, add reviews below to draft replies.</div>{% endif %}
+{% if sync == 'pending' %}<div class="save-banner">Google Business Profile is linked, but automatic review pulling isn't live yet. Add reviews below for now.</div>{% endif %}
 
 <div class="stat-row" style="margin-bottom:var(--space-6)">
   <div class="stat-tile"><div class="stat-value">{{ stats.avg or '—' }}</div><div class="stat-label">Avg rating</div></div>
@@ -69,9 +72,19 @@
 <div class="card">
   <div class="card-head">
     <h2 class="card-title">Your reviews</h2>
-    <span class="card-subtitle">Automatic monitoring needs the Google API. Until then, add reviews here to draft replies.</span>
+    <div style="display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap">
+      <span class="pill {{ 'pill-booked' if gbp_connected else 'pill-neutral' }}"><span class="pill-dot"></span>Monitoring: {{ 'on' if gbp_connected else 'off' }}</span>
+      <form method="post" action="/reviews/sync" style="display:inline">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="btn btn-ghost btn-sm" type="submit">Check for new reviews</button>
+      </form>
+    </div>
   </div>
   <div class="card-body">
+    <p class="dt-muted" style="font-size:.85rem;margin-bottom:var(--space-4)">
+      {% if gbp_connected %}Mason watches for new reviews, drafts a reply, and flags critical ones for you. You always tap to post the public reply.
+      {% else %}Automatic monitoring activates when you connect Google Business Profile. Until then, add reviews here to draft replies.{% endif %}
+    </p>
     <form method="post" action="/reviews/import" style="display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4)">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <div class="field" style="min-width:130px;margin:0"><label class="field-label" for="ra">Reviewer</label><input class="field-control" id="ra" name="author"></div>
@@ -90,10 +103,15 @@
             <span class="pill pill-neutral">{{ r.source|capitalize }}</span>
             <span class="pill {{ 'pill-booked' if (r.rating or 0) >= 4 else 'pill-warning' }}">{{ r.rating }}★</span>
             {% if r.author %}<strong>{{ r.author }}</strong>{% endif %}
-            {% if r.status == 'responded' %}<span class="pill pill-new"><span class="pill-dot"></span>Replied</span>{% endif %}
+            {% if r.status == 'responded' %}<span class="pill pill-new"><span class="pill-dot"></span>Replied</span>
+            {% elif (r.rating or 0) <= 3 %}<span class="pill pill-warning"><span class="pill-dot"></span>Needs your attention</span>
+            {% else %}<span class="pill pill-booked"><span class="pill-dot"></span>Ready to approve</span>{% endif %}
           </div>
         </div>
         <div class="card-body">
+          {% if r.status != 'responded' and (r.rating or 0) <= 3 %}
+          <p class="dt-muted" style="font-size:.85rem;margin-bottom:var(--space-2)">A critical review. Mason drafted a gracious reply, but it is never auto-sent. Review it and post when you are ready.</p>
+          {% endif %}
           <p class="post-body">{{ r.body }}</p>
           <form method="post" action="/reviews/{{ r.id }}/respond" style="margin-top:var(--space-3)">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">

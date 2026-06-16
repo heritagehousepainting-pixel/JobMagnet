@@ -861,6 +861,94 @@ check("the auto-scheduled live Google post then publishes",
       db.get_post(_g3[0]["id"], _apb3)["status"] == "published")
 messaging.in_quiet_hours = _tp
 
+# --- Phase 3: the autonomous reviews loop ----------------------------------
+# Monitoring + draft-prep + triage + auto-request-on-won, all through the existing
+# honest seams. The review PULL stays simulated/pending (no real GBP API) and replies
+# are NEVER auto-sent (no real "reply to review" connector) -- the owner taps to post.
+print("Phase 3 reviews loop")
+import reviewsync
+_rev_biz = db.create_business({"name": "Reviews Loop Co", "trade": "painting"})
+
+# 1) pull_reviews mirrors roi.sync_ringback: simulated when GBP unconnected, pending when
+#    connected. It never fabricates reviews (added is always 0 until the real GET ships).
+_pull = reviewsync.pull_reviews(_rev_biz)
+check("pull_reviews is simulated when GBP is unconnected",
+      _pull["mode"] == "simulated" and _pull["added"] == 0)
+_gbp_live_orig = publishing.gbp_live
+publishing.gbp_live = lambda business_id=None: True   # simulate a connected GBP
+_pull_live = reviewsync.pull_reviews(_rev_biz)
+check("pull_reviews is pending once GBP is connected (no fabricated reviews)",
+      _pull_live["mode"] == "pending" and _pull_live["added"] == 0)
+publishing.gbp_live = _gbp_live_orig
+
+# 2) The manual /reviews/sync route redirects with the honest mode (mirrors /roi/sync-ringback).
+r = c.post("/reviews/sync", data={})
+check("/reviews/sync redirects with the simulated mode when GBP unconnected",
+      r.status_code == 302 and "sync=simulated" in r.headers["Location"])
+
+# 3) The heartbeat calls the pull per tenant -- it must still return 200 and not crash
+#    (a safe no-op until GBP is wired, so monitoring is autonomous-ready).
+r = c.post("/tasks/tick", data={})
+check("/tasks/tick still returns 200 with the review pull wired in",
+      r.status_code == 200 and r.is_json)
+check("the tick reports the review pull (reviews_pulled, safe no-op)",
+      "reviews_pulled" in r.get_json())
+
+# 4) Triage is derived from the stored rating (no schema change): a 1-3 star review is flagged
+#    "Needs your attention" on the page; a 5 star is not (it is "Ready to approve" praise).
+c.post("/reviews/import", data={"author": "Cranky Carl", "rating": "2",
+                                "body": "The trim was sloppy and they left a mess."})
+c.post("/reviews/import", data={"author": "Happy Hannah", "rating": "5",
+                                "body": "Flawless work, on time, spotless cleanup."})
+r = c.get("/reviews")
+check("a 1-3 star review is flagged 'Needs your attention'",
+      b"Needs your attention" in r.data)
+_crit = [rv for rv in db.list_reviews(1) if rv["author"] == "Cranky Carl"][0]
+check("the critical review still got an auto-drafted (never auto-sent) reply",
+      bool(_crit["response"]) and _crit["status"] != "responded")
+check("a 5 star review is shown ready to approve, not flagged critical",
+      b"Ready to approve" in r.data)
+
+# 5) Won-a-job auto-requests ONE review (gated seam), deduped so re-marking won never
+#    double-texts. Neutralize quiet hours so the transactional send is deterministic.
+_qr = messaging.in_quiet_hours
+messaging.in_quiet_hours = lambda *a, **k: False
+db.update_business(_rev_biz, {"google_review_link": "https://g.page/r/revloop"})
+db.set_plan(_rev_biz, "premium")
+# Log this tenant in so the route's current_business() resolves to it.
+_rc = appmod.app.test_client()
+from werkzeug.security import generate_password_hash as _gph
+_owner = db.create_user("revloop@example.com", _gph("revloop-pass-123"), _rev_biz)
+with _rc.session_transaction() as _s:
+    _s["uid"] = _owner
+_won_phone = "215-555-9090"
+_won_lid = db.add_lead(_rev_biz, name="Won Wendy", phone=_won_phone, channel="form")
+_reqs_before = sum(1 for m in db.list_messages(_rev_biz) if m["purpose"] == "review_request")
+_rc.post("/speed/%d/status" % _won_lid, data={"status": "booked"})
+_reqs_after = sum(1 for m in db.list_messages(_rev_biz)
+                  if m["purpose"] == "review_request" and m["status"] in ("sent", "simulated"))
+check("marking a lead won/booked auto-sends exactly one review request",
+      _reqs_after == _reqs_before + 1)
+check("db.review_requested_to_phone sees the sent request",
+      db.review_requested_to_phone(_rev_biz, _won_phone) is True)
+# Re-marking won must NOT send a second review request (dedup via the messages log).
+_rc.post("/speed/%d/status" % _won_lid, data={"status": "won"})
+_reqs_final = sum(1 for m in db.list_messages(_rev_biz)
+                  if m["purpose"] == "review_request" and m["status"] in ("sent", "simulated"))
+check("re-marking won does NOT send a second review request (deduped)",
+      _reqs_final == _reqs_after)
+# No review link -> no auto-request (we never ask without somewhere to send them).
+_noli_biz = db.create_business({"name": "No Link Co", "trade": "painting"})
+_noli_owner = db.create_user("nolink@example.com", _gph("nolink-pass-123"), _noli_biz)
+_nc = appmod.app.test_client()
+with _nc.session_transaction() as _s:
+    _s["uid"] = _noli_owner
+_noli_lid = db.add_lead(_noli_biz, name="No Link Lead", phone="215-555-9091", channel="form")
+_nc.post("/speed/%d/status" % _noli_lid, data={"status": "booked"})
+check("a won job with no review link sends no review request",
+      not any(m["purpose"] == "review_request" for m in db.list_messages(_noli_biz)))
+messaging.in_quiet_hours = _qr
+
 # --- Loop 2: engine outcomes -> ROI (closed loop) --------------------------
 print("Closed loop (lead booked -> conversion)")
 _booked_before = db.roi_summary(1)["totals"]["booked"]
@@ -1300,6 +1388,111 @@ check("emailing the digest goes through the gated seam (simulated until SMTP)",
 r = c.post("/tasks/digest", data={})
 check("the weekly digest cron emails every tenant owner",
       r.status_code == 200 and r.get_json()["sent"] >= 1)
+
+# --- Phase 4: autonomous closed-loop ROI (RingBack booking sync) ------------
+print("Phase 4 ROI ringback sync")
+import roi as _roi
+
+# Not connected (RINGBACK_* unset) -> honest no-op 'simulated', nothing added.
+_rb_biz = db.create_business({"name": "RingBack Co", "trade": "painting"})
+_rb_res = _roi.sync_ringback(_rb_biz)
+check("ringback sync is simulated when RINGBACK_* unset",
+      _rb_res == {"mode": "simulated", "added": 0})
+
+# Connected: monkeypatch the creds onto the roi module AND stub the HTTP fetch, so we
+# exercise the real pull/dedup path without a network call (mirrors how the suite
+# monkeypatches module globals like crypto.SECRETS_KEY / _plans.PLANS).
+_rb_url0, _rb_key0 = _roi.RINGBACK_API_URL, _roi.RINGBACK_API_KEY
+_rb_fetch0 = _roi._fetch_ringback_bookings
+_roi.RINGBACK_API_URL = "https://ringback.example/api"
+_roi.RINGBACK_API_KEY = "test-ringback-key"
+_rb_bookings = [
+    {"id": "bk-1", "channel": "google_lsa", "value": 1800, "label": "Smith exterior"},
+    {"id": "bk-2", "channel": "referral", "value": 2400, "label": "Jones cabinets"},
+]
+_roi._fetch_ringback_bookings = lambda business_id: _rb_bookings
+try:
+    check("ringback reports connected when creds are set", _roi.ringback_connected())
+    _r1 = _roi.sync_ringback(_rb_biz)
+    check("a live sync adds exactly 2 bookings and reports mode=live",
+          _r1 == {"mode": "live", "added": 2})
+    _rb_conv = db.get_conn().execute(
+        "SELECT COUNT(*) FROM conversions WHERE business_id=? AND origin='ringback'",
+        (_rb_biz,)).fetchone()[0]
+    check("2 origin='ringback' conversions were created", _rb_conv == 2)
+    _rb_row = [r for r in db.roi_summary(_rb_biz)["rows"] if r["channel"] == "google_lsa"][0]
+    check("synced booking lands as a booked job under its channel", _rb_row["booked"] == 1)
+    # Re-syncing the SAME booking ids must add 0 (dedup by ext_id).
+    _r2 = _roi.sync_ringback(_rb_biz)
+    check("re-syncing the same booking ids adds 0 (deduped)",
+          _r2 == {"mode": "live", "added": 0})
+    check("dedup left exactly 2 ringback conversions", db.get_conn().execute(
+        "SELECT COUNT(*) FROM conversions WHERE business_id=? AND origin='ringback'",
+        (_rb_biz,)).fetchone()[0] == 2)
+    # A request error never fakes success.
+    def _boom(business_id):
+        raise RuntimeError("ringback unreachable")
+    _roi._fetch_ringback_bookings = _boom
+    check("a request error reports mode=error, added=0 (no fake success)",
+          _roi.sync_ringback(_rb_biz) == {"mode": "error", "added": 0})
+    # The heartbeat still returns 200 and surfaces a ringback booking count.
+    _roi._fetch_ringback_bookings = lambda business_id: []
+    _tickc = appmod.app.test_client()
+    _tr = _tickc.post("/tasks/tick")
+    check("/tasks/tick returns 200 and surfaces a bookings_synced count",
+          _tr.status_code == 200 and "bookings_synced" in _tr.get_json())
+finally:
+    _roi.RINGBACK_API_URL, _roi.RINGBACK_API_KEY = _rb_url0, _rb_key0
+    _roi._fetch_ringback_bookings = _rb_fetch0
+
+# --- Phase 5: the trust layer (in-app activity feed) ------------------------
+# A read-only viewing surface that merges autopilot runs + outbound messages +
+# published posts into one honest, reverse-chronological "Here's what Mason did"
+# feed -- strictly tenant-scoped (leaking another tenant's activity is the worst
+# possible bug for this page).
+print("Phase 5 activity feed")
+# Business 1 (the logged-in owner, client `c`) has autopilot runs from the heartbeat
+# tests above; give it a fresh outbound message too so both sources are present.
+db.log_message(1, "sms", "+15551230000", "Mind leaving us a review?",
+               "simulated", "simulated", purpose="review_request")
+r = c.get("/activity")
+check("/activity renders 200 for a logged-in owner", r.status_code == 200)
+check("/activity shows a recent autopilot run", b"Mason ran autopilot" in r.data)
+check("/activity shows a recent outbound message", b"review request" in r.data)
+check("/activity labels simulated activity honestly", b"simulated" in r.data)
+check("/activity is reachable in the Home nav", b"/activity" in r.data)
+# A blocked (not-sent) message must never look like it went out for real.
+db.log_message(1, "sms", "+15559990000", "blocked one", "blocked_optout",
+               "simulated", purpose="reactivation")
+r = c.get("/activity")
+check("/activity marks a blocked message as not sent", b"not sent" in r.data)
+
+# Tenant isolation: a fresh OTHER tenant's owner sees none of business 1's activity.
+_act_biz = db.create_business({"name": "Activity Isolation Co", "trade": "painting"})
+db.log_message(_act_biz, "email", "owner2@example.com", "their own note",
+               "sent", "smtp", purpose="lead_reply")
+_act_email = "owner2-activity@example.com"
+_act_uid = db.create_user(_act_email, _gph("feedpass12345"), _act_biz)
+_ac = appmod.app.test_client()
+_ac.post("/login", data={"email": _act_email, "password": "feedpass12345"})
+r2 = _ac.get("/activity")
+check("OTHER tenant's activity page renders 200", r2.status_code == 200)
+check("OTHER tenant sees its own message", b"Replied to a new lead" in r2.data)
+check("OTHER tenant does NOT see business 1's review request (isolation)",
+      b"review request" not in r2.data)
+check("OTHER tenant does NOT see business 1's autopilot runs (isolation)",
+      b"Mason ran autopilot" not in r2.data)
+
+# Empty state: a brand-new tenant with no activity at all.
+_act_empty = db.create_business({"name": "No Activity Co", "trade": "painting"})
+_ace_email = "owner-empty-activity@example.com"
+db.create_user(_ace_email, _gph("emptypass12345"), _act_empty)
+_ace = appmod.app.test_client()
+_ace.post("/login", data={"email": _ace_email, "password": "emptypass12345"})
+r3 = _ace.get("/activity")
+check("empty-state tenant renders 200", r3.status_code == 200)
+check("empty state renders for a tenant with no activity",
+      b"Nothing yet. When Mason acts, it shows up here." in r3.data)
 
 # --- Cleanup ----------------------------------------------------------------
 try:

@@ -19,9 +19,13 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done
 The truthfulness audit (2026-06-15) confirmed the site now only claims what the code
 does. A few seams are gated honestly but still need **code**, not just a key — the UI
 says so:
-- ⬜ **RingBack auto booking-sync** — `roi.sync_ringback` reports "pending" when
-  RINGBACK_* is set (the bookings GET isn't implemented). Manual "Log a booked job"
-  works today; the closed loop is honest, just manual.
+- 🟡 **RingBack auto booking-sync** — the bookings pull + heartbeat hook are now WIRED.
+  `roi.sync_ringback` does a real bookings GET and adds deduped `origin='ringback'`
+  conversions; the autonomy heartbeat (`/tasks/tick`) runs it per tenant. It stays a safe
+  no-op (mode "simulated") until you set `RINGBACK_API_URL` + `RINGBACK_API_KEY`, then it
+  goes live automatically (mode "live"; "error" if RingBack is unreachable, never a fake
+  success). Only remaining: the bookings GET shape (`/bookings`, Bearer auth, list/envelope
+  JSON) may need matching to RingBack's real API. Manual "Log a booked job" still works.
 - ⬜ **AI image generation** — `ai.generate_image` is prompt-only; status is always
   "simulated" even with `JOBMAGNET_IMAGE_KEY` set, until a provider call is wired.
 - ⬜ **Managed paid ads** — `ads.py` is advisory (budgets + copy), not ad-account
@@ -61,8 +65,12 @@ says so:
 ## Phase 1 — Reviews
 - ⬜ **Google Business Profile review link** for each business (paste into Settings).
   This is the link customers are sent to leave a review.
-- ⬜ (Later) **Google Business Profile API access** for pulling/monitoring reviews
-  automatically (until then, monitoring is manual/simulated).
+- ⬜ **Google Business Profile API access** for pulling/monitoring reviews automatically.
+  The pull seam (`reviewsync.pull_reviews`) and the heartbeat hook (`/tasks/tick` calls it
+  per tenant) are already wired and activate the moment GBP is connected; `POST /reviews/sync`
+  triggers it manually. Until connected it honestly reports 'simulated' (monitoring dormant),
+  and once connected 'pending' until the reviews GET is implemented — it never fabricates
+  reviews. Reply auto-posting is intentionally out of scope (no real GBP reply connector).
 
 ## Phase 2 — Content & Local
 - ⬜ **Google Business Profile API** (OAuth) to publish GBP posts automatically.
@@ -86,8 +94,10 @@ says so:
 
 ## Phase 3 — ROI loop
 - ⬜ **Tracked phone numbers** (Twilio) per channel for attribution.
-- ⬜ (Optional) **RingBack connection** — if you want the closed loop, connect RingBack
-  so its booking events feed cost-per-booked-job. Optional; JobMagnet works without it.
+- 🟡 (Optional) **RingBack connection** — if you want the closed loop, set `RINGBACK_API_URL`
+  + `RINGBACK_API_KEY` so its booking events feed cost-per-booked-job. The pull + heartbeat
+  hook are wired and activate automatically once those are set (see the gated-seam note up
+  top for the GET-shape caveat). Optional; JobMagnet works without it.
 
 ## Phase 4 — Paid ads
 - ⬜ **Google Ads / Local Services Ads account** (+ Google Screened verification:

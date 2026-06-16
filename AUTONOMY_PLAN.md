@@ -22,7 +22,7 @@ approval queue. Autonomy is added *on top of* the existing discipline, never aro
 | Content cadence | ✅ `ai.generate_post`, `db.last_post_at` | Manual / one draft per autopilot click | No cadence pacing; drafts pile up |
 | Review monitoring | ⬜ no GBP pull (`reviews_import` is manual) | **Owner types the review in** | No puller |
 | Review responses | ✅ `ai.generate_review_response` (auto-drafts) | **Owner clicks publish** | No auto-publish tier |
-| Closed-loop ROI | 🟡 webhook works; `roi.sync_ringback` is a stub | **Owner logs the job** | Sync GET unimplemented |
+| Closed-loop ROI | ✅ webhook + `roi.sync_ringback` live pull (deduped, heartbeat-driven) | **Auto (RingBack) or owner logs the job** | Activates when RINGBACK_* set; GET shape may need matching |
 
 **One sentence:** build a per-tenant heartbeat, route the existing engines through it,
 give the owner a dial for how far to let it run, and show them what it did.
@@ -96,20 +96,43 @@ auto-publishing for the first and only time, behind the dial, default OFF.
 - When OFF (default): unchanged — everything drafts and waits for approval.
 - Show the dial prominently in the Game Plan so the owner always knows what Mason does alone.
 
-### Phase 3 — Autonomous reviews loop
+### Phase 3 — Autonomous reviews loop  ✅ SHIPPED
+Built: pure `reviewsync.py` (`pull_reviews(business_id)`) mirroring `roi.sync_ringback` —
+'simulated' when GBP unconnected, 'pending' once connected (real GET still code-pending; never
+fabricates reviews). Manual `POST /reviews/sync` (mirrors `/roi/sync-ringback`); the heartbeat
+`/tasks/tick` now calls `pull_reviews` per tenant so monitoring is autonomous-ready (safe no-op
+until GBP is wired). Honest triage surfaced on the reviews page (derived from the stored rating,
+no schema change): 4-5★ = "Ready to approve" praise, 1-3★ = "Needs your attention" (still
+auto-drafts a gracious reply but is flagged and NEVER auto-sent). Marking a lead won/booked with a
+review link + phone sends ONE review request through the gated seam, deduped by the messages log
+(`db.review_requested_to_phone`) so re-marking never double-texts. New "Phase 3 reviews loop" tests;
+suite green.
+
+**Honesty boundary held:** there is no real Google "reply to review" API in this codebase, so
+replies are never auto-published / auto-marked-responded — autonomy here is monitoring + draft-prep
++ triage; the owner still taps to post the public reply. The pull stays honestly simulated/pending.
+
 Closes "we don't auto-monitor reviews yet."
 - Implement the GBP review **pull** (the code-pending connector) so the tick ingests new reviews.
-- Auto-draft the response (already works on import) → **auto-publish replies to 4–5★** (gated,
-  optional) → **flag 1–3★ for the owner** (never auto-respond to a critical review).
-- Auto-request a review when a job is marked won (lead → won transition) instead of bulk blasts.
+- Auto-draft the response (already works on import) → **flag 1–3★ for the owner** (never
+  auto-respond to a critical review). Auto-publish of replies is intentionally NOT built: no real
+  GBP reply connector exists, so faking a posted public reply would be dishonest.
+- Auto-request a review when a job is marked won (lead → won/booked transition) instead of bulk blasts.
 
-### Phase 4 — Autonomous closed loop (ROI)
+### Phase 4 — Autonomous closed loop (ROI) ✅ SHIPPED
 Closes "bookings reach ROI by webhook or manual log."
-- Implement `roi.sync_ringback`'s bookings GET; have the tick pull bookings on a cadence and
-  `add_conversion(... origin='ringback')`. The booking webhook (`/webhooks/booking`) already
-  covers the push path. Cost-per-booked-job updates with no manual logging.
+- `roi.sync_ringback` now does the real bookings GET (factored into `roi._fetch_ringback_bookings`
+  for stubbing): connected -> live pull adding `add_conversion(... origin='ringback', ext_id=...)`
+  for each NEW booking, deduped by `(business_id, origin, ext_id)` via `db.conversion_exists` so
+  re-syncing never double-counts. Honest modes: simulated (creds unset) / live (pulled, n>=0) /
+  error (request failed, never a faked success).
+- `/tasks/tick` pulls each tenant's bookings every heartbeat and reports `bookings_synced`. A safe
+  no-op until `RINGBACK_API_URL` + `RINGBACK_API_KEY` are set; cost-per-booked-job then updates with
+  no manual logging. The booking webhook (`/webhooks/booking`) still covers the push path.
+- For later: the bookings GET path/shape (`/bookings`, Bearer auth, list-or-envelope JSON) is a
+  reasonable default and must be matched to RingBack's real API when the instance is live.
 
-### Phase 5 — The trust layer (so unattended feels safe, not scary)
+### Phase 5 — The trust layer (so unattended feels safe, not scary) ✅ SHIPPED
 Autonomy without visibility erodes trust fast.
 - An **activity feed** — "Here's what Mason did" — from `autopilot_runs` + the messages log.
 - An optional **daily/weekly digest** (email/SMS via the seam, or in-app), reusing

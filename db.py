@@ -292,6 +292,9 @@ def init_db():
     # Link a closed-loop conversion back to the lead that produced it, so the single
     # conversion can be promoted booked -> won (with revenue) and never double-counted.
     _ensure_columns(c, "conversions", {"lead_id": "INTEGER"})
+    # Phase 4: a provider's stable booking id, so re-syncing RingBack (or any external
+    # feed) never double-counts the same booked job. Scoped by (business_id, origin, ext_id).
+    _ensure_columns(c, "conversions", {"ext_id": "TEXT"})
     # Reactivation needs each customer's last job date + service to compute repaint cycles.
     _ensure_columns(c, "contacts", {"last_job_at": "TEXT", "last_service": "TEXT"})
     # Subscription plan per tenant (gates autopilot, managed ads, text volume).
@@ -698,20 +701,33 @@ def set_review_response(review_id, business_id, response, mark_responded=True):
 
 # ---- Conversions + spend (Phase 3: the closed loop) ----
 def add_conversion(business_id, channel, status="won", value=0.0, contact_id=None,
-                   label="", origin="manual", lead_id=None):
+                   label="", origin="manual", lead_id=None, ext_id=None):
     conn = get_conn()
     won_at = now_iso() if status == "won" else None
     # A job's value can't be negative; clamp so a typo can't poison revenue/ROAS.
     value = max(0.0, float(value or 0))
     cur = conn.execute(
         "INSERT INTO conversions (business_id, channel, status, value, contact_id, "
-        "label, origin, lead_id, created_at, won_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "label, origin, lead_id, ext_id, created_at, won_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (business_id, channel, status, value, contact_id, label, origin, lead_id,
-         now_iso(), won_at))
+         ext_id, now_iso(), won_at))
     conn.commit()
     cid = cur.lastrowid
     conn.close()
     return cid
+
+
+def conversion_exists(business_id, origin, ext_id):
+    """True if a conversion with this provider booking id already exists for the tenant
+    (the Phase 4 dedup guard, so re-syncing an external feed never double-counts)."""
+    if ext_id is None or ext_id == "":
+        return False
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM conversions WHERE business_id=? AND origin=? AND ext_id=? LIMIT 1",
+        (business_id, origin, str(ext_id))).fetchone()
+    conn.close()
+    return row is not None
 
 
 def add_spend(business_id, channel, amount, note=""):
@@ -1477,6 +1493,21 @@ def contacted_ids(business_id, purpose):
 def requested_contact_ids(business_id):
     """Contacts already sent a review request (so a bulk ask never double-texts)."""
     return contacted_ids(business_id, "review_request")
+
+
+def review_requested_to_phone(business_id, phone):
+    """Whether we've already sent a review request to this phone number (regardless of
+    whether it's a saved contact). Lets the won-a-job auto-request dedup so re-marking a
+    lead won never double-texts. Only delivered sends count (matches contacted_ids)."""
+    norm = _norm_phone(phone)
+    if not norm:
+        return False
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT to_addr FROM messages WHERE business_id=? AND purpose='review_request' "
+        "AND status IN ('sent','simulated')", (business_id,)).fetchall()
+    conn.close()
+    return any(_norm_phone(r["to_addr"]) == norm for r in rows)
 
 
 def get_election(business_id, playbook):

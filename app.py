@@ -40,6 +40,7 @@ import publishing
 import posting
 import seo
 import roi
+import reviewsync
 import ads
 import outreach
 from config import (APP_NAME, TAGLINE, DEBUG, PORT, SECRET_KEY, SESSION_COOKIE_SECURE,
@@ -152,7 +153,8 @@ def _new_tenant_fields(name, trade):
 # in a section without going back to the sidebar. Single source of truth.
 NAV_SECTIONS = [
     ("Home", [("/dashboard", "Command Center"), ("/queue", "Queue"),
-              ("/mandate", "Game Plan"), ("/training", "Memory")]),
+              ("/mandate", "Game Plan"), ("/activity", "Activity"),
+              ("/training", "Memory")]),
     ("Get Found", [("/getfound", "Get Found"), ("/reviews", "Reviews"),
                    ("/showwork", "Show Work"), ("/compose", "Compose"),
                    ("/local", "Local SEO")]),
@@ -481,6 +483,79 @@ def training_resolve():
     return redirect("/training")
 
 
+@app.route("/activity")
+@login_required
+def activity():
+    """The trust layer: a reverse-chronological, honest feed of everything Mason did
+    for THIS tenant -- autopilot runs, outbound messages, and published posts -- so the
+    owner can see (and never be misled about) what went out on its own vs simulated.
+    Read-only: it never changes how anything runs or sends."""
+    biz = current_business()
+    bid = biz["id"]
+    events = []
+
+    # 1) Autopilot runs (Phase 0 audit log): drafts created, messages sent, sends paced.
+    for run in db.list_autopilot_runs(bid, limit=50):
+        bits = [f"{run['posts']} draft(s)", f"{run['msgs']} message(s)"]
+        if run["capped"]:
+            bits.append(f"{run['capped']} paced")
+        origin = "on its own" if run.get("origin") == "cron" else "you ran it"
+        events.append({
+            "created_at": run.get("created_at"),
+            "icon": "autopilot",
+            "label": "Autopilot",
+            "desc": f"Mason ran autopilot: {', '.join(bits)} ({origin}).",
+            "tag": None if (run.get("sms_mode") or "simulated") == "live" else "simulated",
+        })
+
+    # 2) Outbound messages: honest per purpose and delivery status.
+    for m in db.list_messages(bid, limit=50):
+        if (m.get("direction") or "outbound") != "outbound":
+            continue
+        purpose = {
+            "review_request": "Sent a review request",
+            "reactivation": "Reached out to win back a past customer",
+            "referral": "Sent a referral ask",
+            "lead_reply": "Replied to a new lead",
+            "cold_email": "Sent a cold outreach email",
+            "digest": "Emailed your activity digest",
+        }.get(m.get("purpose") or "", "Sent a message")
+        status = m.get("status") or ""
+        if status == "sent":
+            tag = None
+        elif status == "simulated":
+            tag = "simulated"
+        else:  # blocked_optout / blocked_quiet / blocked_no_consent / paced / error
+            tag = "not sent"
+        events.append({
+            "created_at": m.get("created_at"),
+            "icon": "message",
+            "label": "Message",
+            "desc": f"{purpose} by {m.get('channel') or 'message'}.",
+            "tag": tag,
+        })
+
+    # 3) Published posts: honest publish_mode (live / assisted / simulated).
+    for p in db.list_posts(bid, status="published"):
+        mode = p.get("publish_mode") or "simulated"
+        tag = None if mode == "live" else mode
+        events.append({
+            "created_at": p.get("decided_at") or p.get("created_at"),
+            "icon": "post",
+            "label": "Post",
+            "desc": f"Published to {p.get('platform') or 'a channel'}.",
+            "tag": tag,
+        })
+
+    # Merge reverse-chronological and cap. created_at is ISO so string sort is correct.
+    events.sort(key=lambda e: e.get("created_at") or "", reverse=True)
+    events = events[:50]
+
+    return render_template("activity.html",
+                           events=events,
+                           digest=convos.digest(bid))
+
+
 @app.route("/digest/send", methods=["POST"])
 @login_required
 def digest_send():
@@ -523,15 +598,23 @@ def tasks_tick():
     for post in db.due_posts():
         publishing.publish_post(post["business_id"], post)
         published += 1
-    ran = posts = msgs = capped = 0
+    ran = posts = msgs = capped = pulled = booked = 0
     for bid in db.all_business_ids():
+        # Monitor reviews (autonomous-ready; a safe no-op until GBP is connected, then
+        # it ingests + drafts + triages new reviews automatically). Mirrors roi sync.
+        pulled += reviewsync.pull_reviews(bid)["added"]
+        # Closed-loop ROI (Phase 4): pull booked jobs from RingBack into conversions.
+        # A safe no-op (mode 'simulated', added 0) until RINGBACK_* is configured; deduped
+        # by ext_id so repeated ticks never double-count the same booking.
+        booked += roi.sync_ringback(bid)["added"]
         rep = autopilot.run_for(bid, origin="cron")
         if rep["blocked"]:
             continue
         ran += 1
         posts += rep["posts"]; msgs += rep["msgs"]; capped += rep["capped"]
     return jsonify({"ok": True, "published": published, "ran": ran,
-                    "posts": posts, "msgs": msgs, "capped": capped})
+                    "posts": posts, "msgs": msgs, "capped": capped,
+                    "reviews_pulled": pulled, "bookings_synced": booked})
 
 
 @app.route("/walkthrough", methods=["GET", "POST"])
@@ -685,9 +768,22 @@ def speed_lead():
 @login_required
 def speed_status(lead_id):
     biz = current_business()
+    status = request.form.get("status") or ""
     # An optional job value (entered when marking booked/won) feeds the closed-loop ROI.
-    db.set_lead_status(biz["id"], lead_id, request.form.get("status") or "",
+    db.set_lead_status(biz["id"], lead_id, status,
                        value=request.form.get("value", type=float))
+    # A won job is the perfect moment to ask for a review. When the lead just landed in a
+    # won state, has a phone, and we have a review link, send ONE invite through the gated
+    # seam (consent + caps respected there). Deduped so re-marking won never double-texts.
+    if status in ("won", "booked"):
+        lead = db.get_lead(lead_id, biz["id"])
+        link = (biz.get("google_review_link") or "").strip()
+        phone = (lead or {}).get("phone")
+        if lead and link and phone and not db.review_requested_to_phone(biz["id"], phone):
+            contact = db.find_contact_by_phone(biz["id"], phone)
+            body = ai.review_request_message(biz, lead.get("name", "")) + " " + link
+            messaging.send_sms(biz["id"], phone, body, kind="transactional",
+                               purpose="review_request", contact=contact)
     return redirect("/speed")
 
 
@@ -943,7 +1039,8 @@ def reviews():
                            contacts=db.list_contacts(biz["id"], kind="customer"),
                            reviews=db.list_reviews(biz["id"]),
                            stats=db.review_stats(biz["id"]),
-                           channels=messaging.channel_status(biz["id"]))
+                           channels=messaging.channel_status(biz["id"]),
+                           gbp_connected=reviewsync.gbp_connected(biz["id"]))
 
 
 @app.route("/reviews/customers", methods=["POST"])
@@ -1020,6 +1117,17 @@ def reviews_import():
         draft = ai.generate_review_response(biz, db.get_review(rid, biz["id"]))
         db.set_review_response(rid, biz["id"], draft, mark_responded=False)
     return redirect("/reviews")
+
+
+@app.route("/reviews/sync", methods=["POST"])
+@login_required
+def reviews_sync():
+    """Manually trigger the review pull (the same seam the heartbeat runs per tick).
+    Honest like /roi/sync-ringback: 'simulated' until Google Business Profile is
+    connected, 'pending' once connected (auto-pull not live yet). Never fabricates."""
+    biz = current_business()
+    res = reviewsync.pull_reviews(biz["id"])
+    return redirect(f"/reviews?sync={res['mode']}&added={res['added']}")
 
 
 @app.route("/reviews/<int:review_id>/respond", methods=["POST"])
