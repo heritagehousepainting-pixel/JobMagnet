@@ -72,6 +72,15 @@ WEBHOOK_TOKEN = os.environ.get("JOBMAGNET_WEBHOOK_TOKEN", "")
 # --- Publishing (Phase 2): social/GBP connectors. Safe no-op until configured. ---
 # Google Business Profile publishing (OAuth token). Empty -> GBP posts simulated.
 GBP_ACCESS_TOKEN = os.environ.get("GBP_ACCESS_TOKEN", "")
+# One-click "Connect with Google" OAuth (Business Profile). When CLIENT_ID + SECRET are
+# blank, Google is "not configured" -> the Connect button is a safe disabled no-op and
+# nothing ever shows "Connected". The owner registers ONE Google Cloud OAuth app, enables
+# the Business Profile API, and sets these three (see SETUP_NEEDED.md). The redirect URI
+# must exactly match the one whitelisted in the Google Cloud console.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI", "http://localhost:8900/connections/google/callback")
 # Meta (Facebook/Instagram) publishing. Empty -> FB/IG are "assisted" (copy/paste).
 META_ACCESS_TOKEN = os.environ.get("META_ACCESS_TOKEN", "")
 # AI image generation. Empty -> image generation simulated (prompt only).

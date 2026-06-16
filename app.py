@@ -32,6 +32,7 @@ import referrals
 import offers
 import connections
 import crypto
+import google_business
 import billing
 import messaging
 import publishing
@@ -1442,7 +1443,9 @@ def connections_page():
                           "blurb": meta["blurb"], "connected": status.get(pid, False),
                           "fields": fields})
     return render_template("connections.html", providers=providers,
-                           secrets_active=crypto.secrets_active())
+                           secrets_active=crypto.secrets_active(),
+                           google_configured=google_business.configured(),
+                           google_connected=google_business.is_connected(biz["id"]))
 
 
 @app.route("/connections/<provider>", methods=["POST"])
@@ -1470,6 +1473,53 @@ def connections_disconnect(provider):
     biz = current_business()
     if provider in connections.PROVIDERS:
         db.disconnect(biz["id"], provider)
+    return redirect("/connections")
+
+
+# ---- Google Business Profile: one-click OAuth (Phase 2) ----
+# Real "Connect with Google" so a contractor never pastes a token. The flow is gated and
+# honest: with no GOOGLE_CLIENT_ID/SECRET set, /connect is a safe no-op; the callback is
+# CSRF-guarded by a random `state` we stash in the session and verify on return; nothing
+# shows "Connected" until real tokens are stored. The static /connections/google/* paths
+# take precedence over the generic /connections/<provider> rules (more specific wins).
+@app.route("/connections/google/connect")
+@login_required
+def google_connect():
+    if not google_business.configured():
+        # Not configured -> a safe no-op. The UI also disables the button + hints why.
+        return redirect("/connections?msg=google_unconfigured")
+    state = secrets.token_urlsafe(24)
+    session["google_oauth_state"] = state
+    return redirect(google_business.auth_url(state))
+
+
+@app.route("/connections/google/callback")
+@login_required
+def google_callback():
+    biz = current_business()
+    # CSRF: the `state` we sent must come back unchanged. Pop it so a code can't be replayed.
+    expected = session.pop("google_oauth_state", "")
+    got = request.args.get("state", "")
+    if not expected or not hmac.compare_digest(str(expected), str(got)):
+        return redirect("/connections?msg=google_state")
+    if request.args.get("error"):           # owner declined consent at Google
+        return redirect("/connections?msg=google_denied")
+    code = request.args.get("code", "")
+    if not code:
+        return redirect("/connections?msg=google_denied")
+    try:
+        google_business.connect_with_code(biz["id"], code)
+    except Exception as e:                   # noqa: BLE001 -- never 500 the owner here
+        print(f"[jobmagnet] google connect failed (biz {biz['id']}): {e}", flush=True)
+        return redirect("/connections?msg=google_error")
+    return redirect("/connections?saved=gbp")
+
+
+@app.route("/connections/google/disconnect", methods=["POST"])
+@login_required
+def google_disconnect():
+    biz = current_business()
+    google_business.disconnect(biz["id"])
     return redirect("/connections")
 
 

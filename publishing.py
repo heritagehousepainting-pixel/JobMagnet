@@ -48,6 +48,22 @@ def publishing_status(business_id=None):
 
 
 # ---- Real providers (lazy imports; only hit when a connection exists) ----
+def _gbp_creds(business_id):
+    """The freshest GBP credentials for this tenant's live publish: the stored connection
+    row with its access token refreshed on demand (google_business handles expiry/refresh).
+    Falls back to the global env token, else {}. Keeps publish_post's call site simple."""
+    if business_id and db.get_connection(business_id, "gbp"):
+        creds = dict(db.get_connection(business_id, "gbp"))
+        import google_business
+        tok = google_business.access_token(business_id)
+        if tok:
+            creds["access_token"] = tok        # use the just-refreshed token
+        return creds
+    if GBP_ACCESS_TOKEN:
+        return {"access_token": GBP_ACCESS_TOKEN, "location_id": ""}
+    return {}
+
+
 def _gbp_post(creds, post):
     import requests
     location = creds.get("location_id", "")
@@ -80,7 +96,7 @@ def publish_post(business_id, post):
     if mode == "live":
         try:
             if platform == "google":
-                _gbp_post(db.get_connection(business_id, "gbp") or {}, post)
+                _gbp_post(_gbp_creds(business_id), post)
             elif platform == "facebook":
                 _meta_post(db.get_connection(business_id, "meta") or {}, post)
         except Exception as e:

@@ -1499,6 +1499,159 @@ check("empty-state tenant renders 200", r3.status_code == 200)
 check("empty state renders for a tenant with no activity",
       b"Nothing yet. When Mason acts, it shows up here." in r3.data)
 
+# --- Phase 2: Google Business Profile one-click OAuth -----------------------
+# Real "Connect with Google" so a contractor never pastes a token. Gated + honest at
+# every step; the Google HTTP is stubbed (like roi/_fetch_ringback_bookings) so no network.
+print("Google Business Profile OAuth")
+import google_business as _gb
+
+# 1) Gated: with no CLIENT_ID/SECRET, configured() is False and /connect is a safe no-op.
+_cid0, _sec0 = _gb.GOOGLE_CLIENT_ID, _gb.GOOGLE_CLIENT_SECRET
+_gb.GOOGLE_CLIENT_ID = ""
+_gb.GOOGLE_CLIENT_SECRET = ""
+check("configured() is False with no Google credentials", _gb.configured() is False)
+check("is_connected() is False when unconfigured + unlinked", _gb.is_connected(1) is False)
+_gc = appmod.app.test_client()
+_gc.post("/login", data={"email": "heritagehousepainting@gmail.com", "password": "newpass12345"})
+r = _gc.get("/connections/google/connect")
+check("the Connect route is a safe no-op when unconfigured (no redirect to Google)",
+      r.status_code == 302 and "google_unconfigured" in r.headers["Location"])
+r = _gc.get("/connections")
+check("the Connect button is disabled + hints to add credentials when unconfigured",
+      b"Not configured yet" in r.data and b"GOOGLE_CLIENT_ID" in r.data)
+check("nothing shows GBP 'Connected' while unconfigured + unlinked",
+      db.connection_status(1)["gbp"] is False)
+
+# 2) Configure the app. auth_url is built correctly (the consent URL the owner is sent to).
+_gb.GOOGLE_CLIENT_ID = "test-client-id.apps.googleusercontent.com"
+_gb.GOOGLE_CLIENT_SECRET = "test-client-secret"
+check("configured() flips True once CLIENT_ID/SECRET are set", _gb.configured() is True)
+_au = _gb.auth_url("state-xyz")
+check("auth_url targets Google's consent endpoint", _au.startswith(_gb.AUTH_URL))
+check("auth_url carries the Business Profile scope, offline access + consent prompt",
+      "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage" in _au
+      and "access_type=offline" in _au and "prompt=consent" in _au)
+check("auth_url includes the client id, redirect uri and our CSRF state",
+      "client_id=test-client-id" in _au and "redirect_uri=" in _au and "state=state-xyz" in _au)
+
+# 3) The /connect route stashes a random state in the session and redirects to Google.
+r = _gc.get("/connections/google/connect")
+check("the Connect route redirects to Google's consent screen when configured",
+      r.status_code == 302 and r.headers["Location"].startswith(_gb.AUTH_URL))
+with _gc.session_transaction() as _s:
+    _saved_state = _s.get("google_oauth_state")
+check("a random OAuth state is stored in the session for CSRF", bool(_saved_state)
+      and ("state=" + _saved_state) in r.headers["Location"])
+
+# 4) State-mismatch rejection: a callback whose state doesn't match the session is refused
+#    and stores NOTHING (CSRF guard). Stub the token exchange so we'd notice if it ran.
+_exchanged = {"n": 0}
+_exch0, _floc0 = _gb._exchange_code, _gb._fetch_location_id
+def _fake_exchange(code):
+    _exchanged["n"] += 1
+    return {"access_token": "ya29.real", "refresh_token": "1//refresh", "expires_in": 3600}
+_gb._exchange_code = _fake_exchange
+_gb._fetch_location_id = lambda tok: "accounts/123/locations/456"
+r = _gc.get("/connections/google/callback?state=WRONG&code=abc")
+check("a state-mismatch callback is rejected (CSRF)",
+      r.status_code == 302 and "google_state" in r.headers["Location"])
+check("a rejected callback never exchanged the code or stored tokens",
+      _exchanged["n"] == 0 and db.get_connection(1, "gbp") is None)
+
+# 5) Happy path: /connect then a matching callback exchanges the code, stores the tokens +
+#    location, and the tenant is now genuinely live for Google publishing.
+_gc.get("/connections/google/connect")
+with _gc.session_transaction() as _s:
+    _good_state = _s.get("google_oauth_state")
+r = _gc.get("/connections/google/callback?state=%s&code=auth-code-123" % _good_state)
+check("a valid callback redirects back connected", r.status_code == 302 and "saved=gbp" in r.headers["Location"])
+check("the code was exchanged exactly once", _exchanged["n"] == 1)
+_gbp_creds = db.get_connection(1, "gbp")
+check("tokens (access + refresh + expiry + location) are stored for the tenant",
+      _gbp_creds and _gbp_creds["access_token"] == "ya29.real"
+      and _gbp_creds["refresh_token"] == "1//refresh"
+      and _gbp_creds["location_id"] == "accounts/123/locations/456"
+      and bool(_gbp_creds["token_expiry"]))
+check("is_connected() is True once tokens are stored", _gb.is_connected(1) is True)
+check("publishing.gbp_live() is True for the connected tenant", publishing.gbp_live(1) is True)
+check("publishing_status() shows google 'live' after connect",
+      publishing.publishing_status(1)["google"] == "live")
+# Multi-tenant: the tokens are stored against business 1 only, not Bob's tenant.
+check("the OAuth tokens are scoped to the connecting tenant only",
+      db.get_connection(bob_biz, "gbp") is None)
+
+# 6) An autopilot run on the connected + auto_publish tenant schedules a real Google post,
+#    which then publishes live (the Google HTTP stubbed). End-to-end acceptance.
+_qg = messaging.in_quiet_hours
+messaging.in_quiet_hours = lambda *a, **k: False
+db.set_plan(1, "premium")
+db.set_auto_publish(1, True)
+db.set_election(1, "get_found", "take_over")
+for _pb in ("show_work", "reviews", "reactivation", "referrals"):
+    db.set_election(1, _pb, "off")
+_age = db.get_conn()
+_age.execute("UPDATE content_posts SET created_at='2020-01-01T09:00:00' "
+             "WHERE business_id=1 AND platform='google'")
+_age.commit(); _age.close()
+autopilot.run_for(1, origin="cron")
+_sched = [p for p in db.list_posts(1)
+          if p["platform"] == "google" and p["status"] == "scheduled"]
+check("autopilot auto-schedules a Google post once GBP is connected + auto_publish on",
+      len(_sched) >= 1)
+_post0 = _sched[0]
+_gbp_http = {"n": 0, "token": None}
+_gbppost0 = publishing._gbp_post
+def _capture_gbp(creds, post):
+    _gbp_http["n"] += 1
+    _gbp_http["token"] = creds.get("access_token")
+    return True
+publishing._gbp_post = _capture_gbp
+_res = publishing.publish_post(1, _post0)
+publishing._gbp_post = _gbppost0
+check("a live autopilot Google post actually calls the GBP publish path",
+      _res["mode"] == "live" and _gbp_http["n"] == 1)
+check("the live publish used the tenant's stored access token (not a fake)",
+      _gbp_http["token"] == "ya29.real")
+check("the published post is marked published", db.get_post(_post0["id"], 1)["status"] == "published")
+messaging.in_quiet_hours = _qg
+
+# 7) Refresh-when-expired: an expired access token is refreshed on demand; Google omits the
+#    refresh token on a refresh, so the stored one is preserved.
+from datetime import datetime as _dtg, timedelta as _tdg, timezone as _tzg
+_past = (_dtg.now(_tzg.utc) - _tdg(hours=1)).isoformat()
+db.set_connection(1, "gbp", {"access_token": "ya29.stale", "refresh_token": "1//keepme",
+                             "token_expiry": _past, "location_id": "accounts/1/locations/2"})
+_ref0 = _gb._refresh
+_refreshed = {"n": 0}
+def _fake_refresh(refresh_token):
+    _refreshed["n"] += 1
+    check("refresh uses the STORED refresh token", refresh_token == "1//keepme")
+    return {"access_token": "ya29.fresh", "expires_in": 3600}   # note: no refresh_token back
+_gb._refresh = _fake_refresh
+_tok = _gb.access_token(1)
+check("an expired access token triggers a refresh", _refreshed["n"] == 1 and _tok == "ya29.fresh")
+_after = db.get_connection(1, "gbp")
+check("the refreshed access token is persisted", _after["access_token"] == "ya29.fresh")
+check("the stored refresh token is preserved when Google omits it on refresh",
+      _after["refresh_token"] == "1//keepme")
+db.set_connection(1, "gbp", {"access_token": "ya29.valid", "refresh_token": "1//keepme",
+    "token_expiry": (_dtg.now(_tzg.utc) + _tdg(hours=1)).isoformat(), "location_id": "x"})
+check("a still-valid token is returned WITHOUT a refresh",
+      _gb.access_token(1) == "ya29.valid" and _refreshed["n"] == 1)
+
+# 8) Disconnect forgets the tokens and the tenant is honestly back to simulated.
+r = _gc.post("/connections/google/disconnect", data={})
+check("the disconnect route unlinks Google", r.status_code == 302)
+check("after disconnect the tenant has no GBP tokens", db.get_connection(1, "gbp") is None)
+check("after disconnect google publishing is simulated again (honest)",
+      publishing.platform_mode("google", 1) == "simulated")
+
+# restore stubs/globals so later sections (and module state) are untouched
+_gb._exchange_code, _gb._fetch_location_id, _gb._refresh = _exch0, _floc0, _ref0
+_gb.GOOGLE_CLIENT_ID, _gb.GOOGLE_CLIENT_SECRET = _cid0, _sec0
+db.set_election(1, "get_found", "off")
+db.set_auto_publish(1, False)
+
 # --- Cleanup ----------------------------------------------------------------
 try:
     os.unlink(_TMP_DB.name)

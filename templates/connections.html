@@ -14,6 +14,16 @@
     <strong>Credentials are not yet encrypted.</strong> This dev install has no secrets key set, so anything you connect is stored in the clear. Set <code>JOBMAGNET_SECRETS_KEY</code> before connecting real accounts.
   </div>
 {% endif %}
+{% set gmsg = request.args.get('msg') %}
+{% if gmsg == 'google_unconfigured' %}
+  <div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Google isn't configured yet. Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> to enable one-click connect.</div>
+{% elif gmsg == 'google_state' %}
+  <div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That Google connect link expired or didn't match this session. Please click Connect again.</div>
+{% elif gmsg == 'google_denied' %}
+  <div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Google connection was cancelled. Nothing changed.</div>
+{% elif gmsg == 'google_error' %}
+  <div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Couldn't finish connecting to Google. Please try again.</div>
+{% endif %}
 {% set saved = request.args.get('saved') %}
 {% if saved %}
   {% set sp = providers | selectattr('id', 'equalto', saved) | list %}
@@ -29,7 +39,7 @@
       {% else %}<span class="pill pill-neutral"><span class="pill-dot"></span>Not connected</span>{% endif %}
     </div>
     {% if p.connected %}
-    <form method="post" action="/connections/{{ p.id }}/disconnect" style="display:inline">
+    <form method="post" action="{{ '/connections/google/disconnect' if p.id == 'gbp' else '/connections/' ~ p.id ~ '/disconnect' }}" style="display:inline">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <button class="btn btn-ghost btn-sm" type="submit">Disconnect</button>
     </form>
@@ -37,6 +47,18 @@
   </div>
   <div class="card-body">
     <p class="dt-muted" style="margin-bottom:var(--space-3)">{{ p.blurb }}</p>
+    {% if p.id == 'gbp' %}
+    {# One-click "Connect with Google" OAuth -- no token to paste. Honest, gated states. #}
+    {% if not google_configured %}
+      <button class="btn btn-primary" type="button" disabled title="Add Google credentials to enable">Connect Google Business Profile</button>
+      <p class="dt-muted" style="margin-top:var(--space-2);font-size:0.85rem">Not configured yet. Add your Google credentials (<code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code>) to turn on one-click connect. See <code>SETUP_NEEDED.md</code>.</p>
+    {% elif p.connected %}
+      <p class="dt-muted" style="font-size:0.9rem">Connected and live. Mason can auto-post to your Google Business Profile. Use Disconnect above to unlink.</p>
+    {% else %}
+      <a class="btn btn-primary" href="/connections/google/connect" role="button">Connect Google Business Profile</a>
+      <p class="dt-muted" style="margin-top:var(--space-2);font-size:0.85rem">You'll be sent to Google to approve access, then brought right back. No token to copy.</p>
+    {% endif %}
+    {% else %}
     <form method="post" action="/connections/{{ p.id }}" autocomplete="off" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-3);align-items:end">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       {% for f in p.fields %}
@@ -49,6 +71,7 @@
       {% endfor %}
       <button class="btn btn-primary" type="submit">{{ 'Update' if p.connected else 'Connect' }}</button>
     </form>
+    {% endif %}
   </div>
 </div>
 {% endfor %}

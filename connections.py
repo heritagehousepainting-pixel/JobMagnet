@@ -20,9 +20,13 @@ PROVIDERS = {
               "fields": [("from_addr", "From address"), ("smtp_host", "SMTP host"),
                          ("smtp_port", "SMTP port"), ("smtp_user", "Username"),
                          ("smtp_password", "Password", True)]},
+    # GBP connects via one-click "Connect with Google" OAuth (google_business.py), not a
+    # pasted token, so it carries NO manual fields -- the Connections page renders a Connect
+    # button for it. The OAuth callback stores {access_token, refresh_token, token_expiry,
+    # location_id} into this same connection row; access_token below is what marks it live.
     "gbp": {"label": "Google Business Profile", "kind": "oauth", "blurb":
-            "Auto-posts to Google and pulls/responds to your reviews. Needs Google approval.",
-            "fields": [("access_token", "Access token", True), ("location_id", "Location ID")]},
+            "Auto-posts to your Google Business Profile. Connect with one click. No token to paste.",
+            "fields": []},
     "meta": {"label": "Facebook / Instagram", "kind": "oauth", "blurb":
              "Auto-posts to your Facebook Page (and Instagram once Meta approves the app).",
              "fields": [("page_id", "Facebook Page ID"), ("ig_user_id", "Instagram user ID"),

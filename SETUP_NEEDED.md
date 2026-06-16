@@ -73,7 +73,29 @@ says so:
   reviews. Reply auto-posting is intentionally out of scope (no real GBP reply connector).
 
 ## Phase 2 — Content & Local
-- ⬜ **Google Business Profile API** (OAuth) to publish GBP posts automatically.
+- 🟡 **Google Business Profile — one-click "Connect with Google" (OAuth) is WIRED.**
+  Contractors no longer paste a token: the Connections page has a **Connect Google Business
+  Profile** button that runs the real OAuth web-server flow (`google_business.py`), stores
+  per-tenant `{access_token, refresh_token, token_expiry, location_id}` sealed at rest, and
+  refreshes the token on demand. Once a tenant connects, Google publishing flips to **live**
+  and autopilot auto-posts to it (when `auto_publish` is on). It stays a safe disabled no-op
+  until **you** register the app once:
+    1. In **Google Cloud Console**, create an **OAuth 2.0 Client ID** (type: *Web
+       application*).
+    2. **Enable the Business Profile API** (the "Business Profile API" / "My Business" APIs)
+       on that project, and request access if the project needs it.
+    3. Add the **authorized redirect URI** exactly:
+       `https://YOUR_DOMAIN/connections/google/callback`
+       (locally: `http://localhost:8900/connections/google/callback`).
+    4. Set the three env vars in `.env`:
+       `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`
+       (the redirect URI must match step 3 character-for-character).
+    5. Make sure `JOBMAGNET_SECRETS_KEY` is set first (see Security) so the tokens are
+       encrypted at rest before any real account connects.
+  Until `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set, the button is disabled with an
+  "add Google credentials" hint and nothing ever shows "Connected". (Note: while the app is
+  in Google's "Testing" publishing status, only whitelisted test users can connect; submit
+  for verification to open it to all tenants.)
 - ⬜ **Meta (Facebook/Instagram) app + app review** to auto-publish. This is the slow
   one (weeks). Until approved, FB/IG is "assisted publish" (copy/paste + download).
 - ⬜ **AI image generation key** (provider TBD) for post images/before-afters.
@@ -134,6 +156,10 @@ Tracked here so you have one checklist. Details in `.env.example`.
   deploying**; while empty the webhooks are open (local dev only).
 - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`.
 - Email: `JOBMAGNET_EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`.
-- Optional connectors: `GBP_ACCESS_TOKEN`, `META_ACCESS_TOKEN`, `JOBMAGNET_IMAGE_KEY`,
-  `RINGBACK_API_URL` + `RINGBACK_API_KEY`.
+- Google Business Profile one-click connect: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+  `GOOGLE_REDIRECT_URI` (must match the redirect URI whitelisted in Google Cloud). See
+  Phase 2 above. While unset, the Connect button is a safe disabled no-op.
+- Optional connectors: `GBP_ACCESS_TOKEN` (legacy manual token; the OAuth flow above
+  supersedes it), `META_ACCESS_TOKEN`, `JOBMAGNET_IMAGE_KEY`, `RINGBACK_API_URL` +
+  `RINGBACK_API_KEY`.
 - Cold channels (after attorney sign-off only): `JOBMAGNET_COLD_SMS=1`.
