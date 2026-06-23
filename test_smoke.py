@@ -870,7 +870,7 @@ check("auto_publish ON + GBP connected -> autopilot Google post is scheduled",
 # Age the schedule into the past so the tick treats it as due, then publish it. Stub the
 # real GBP HTTP call (the network is out of scope here) so the live publish path runs.
 _age = db.get_conn()
-_age.execute("UPDATE content_posts SET scheduled_for='2020-01-01T09:00' WHERE id=?",
+_age.execute("UPDATE content_posts SET scheduled_for='2020-01-01T09:00' WHERE id=%s",
              (_g3[0]["id"],))
 _age.commit(); _age.close()
 _gbp_orig = publishing._gbp_post
@@ -991,13 +991,13 @@ db.set_lead_status(1, _vlid, "booked", value=4200)
 check("a booked job's value lands as revenue (closed-loop ROAS no longer $0)",
       db.roi_summary(1)["totals"]["revenue"] == _rev0 + 4200)
 _conv_n = db.get_conn().execute(
-    "SELECT COUNT(*) FROM conversions WHERE lead_id=?", (_vlid,)).fetchone()[0]
+    "SELECT COUNT(*) FROM conversions WHERE lead_id=%s", (_vlid,)).fetchone()["count"]
 check("Speed-to-Lead keeps exactly one conversion per lead", _conv_n == 1)
 db.set_lead_status(1, _vlid, "booked", value=5000)  # owner corrects the ticket value
 check("editing a booked lead's value updates revenue without double-counting",
       db.roi_summary(1)["totals"]["revenue"] == _rev0 + 5000
-      and db.get_conn().execute("SELECT COUNT(*) FROM conversions WHERE lead_id=?",
-                                (_vlid,)).fetchone()[0] == 1)
+      and db.get_conn().execute("SELECT COUNT(*) FROM conversions WHERE lead_id=%s",
+                                (_vlid,)).fetchone()["count"] == 1)
 
 # --- Connections (per-tenant real account links) ---------------------------
 print("Connections (pure)")
@@ -1084,7 +1084,7 @@ db.set_connection(1, "sms", {"account_sid": "AC9", "auth_token": "verysecret9",
 def _raw_creds():
     _cx = db.get_conn()
     _v = _cx.execute("SELECT credentials FROM connections WHERE business_id=1 "
-                     "AND provider='sms'").fetchone()[0]
+                     "AND provider='sms'").fetchone()["credentials"]
     _cx.close()
     return _v
 
@@ -1095,7 +1095,7 @@ check("get_connection transparently decrypts the sealed creds",
       db.get_connection(1, "sms")["auth_token"] == "verysecret9")
 # Legacy plaintext rows still readable after a key is introduced (no stranded data).
 _cx = db.get_conn()
-_cx.execute("UPDATE connections SET credentials=? WHERE business_id=1 AND provider='sms'",
+_cx.execute("UPDATE connections SET credentials=%s WHERE business_id=1 AND provider='sms'",
             ('{"account_sid":"AC8","auth_token":"legacyplain","from_number":"+15551238888"}',))
 _cx.commit()
 _cx.close()
@@ -1437,8 +1437,8 @@ try:
     check("a live sync adds exactly 2 bookings and reports mode=live",
           _r1 == {"mode": "live", "added": 2})
     _rb_conv = db.get_conn().execute(
-        "SELECT COUNT(*) FROM conversions WHERE business_id=? AND origin='ringback'",
-        (_rb_biz,)).fetchone()[0]
+        "SELECT COUNT(*) FROM conversions WHERE business_id=%s AND origin='ringback'",
+        (_rb_biz,)).fetchone()["count"]
     check("2 origin='ringback' conversions were created", _rb_conv == 2)
     _rb_row = [r for r in db.roi_summary(_rb_biz)["rows"] if r["channel"] == "google_lsa"][0]
     check("synced booking lands as a booked job under its channel", _rb_row["booked"] == 1)
@@ -1447,8 +1447,8 @@ try:
     check("re-syncing the same booking ids adds 0 (deduped)",
           _r2 == {"mode": "live", "added": 0})
     check("dedup left exactly 2 ringback conversions", db.get_conn().execute(
-        "SELECT COUNT(*) FROM conversions WHERE business_id=? AND origin='ringback'",
-        (_rb_biz,)).fetchone()[0] == 2)
+        "SELECT COUNT(*) FROM conversions WHERE business_id=%s AND origin='ringback'",
+        (_rb_biz,)).fetchone()["count"] == 2)
     # A request error never fakes success.
     def _boom(business_id):
         raise RuntimeError("ringback unreachable")
@@ -1668,12 +1668,7 @@ db.set_election(1, "get_found", "off")
 db.set_auto_publish(1, False)
 
 # --- Cleanup ----------------------------------------------------------------
-try:
-    os.unlink(_TMP_DB.name)
-    os.unlink(_TMP_DB.name + "-wal")
-    os.unlink(_TMP_DB.name + "-shm")
-except OSError:
-    pass
+# (Postgres DB is dropped by the atexit handler registered at the top of this file.)
 
 print(f"\n==== {PASS} passed, {FAIL} failed ====")
 sys.exit(1 if FAIL else 0)
