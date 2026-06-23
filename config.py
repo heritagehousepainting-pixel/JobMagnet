@@ -123,7 +123,11 @@ SEED_OWNER_PASSWORD = os.environ.get("JOBMAGNET_OWNER_PASSWORD", "jobmagnet123")
 
 # --- Storage --------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = os.environ.get("JOBMAGNET_DB_PATH", "").strip() or (BASE_DIR / "jobmagnet.db")
+# Postgres connection string (Render provides DATABASE_URL). Local dev/test point
+# at a throwaway Postgres (see docs/superpowers/plans/dev-postgres.md).
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+# The test suites set this to an ephemeral database they create + drop.
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "").strip()
 
 # --- Content platforms ----------------------------------------------------
 # The channels the Content Engine can write for. Each carries a short style hint
