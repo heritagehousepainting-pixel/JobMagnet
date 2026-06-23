@@ -341,13 +341,15 @@ def first_win_block(business_id):
     won = firstwin.achieved(facts)
     milestone = db.get_milestone(business_id)
 
-    # days since signup (created_at is UTC ISO text)
+    # days since signup (created_at is UTC ISO text; guard naive timestamps too)
     days = 0
     if biz.get("created_at"):
         try:
             created = datetime.fromisoformat(biz["created_at"])
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
             days = max(0, (datetime.now(timezone.utc) - created).days)
-        except ValueError:
+        except (ValueError, TypeError):
             days = 0
 
     if won:

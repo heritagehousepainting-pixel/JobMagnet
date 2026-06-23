@@ -91,6 +91,17 @@ if os.environ.get("TEST_DATABASE_URL"):
     blk3 = appmod.first_win_block(nb)
     check("celebrated only once", blk3["state"] == "achieved_celebrated")
 
+    # ---- naive created_at must not crash (TypeError guard) ----
+    nb2 = db.create_business({"name": "Naive Date Co", "trade": "plumbing"})
+    conn = db.get_conn()
+    conn.execute("UPDATE businesses SET created_at=%s WHERE id=%s",
+                 ("2025-06-01T12:00:00", nb2))
+    conn.commit()
+    conn.close()
+    blk_naive = appmod.first_win_block(nb2)
+    check("naive created_at does not crash + days_since_signup >= 1",
+          isinstance(blk_naive, dict) and blk_naive.get("days_since_signup", -1) >= 1)
+
     _a = psycopg.connect(_admin, autocommit=True)
     _a.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s AND pid<>pg_backend_pid()", (_name,))
     _a.execute(f'DROP DATABASE IF EXISTS "{_name}"'); _a.close()
