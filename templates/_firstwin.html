@@ -1,0 +1,17 @@
+{# First-win activation card. Expects `fw` = first_win_block dict. #}
+{% if fw %}
+<div class="firstwin firstwin-{{ fw.state }}">
+  {% if fw.state == 'in_progress' %}
+    <p class="firstwin-kicker">Your first win · Day {{ fw.days_since_signup + 1 }} of 7</p>
+    <h3 class="firstwin-label">{{ fw.label }}</h3>
+    <p class="firstwin-nudge">{{ fw.nudge }}</p>
+    <a class="btn btn-primary btn-sm" href="{{ fw.cta_route }}">Let's do it</a>
+  {% elif fw.state == 'achieved_uncelebrated' %}
+    <p class="firstwin-kicker">🎉 First win!</p>
+    <h3 class="firstwin-label">{{ fw.label }} — done.</h3>
+    <p class="firstwin-nudge">Nice work. That's real progress your customers will see.</p>
+  {% else %}
+    <p class="firstwin-kicker firstwin-done">✓ First win complete</p>
+  {% endif %}
+</div>
+{% endif %}

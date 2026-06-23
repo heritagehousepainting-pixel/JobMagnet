@@ -102,6 +102,24 @@ if os.environ.get("TEST_DATABASE_URL"):
     check("naive created_at does not crash + days_since_signup >= 1",
           isinstance(blk_naive, dict) and blk_naive.get("days_since_signup", -1) >= 1)
 
+    # ---- render test: /dashboard contains first-win card for seed-owner ----
+    # The seed tenant (Heritage, business 1) has no FAQ/sent messages and no
+    # live integrations, so its first-win state is in_progress with aeo_faq win.
+    # We use a separate DB-connected test client pointed at the live jm DB via
+    # TEST_DATABASE_URL (same creds the seed was created in).
+    import importlib
+    _seed_db_url = os.environ["TEST_DATABASE_URL"]
+    os.environ["DATABASE_URL"] = _seed_db_url
+    importlib.reload(db)
+    importlib.reload(appmod)
+    appmod.app.testing = True
+    with appmod.app.test_client() as c:
+        rv = c.post("/login", data={"email": "heritagehousepainting@gmail.com", "password": "jobmagnet123"})
+        check("render test: login redirects", rv.status_code == 302)
+        r = c.get("/dashboard")
+        check("render test: /dashboard 200", r.status_code == 200)
+        check("render test: first-win card visible", b"Your first win" in r.data)
+
     _a = psycopg.connect(_admin, autocommit=True)
     _a.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s AND pid<>pg_backend_pid()", (_name,))
     _a.execute(f'DROP DATABASE IF EXISTS "{_name}"'); _a.close()
