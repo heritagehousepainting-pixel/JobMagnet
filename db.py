@@ -328,7 +328,7 @@ def init_db():
         c.execute(f"INSERT INTO businesses ({','.join(cols)}) VALUES ({marks})", vals)
         # Advance the identity sequence past the explicitly-inserted id=1 so the next
         # auto-generated id starts at 2 and doesn't collide.
-        c.execute("SELECT setval(pg_get_serial_sequence('businesses', 'id'), MAX(id)) FROM businesses")
+        c.execute("SELECT setval(pg_get_serial_sequence('businesses','id'), (SELECT MAX(id) FROM businesses))").fetchone()
         conn.commit()
     conn.close()
 

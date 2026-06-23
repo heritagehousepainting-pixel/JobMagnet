@@ -132,7 +132,7 @@ def record(conn, business_id, number, channel, event, source="", created_at=None
     """Append a consent event. Idempotent on the (business, number, channel, event)
     state: if the latest event for that key already equals `event`, no row is added
     (so a retry/restart never double-records). Returns True if a row was written."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     num = normalize_number(number)
     if not num or channel not in CHANNELS or event not in ("granted", "opted_out"):
         return False
@@ -142,7 +142,7 @@ def record(conn, business_id, number, channel, event, source="", created_at=None
         "INSERT INTO consent_ledger (business_id, number, channel, event, source, created_at) "
         "VALUES (%s,%s,%s,%s,%s,%s)",
         (business_id, num, channel, event, source or "",
-         created_at or datetime.now().astimezone().isoformat()),
+         created_at or datetime.now(timezone.utc).isoformat()),
     )
     conn.commit()
     return True
@@ -158,7 +158,7 @@ def current_status(conn, business_id, number, channel="sms"):
     ).fetchone()
     if not row:
         return None
-    return row["event"] if hasattr(row, "keys") else row[0]
+    return row["event"]
 
 
 def is_suppressed(conn, business_id, number, channel="sms"):
