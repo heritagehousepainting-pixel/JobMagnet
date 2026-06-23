@@ -275,6 +275,14 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_aflags_biz ON assistant_flags(business_id);
         CREATE INDEX IF NOT EXISTS idx_alearn_biz ON assistant_learnings(business_id);
 
+        -- First-win activation: one milestone row per tenant, written once (idempotent).
+        CREATE TABLE IF NOT EXISTS onboarding_milestone (
+            business_id BIGINT PRIMARY KEY,
+            achieved_at TEXT,
+            achieved_win TEXT,
+            celebrated INTEGER NOT NULL DEFAULT 0
+        );
+
         -- Phase 0 autonomy: an audit row for every autopilot run (manual button or cron
         -- heartbeat), so the owner can see what Mason did unattended. Phase 5 reads this.
         CREATE TABLE IF NOT EXISTS autopilot_runs (
@@ -1470,6 +1478,62 @@ def get_election(business_id, playbook):
         (business_id, playbook)).fetchone()
     conn.close()
     return row["election"] if row else None
+
+
+# ---- First-win activation: real-outcome facts + milestone helpers ----
+
+def first_win_facts(business_id):
+    """Real-outcome booleans for the first-win milestone. Simulated outcomes never count."""
+    conn = get_conn()
+    def _exists(sql, params):
+        return conn.execute(sql, params).fetchone() is not None
+    facts = {
+        "review_sent": _exists(
+            "SELECT 1 FROM messages WHERE business_id=%s AND purpose='review_request' "
+            "AND status='sent' LIMIT 1", (business_id,)),
+        "reactivation_sent": _exists(
+            "SELECT 1 FROM messages WHERE business_id=%s AND purpose='reactivation' "
+            "AND status='sent' LIMIT 1", (business_id,)),
+        "gbp_live_post": _exists(
+            "SELECT 1 FROM content_posts WHERE business_id=%s AND status='published' "
+            "AND publish_mode='live' LIMIT 1", (business_id,)),
+        "faq_generated": _exists(
+            "SELECT 1 FROM businesses WHERE id=%s AND COALESCE(faq,'')<>'' LIMIT 1", (business_id,)),
+        "firstback_booking": _exists(
+            "SELECT 1 FROM conversions WHERE business_id=%s AND origin IN ('firstback','ringback') "
+            "LIMIT 1", (business_id,)),
+    }
+    conn.close()
+    return facts
+
+
+def get_milestone(business_id):
+    """Return the onboarding_milestone row for a tenant as a dict, or None."""
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM onboarding_milestone WHERE business_id=%s",
+                       (business_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def mark_milestone_achieved(business_id, win_id):
+    """Record the first win once. Idempotent: a row already present is left unchanged."""
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO onboarding_milestone (business_id, achieved_at, achieved_win, celebrated) "
+        "VALUES (%s,%s,%s,0) ON CONFLICT (business_id) DO NOTHING",
+        (business_id, now_iso(), win_id))
+    conn.commit()
+    conn.close()
+
+
+def mark_milestone_celebrated(business_id):
+    """Flip celebrated=1 so the confetti/nudge is shown at most once."""
+    conn = get_conn()
+    conn.execute("UPDATE onboarding_milestone SET celebrated=1 WHERE business_id=%s",
+                 (business_id,))
+    conn.commit()
+    conn.close()
 
 
 def review_stats(business_id):

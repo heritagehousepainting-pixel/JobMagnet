@@ -35,4 +35,50 @@ check("nudge changes by day", n0 != n6)
 check("no lockout language", "lock" not in (n0 + n6).lower() and "expire" not in (n0 + n6).lower())
 
 print(f"==== {_p} passed, {_f} failed ====")
+
+# ---- DB-level: real-outcome facts + milestone persistence (Postgres) ----
+import os
+if os.environ.get("TEST_DATABASE_URL"):
+    import uuid, psycopg, urllib.parse as _u
+    _admin = os.environ["TEST_DATABASE_URL"]
+    _name = "jm_fw_" + uuid.uuid4().hex[:10]
+    _a = psycopg.connect(_admin, autocommit=True); _a.execute(f'CREATE DATABASE "{_name}"'); _a.close()
+    os.environ["DATABASE_URL"] = _u.urlparse(_admin)._replace(path="/"+_name).geturl()
+    os.environ.setdefault("JOBMAGNET_PROVIDER", "demo")
+    import db
+    db.init_db()
+    bid = db.create_business({"name": "FW Co", "trade": "painting"})
+
+    f0 = db.first_win_facts(bid)
+    check("fresh tenant: no real outcomes", not any(f0.values()))
+    check("milestone is None initially", db.get_milestone(bid) is None)
+
+    # a SIMULATED review request must NOT count
+    # log_message real sig: (business_id, channel, to_addr, body, status, provider, kind, purpose, ...)
+    db.log_message(bid, "sms", "+15551112222", "review?",
+                   "simulated", "simulated", kind="transactional", purpose="review_request")
+    check("simulated review request does NOT count", not db.first_win_facts(bid)["review_sent"])
+    # a SENT review request DOES count
+    db.log_message(bid, "sms", "+15551112222", "review?",
+                   "sent", "twilio", kind="transactional", purpose="review_request")
+    check("sent review request counts", db.first_win_facts(bid)["review_sent"])
+
+    # generated FAQ artifact counts
+    db.update_business(bid, {"faq": "Q: Do you do interiors?\nA: Yes."})
+    check("generated faq counts", db.first_win_facts(bid)["faq_generated"])
+
+    # milestone persistence + idempotence + celebrate-once
+    db.mark_milestone_achieved(bid, "review_request")
+    m1 = db.get_milestone(bid)
+    check("milestone recorded", m1 and m1["achieved_win"] == "review_request" and m1["achieved_at"])
+    db.mark_milestone_achieved(bid, "aeo_faq")  # idempotent: must not overwrite
+    check("achieve is idempotent", db.get_milestone(bid)["achieved_win"] == "review_request")
+    check("not celebrated yet", db.get_milestone(bid)["celebrated"] in (0, False))
+    db.mark_milestone_celebrated(bid)
+    check("celebrated flips", db.get_milestone(bid)["celebrated"] in (1, True))
+
+    _a = psycopg.connect(_admin, autocommit=True)
+    _a.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s AND pid<>pg_backend_pid()", (_name,))
+    _a.execute(f'DROP DATABASE IF EXISTS "{_name}"'); _a.close()
+
 sys.exit(1 if _f else 0)
