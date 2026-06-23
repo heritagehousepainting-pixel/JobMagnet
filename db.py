@@ -2,7 +2,7 @@
 
 Multi-tenant: every business (tenant) owns its own content, all scoped by
 `business_id`. `users` log in and map to one business. "Client zero" (Heritage
-House Painting) is business id 1. Mirrors RingBack's storage conventions so the
+House Painting) is business id 1. Mirrors FirstBack's storage conventions so the
 two products can later share a library.
 """
 import json
@@ -48,7 +48,7 @@ def _ensure_columns(cursor, table, cols):
 
 
 # Shared data-core (trades_core kernel): timestamp + users/auth CRUD + assistant-subsystem
-# helpers, byte-identical with RingBack. Inject our connection factory, then re-export the
+# helpers, byte-identical with FirstBack. Inject our connection factory, then re-export the
 # names so every existing db.now_iso()/db.get_user()/… call site is unchanged.
 import db_core as _core
 _core.get_conn = get_conn
@@ -151,7 +151,7 @@ def init_db():
             value REAL NOT NULL DEFAULT 0,             -- job ticket value (won jobs)
             contact_id INTEGER,
             label TEXT,                                -- free note / customer name
-            origin TEXT NOT NULL DEFAULT 'manual',     -- manual | ringback | webhook
+            origin TEXT NOT NULL DEFAULT 'manual',     -- manual | firstback | webhook
             created_at TEXT,
             won_at TEXT
         );
@@ -308,7 +308,7 @@ def init_db():
     # Link a closed-loop conversion back to the lead that produced it, so the single
     # conversion can be promoted booked -> won (with revenue) and never double-counted.
     _ensure_columns(c, "conversions", {"lead_id": "INTEGER"})
-    # Phase 4: a provider's stable booking id, so re-syncing RingBack (or any external
+    # Phase 4: a provider's stable booking id, so re-syncing FirstBack (or any external
     # feed) never double-counts the same booked job. Scoped by (business_id, origin, ext_id).
     _ensure_columns(c, "conversions", {"ext_id": "TEXT"})
     # Reactivation needs each customer's last job date + service to compute repaint cycles.
@@ -326,6 +326,9 @@ def init_db():
     # auto-scheduled (so the heartbeat publishes it) -- but ONLY on live channels.
     # Default OFF: everything still drafts and waits for approval.
     _ensure_columns(c, "businesses", {"auto_publish": "INTEGER DEFAULT 0"})
+    # Booking-feed product rename RingBack -> FirstBack: migrate any legacy conversion
+    # rows so cost-per-booked-job dedup + attribution stay correct. Idempotent.
+    c.execute("UPDATE conversions SET origin='firstback' WHERE origin='ringback'")
     conn.commit()
     # Seed "client zero" (Heritage) so the app is usable on first boot.
     existing = c.execute("SELECT 1 FROM businesses WHERE id=1").fetchone()
@@ -1500,7 +1503,7 @@ def first_win_facts(business_id):
         "faq_generated": _exists(
             "SELECT 1 FROM businesses WHERE id=%s AND COALESCE(faq,'')<>'' LIMIT 1", (business_id,)),
         "firstback_booking": _exists(
-            "SELECT 1 FROM conversions WHERE business_id=%s AND origin IN ('firstback','ringback') "
+            "SELECT 1 FROM conversions WHERE business_id=%s AND origin IN ('firstback','firstback') "
             "LIMIT 1", (business_id,)),
     }
     conn.close()

@@ -2,7 +2,7 @@
 
 This is what lets a contractor link their Google profile with a single button instead of
 pasting an access token by hand. It mirrors the proven web-server OAuth flow from the
-sibling product RingBack (google_cal.py):
+sibling product FirstBack (google_cal.py):
 
   configured()                      -> True once the app has Google CLIENT_ID/SECRET
   is_connected(business_id)         -> True once THIS tenant has linked their account

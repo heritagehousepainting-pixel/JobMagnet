@@ -6,7 +6,7 @@
    ========================================================================= */
 
 /* Brand-neutral: the orb and glass derive from each app's own tokens, so the same
-   files give JobMagnet an emerald core on near-black and RingBack an orange core on
+   files give JobMagnet an emerald core on near-black and FirstBack an orange core on
    light, with no per-app overrides. */
 .command-shell{
   --orb-accent:var(--accent);

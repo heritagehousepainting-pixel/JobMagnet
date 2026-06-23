@@ -13,14 +13,14 @@ it creates demand AND books it, proven in cost-per-booked-job.
 
 ## Committed architecture decisions
 
-1. **Standalone first, RingBack optional.** JobMagnet stands on its own: its own
+1. **Standalone first, FirstBack optional.** JobMagnet stands on its own: its own
    gated messaging seam, its own consent ledger, its own conversion/attribution
-   data. **RingBack is a pluggable provider** — when a tenant connects it, JobMagnet
+   data. **FirstBack is a pluggable provider** — when a tenant connects it, JobMagnet
    gets richer booking data and can share the SMS rails; when not, JobMagnet works
    fully alone. This widens the market (sell JobMagnet solo) and still delivers the
-   closed loop for RingBack users. Resolves the old open question in STRATEGY §9.
+   closed loop for FirstBack users. Resolves the old open question in STRATEGY §9.
    → Design every outbound/booking touchpoint behind a **provider interface** so
-   RingBack (or Twilio, or a future partner) is a swappable backend, never a hard
+   FirstBack (or Twilio, or a future partner) is a swappable backend, never a hard
    dependency.
 
 2. **First phase = Reviews (M2).** Fastest path to *real* (non-simulated),
@@ -29,7 +29,7 @@ it creates demand AND books it, proven in cost-per-booked-job.
 ## Sequencing principles (why this order)
 
 - **Real beats more** — every phase ships something Heritage can actually use; never
-  simulated-as-real (RingBack's honesty discipline).
+  simulated-as-real (FirstBack's honesty discipline).
 - **Risk-ascending** — warm/transactional + owned channels first; cold outbound
   consent-gated and last; AI voice dead last, attorney-reviewed.
 - **Dodge the OAuth gauntlet early** — channels we can make real fast (SMS review
@@ -43,10 +43,10 @@ it creates demand AND books it, proven in cost-per-booked-job.
 ## The phases
 
 ### Phase 0 — Messaging & consent seam  *(small, foundational)*
-JobMagnet's own gated outbound spine. Mirrors RingBack's pattern.
+JobMagnet's own gated outbound spine. Mirrors FirstBack's pattern.
 - `messaging` seam: one `send_sms` / `send_email` path that is **simulated until a
   provider is configured** (Twilio/SMTP creds), behind a **provider interface** so
-  RingBack can plug in later.
+  FirstBack can plug in later.
 - `contacts` + `contacts_consent` ledger; opt-out (STOP) handling; quiet hours.
 - Honest "simulated vs live" status in the UI, like content publishing.
 - **Done when:** a consent-checked message sends (simulated) through one path, and
@@ -76,7 +76,7 @@ The compounding owned-channel asset.
 ### Phase 3 — Closed-loop ROI dashboard (M10) + conversion data
 The moat. Now there's activity to measure.
 - Own conversion capture: tracked numbers, UTM, manual "mark won," **plus optional
-  RingBack booking feed** via the provider interface.
+  FirstBack booking feed** via the provider interface.
 - **Cost per booked job** per channel; recovered/created revenue, not impressions.
 - **Done when:** the dashboard shows $/booked-job per channel for Heritage.
 
@@ -102,7 +102,7 @@ The moat. Now there's activity to measure.
   scheduling/photo-by-text/images = Phase 2.
 - **Next:** Phase 0 seam → Phase 1 Reviews.
 
-## Guardrails (carried from RingBack, every phase)
+## Guardrails (carried from FirstBack, every phase)
 Every integration a safe no-op until configured · honest "simulated vs live" UI ·
 nothing blocks the hot path · consent ledger is the spine of all outbound · pure,
 testable decision logic · compliance gates are hard gates, not warnings.

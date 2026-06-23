@@ -19,13 +19,13 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done
 The truthfulness audit (2026-06-15) confirmed the site now only claims what the code
 does. A few seams are gated honestly but still need **code**, not just a key — the UI
 says so:
-- 🟡 **RingBack auto booking-sync** — the bookings pull + heartbeat hook are now WIRED.
-  `roi.sync_ringback` does a real bookings GET and adds deduped `origin='ringback'`
+- 🟡 **FirstBack auto booking-sync** — the bookings pull + heartbeat hook are now WIRED.
+  `roi.sync_firstback` does a real bookings GET and adds deduped `origin='firstback'`
   conversions; the autonomy heartbeat (`/tasks/tick`) runs it per tenant. It stays a safe
-  no-op (mode "simulated") until you set `RINGBACK_API_URL` + `RINGBACK_API_KEY`, then it
-  goes live automatically (mode "live"; "error" if RingBack is unreachable, never a fake
+  no-op (mode "simulated") until you set `FIRSTBACK_API_URL` + `FIRSTBACK_API_KEY`, then it
+  goes live automatically (mode "live"; "error" if FirstBack is unreachable, never a fake
   success). Only remaining: the bookings GET shape (`/bookings`, Bearer auth, list/envelope
-  JSON) may need matching to RingBack's real API. Manual "Log a booked job" still works.
+  JSON) may need matching to FirstBack's real API. Manual "Log a booked job" still works.
 - ⬜ **AI image generation** — `ai.generate_image` is prompt-only; status is always
   "simulated" even with `JOBMAGNET_IMAGE_KEY` set, until a provider call is wired.
 - ⬜ **Managed paid ads** — `ads.py` is advisory (budgets + copy), not ad-account
@@ -116,8 +116,8 @@ says so:
 
 ## Phase 3 — ROI loop
 - ⬜ **Tracked phone numbers** (Twilio) per channel for attribution.
-- 🟡 (Optional) **RingBack connection** — if you want the closed loop, set `RINGBACK_API_URL`
-  + `RINGBACK_API_KEY` so its booking events feed cost-per-booked-job. The pull + heartbeat
+- 🟡 (Optional) **FirstBack connection** — if you want the closed loop, set `FIRSTBACK_API_URL`
+  + `FIRSTBACK_API_KEY` so its booking events feed cost-per-booked-job. The pull + heartbeat
   hook are wired and activate automatically once those are set (see the gated-seam note up
   top for the GET-shape caveat). Optional; JobMagnet works without it.
 
@@ -160,6 +160,6 @@ Tracked here so you have one checklist. Details in `.env.example`.
   `GOOGLE_REDIRECT_URI` (must match the redirect URI whitelisted in Google Cloud). See
   Phase 2 above. While unset, the Connect button is a safe disabled no-op.
 - Optional connectors: `GBP_ACCESS_TOKEN` (legacy manual token; the OAuth flow above
-  supersedes it), `META_ACCESS_TOKEN`, `JOBMAGNET_IMAGE_KEY`, `RINGBACK_API_URL` +
-  `RINGBACK_API_KEY`.
+  supersedes it), `META_ACCESS_TOKEN`, `JOBMAGNET_IMAGE_KEY`, `FIRSTBACK_API_URL` +
+  `FIRSTBACK_API_KEY`.
 - Cold channels (after attorney sign-off only): `JOBMAGNET_COLD_SMS=1`.

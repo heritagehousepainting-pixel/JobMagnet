@@ -6,7 +6,7 @@ Then open http://localhost:8900 and sign in.
 
 v0.1 -- the Content Engine + Business Brain: write platform-aware social posts in
 your brand voice, review them in an approval queue, and (gated) publish. Mirrors
-RingBack's structure so the two stay siblings.
+FirstBack's structure so the two stay siblings.
 """
 import hmac
 import json
@@ -665,10 +665,10 @@ def tasks_tick():
         # Monitor reviews (autonomous-ready; a safe no-op until GBP is connected, then
         # it ingests + drafts + triages new reviews automatically). Mirrors roi sync.
         pulled += reviewsync.pull_reviews(bid)["added"]
-        # Closed-loop ROI (Phase 4): pull booked jobs from RingBack into conversions.
-        # A safe no-op (mode 'simulated', added 0) until RINGBACK_* is configured; deduped
+        # Closed-loop ROI (Phase 4): pull booked jobs from FirstBack into conversions.
+        # A safe no-op (mode 'simulated', added 0) until FIRSTBACK_* is configured; deduped
         # by ext_id so repeated ticks never double-count the same booking.
-        booked += roi.sync_ringback(bid)["added"]
+        booked += roi.sync_firstback(bid)["added"]
         rep = autopilot.run_for(bid, origin="cron")
         if rep["blocked"]:
             continue
@@ -1185,7 +1185,7 @@ def reviews_import():
 @login_required
 def reviews_sync():
     """Manually trigger the review pull (the same seam the heartbeat runs per tick).
-    Honest like /roi/sync-ringback: 'simulated' until Google Business Profile is
+    Honest like /roi/sync-firstback: 'simulated' until Google Business Profile is
     connected, 'pending' once connected (auto-pull not live yet). Never fabricates."""
     biz = current_business()
     res = reviewsync.pull_reviews(biz["id"])
@@ -1367,7 +1367,7 @@ def roi_dashboard():
     biz = current_business()
     return render_template("roi.html", summary=db.roi_summary(biz["id"]),
                            channels=roi.CHANNELS, labels=roi.CHANNEL_LABELS,
-                           ringback_connected=roi.ringback_connected())
+                           firstback_connected=roi.firstback_connected())
 
 
 @app.route("/roi/spend", methods=["POST"])
@@ -1406,17 +1406,17 @@ def roi_conversion():
     return redirect("/roi")
 
 
-@app.route("/roi/sync-ringback", methods=["POST"])
+@app.route("/roi/sync-firstback", methods=["POST"])
 @login_required
-def roi_sync_ringback():
+def roi_sync_firstback():
     biz = current_business()
-    res = roi.sync_ringback(biz["id"])
+    res = roi.sync_firstback(biz["id"])
     return redirect(f"/roi?sync={res['mode']}&added={res['added']}")
 
 
 @app.route("/webhooks/booking", methods=["POST"])
 def webhook_booking():
-    """External booking event (e.g. a RingBack push) -> a booked-job conversion."""
+    """External booking event (e.g. a FirstBack push) -> a booked-job conversion."""
     business_id = request.form.get("business_id", type=int) or 1
     channel = request.form.get("channel") or "other"
     if channel not in roi.CHANNELS:

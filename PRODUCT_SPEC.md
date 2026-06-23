@@ -6,7 +6,7 @@ the trades, in **build + legal-risk order**. Grounded in
 [MARKET_ECONOMICS.md](MARKET_ECONOMICS.md), [COMPETITORS.md](COMPETITORS.md),
 [STRATEGY.md](STRATEGY.md).
 
-**Core promise:** one AI marketing team that *creates* demand and (via RingBack)
+**Core promise:** one AI marketing team that *creates* demand and (via FirstBack)
 *books* it — and proves it in cost-per-booked-job.
 
 ```
@@ -20,7 +20,7 @@ the trades, in **build + legal-risk order**. Grounded in
  │ M7 Ads assist   M8 Lead/contact engine   M9 Website/landing               │
  └─────────────────────────────────────┬───────────────────────────────────┘
                                         ▼
-            M10 Closed-loop ROI dashboard  ──►  RingBack (book the job)
+            M10 Closed-loop ROI dashboard  ──►  FirstBack (book the job)
                                 * = compliance-gated (see §Compliance)
 ```
 
@@ -51,14 +51,14 @@ Status: v0.1 done (compose → AI post → approve → simulated publish).
 - **AI image generation** (job-photo enhancement, before/afters, branded
   templates) — GHL AI Employee parity.
 - **Photo-by-text capture:** contractor texts a job photo → AI drafts a post.
-  Reuse RingBack SMS rails. (Killer trades-native feature — meets them where
+  Reuse FirstBack SMS rails. (Killer trades-native feature — meets them where
   they are: in a truck, not a dashboard.)
 - Auto-post GBP "What's New / Offer / Event" weekly (doubles as SEO — see M3).
 
 ## M2 — Reviews & Reputation (v0.2 — next)
 
 Cheapest lever; feeds SEO + ads + close rate (see economics §5).
-- Automated **review-request by SMS** on job completion (RingBack rails).
+- Automated **review-request by SMS** on job completion (FirstBack rails).
 - **AI-suggested responses**; reply to all within 72h (Google reads responses).
 - Aggregate/monitor Google + Facebook; alert on new/negative.
 - Surface review velocity in the ROI dashboard.
@@ -87,7 +87,7 @@ GCs, insurance) is the safest cold target — not homeowners.
 ## M5 — AI Cold SMS ⚠️ GATED (high risk, TCPA)
 
 - Marketing SMS generally needs **prior express *written* consent** (TCPA).
-- Reuse RingBack `messaging` + `contacts_consent` ledger, opt-out NLU, quiet
+- Reuse FirstBack `messaging` + `contacts_consent` ledger, opt-out NLU, quiet
   hours, A2P 10DLC registration.
 - **Ships only behind consent + attorney review.** Default OFF.
 
@@ -95,7 +95,7 @@ GCs, insurance) is the safest cold target — not homeowners.
 
 - FCC treats AI-generated voice as artificial/prerecorded — strictest category.
 - **Do not lead with this.** Last to build, consent-gated, lawyer-reviewed.
-- Reuse RingBack's dormant AI-voice system; require affirmative reply before any
+- Reuse FirstBack's dormant AI-voice system; require affirmative reply before any
   AI dial.
 
 ## M7 — Ads Assist (paid media)
@@ -110,7 +110,7 @@ Help spend the 60–70% paid budget well (economics §1–3), in priority order:
 
 ## M8 — Lead / Contact Engine (fuel for outbound)
 
-- Import/manage contacts; **consent ledger is the spine** (shared with RingBack).
+- Import/manage contacts; **consent ledger is the spine** (shared with FirstBack).
 - B2B partner list building (realtors/PMs/GCs) — buy/scrape/enrich (Clay-style)
   vs partner: open decision (STRATEGY §9).
 - DNC scrubbing + suppression before any phone/SMS.
@@ -126,9 +126,9 @@ Help spend the 60–70% paid budget well (economics §1–3), in priority order:
 ## M10 — Closed-Loop ROI Dashboard (THE MOAT)
 
 The thing no point tool can build, because only we see generate→book.
-- **Cost per booked job** per channel (ties JobMagnet spend → RingBack bookings).
+- **Cost per booked job** per channel (ties JobMagnet spend → FirstBack bookings).
 - Recovered/created revenue, not impressions (Minyona's outcome energy).
-- Channel attribution via tracked numbers + UTM + RingBack booking events.
+- Channel attribution via tracked numbers + UTM + FirstBack booking events.
 - This is the retention engine and the sales proof.
 
 ---

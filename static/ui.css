@@ -1,6 +1,6 @@
 /* ============================================================================
    JobMagnet — Design System  (canonical token + component layer)
-   Sibling of RingBack's system, re-skinned. Accent: Emerald (#059669).
+   Sibling of FirstBack's system, re-skinned. Accent: Emerald (#059669).
    The single token + component layer every product screen is built on.
    RULE: no arbitrary hex / px inside components — everything routes through the
    tokens in :root below.
@@ -10,7 +10,7 @@
 
 :root{
   /* ---- Color · accent (JobMagnet Emerald) — the ONLY token family that differs
-     from RingBack; every other token now lives in tokens.css ---- */
+     from FirstBack; every other token now lives in tokens.css ---- */
   --accent:#059669;         /* fills / primary CTA */
   --accent-hover:#047C57;
   --accent-active:#065F46;

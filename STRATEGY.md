@@ -2,21 +2,21 @@
 
 **Date:** 2026-06-14 · **Status:** vision / pre-build
 **Product:** AI-run marketing engine for the trades — the top-of-funnel sibling to
-[RingBack](../ringback).
+[FirstBack](../firstback).
 **Tagline:** *Become the contractor jobs come to.*
 
 ---
 
 ## 1. The thesis
 
-RingBack proved the bottom of the funnel: catch the missed call, text back, book
+FirstBack proved the bottom of the funnel: catch the missed call, text back, book
 the estimate. It is **reactive** — it only acts on demand the contractor already
 earned. JobMagnet is the **proactive** half: it *manufactures* demand and pours it
-into RingBack to be booked.
+into FirstBack to be booked.
 
 ```
 TOP OF FUNNEL  ─────────────────────────────►  BOTTOM OF FUNNEL
-JobMagnet (generate)                            RingBack (capture + convert)
+JobMagnet (generate)                            FirstBack (capture + convert)
  • AI social content engine                      • missed-call text-back
  • AI cold email                                 • AI booking by SMS/voice
  • AI cold SMS / voice (gated)                   • reminders + follow-ups
@@ -44,7 +44,7 @@ From the competitive research ([COMPETITORS.md](COMPETITORS.md)):
    generic toolbox you assemble — and it doesn't book the job.
 
 **JobMagnet's wedge:** the only trades-native engine that does *outbound demand-gen
-→ booked job* as one compliant, productized system (via RingBack).
+→ booked job* as one compliant, productized system (via FirstBack).
 
 ---
 
@@ -75,7 +75,7 @@ Distilled from the top players — the patterns that repeat among winners:
    *how people hire trades* (clarity, speed, proof).
 5. **"System, not parts"** — sell the connected funnel, not isolated tactics.
 6. **Outcome / ROI proof** — pay-per-booked-appointment energy (Minyona); show
-   *recovered revenue*, not impressions. (RingBack already has the ROI-dashboard
+   *recovered revenue*, not impressions. (FirstBack already has the ROI-dashboard
    pattern.)
 7. **Intent-data targeting** — property-level + storm data (Predictive Sales),
    income-zone geo (Advanced AI).
@@ -92,29 +92,29 @@ parts behind consent. (See §6.)
 | 1 | **AI social content engine** | Low | Auto-generate posts + images on a cadence; schedule/publish. Steal: PostEverywhere, GHL AI Employee. Immediate, safe value. |
 | 2 | **AI cold email** | Low–med | CAN-SPAM (opt-out + physical address). Steal: Smartlead deliverability, AiSDR personalization. |
 | 3 | **Local SEO / GBP + ads assist** | Low | Owned channels that compound; intent targeting. |
-| 4 | **AI cold SMS** | **High** | TCPA: marketing SMS generally needs prior express *written* consent. Reuse RingBack `messaging` + `contacts_consent`. Gate hard. |
+| 4 | **AI cold SMS** | **High** | TCPA: marketing SMS generally needs prior express *written* consent. Reuse FirstBack `messaging` + `contacts_consent`. Gate hard. |
 | 5 | **AI cold voice** | **Highest** | FCC treats AI voice as artificial/prerecorded. **Do not lead with this.** Consent-gated, late-stage, lawyer-reviewed. |
 
 ---
 
 ## 6. Compliance — the moat AND the landmine
 
-⚠️ **RingBack's legal safety does NOT transfer.** RingBack is safe *because* it is
+⚠️ **FirstBack's legal safety does NOT transfer.** FirstBack is safe *because* it is
 informational and the customer called first. JobMagnet contacts strangers first —
 a different legal regime entirely:
 
 - **Cold SMS marketing** → generally prior express **written** consent (TCPA).
 - **Cold AI voice** → FCC: AI-generated voice = artificial/prerecorded; the
-  highest-risk category. RingBack itself refuses to auto-dial AI voice without an
+  highest-risk category. FirstBack itself refuses to auto-dial AI voice without an
   affirmative reply.
 - **Cold email** → CAN-SPAM: clear opt-out, no deception, physical postal address.
 - **DNC registry** scrubbing + per-state rules for any phone outreach.
 
-**This is the wedge, not just the risk.** We already built the spine in RingBack —
+**This is the wedge, not just the risk.** We already built the spine in FirstBack —
 the `contacts_consent` ledger, opt-out NLU, quiet hours, A2P 10DLC / STIR-SHAKEN
 knowledge. Lean into "the compliant outbound engine for the trades" as a
 *selling point*. **A TCPA attorney must review consent flows before any cold
-phone/SMS channel ships to real customers** (same gate as RingBack's voice work).
+phone/SMS channel ships to real customers** (same gate as FirstBack's voice work).
 
 ---
 
@@ -124,7 +124,7 @@ phone/SMS channel ships to real customers** (same gate as RingBack's voice work)
   (roofing/HVAC or painting). Win the niche, then widen — the opposite of
   GoHighLevel's "everything for everyone."
 - **Land with the safe, instant-value channel** (social content + email), expand
-  the account into outbound + the RingBack booking loop.
+  the account into outbound + the FirstBack booking loop.
 - **Sell the loop:** "We generate the lead *and* book it." No competitor can say
   both halves credibly.
 
@@ -134,7 +134,7 @@ phone/SMS channel ships to real customers** (same gate as RingBack's voice work)
 |---|---|---|
 | **Spark** | $299–499 | AI social content engine + email nurture |
 | **Engine** | ~$995 | + AI cold email/SMS outbound (gated), intent targeting |
-| **Done-for-you** | $2,997+ | Full AI marketing team + ads + exclusive territory + RingBack loop |
+| **Done-for-you** | $2,997+ | Full AI marketing team + ads + exclusive territory + FirstBack loop |
 
 Frame every tier as "your AI marketing team for less than a part-time hire."
 Add **exclusive territory** as a premium/retention lever.
@@ -143,14 +143,14 @@ Add **exclusive territory** as a premium/retention lever.
 
 ## 8. Build approach (decision pending)
 
-- **Reuse RingBack infrastructure** (multi-tenant DB, `messaging` seam, Claude
+- **Reuse FirstBack infrastructure** (multi-tenant DB, `messaging` seam, Claude
   brain, gated-integration pattern, `contacts_consent`, design system) — see
   [README.md](README.md).
 - **Open question:** shared monorepo with a common internal library vs. a separate
   repo that imports a shared package. The closed-loop ROI dashboard implies tight
-  data sharing with RingBack — lean toward shared storage/lib. Decide before first
+  data sharing with FirstBack — lean toward shared storage/lib. Decide before first
   code.
-- **Keep RingBack's discipline:** every integration a safe no-op until configured;
+- **Keep FirstBack's discipline:** every integration a safe no-op until configured;
   honest "simulated vs. live" UI; nothing blocks the hot path; pure, testable
   decision logic.
 
@@ -161,7 +161,7 @@ Add **exclusive territory** as a premium/retention lever.
 - Monorepo vs. separate repo (above).
 - Which trade(s) to launch first.
 - Do we resell/whitelabel an existing engine (Smartlead/Retell) under the hood to
-  move fast, or build native on the RingBack stack?
+  move fast, or build native on the FirstBack stack?
 - Lead data source for outbound (build a scraper/enrichment vs. partner like Clay).
-- Brand relationship: is JobMagnet co-branded with RingBack, or a clean separate
-  brand that "integrates with" RingBack?
+- Brand relationship: is JobMagnet co-branded with FirstBack, or a clean separate
+  brand that "integrates with" FirstBack?
