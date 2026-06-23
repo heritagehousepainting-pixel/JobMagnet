@@ -18,18 +18,13 @@ WINS = {
 }
 
 
-def _has_customers(signals):
-    s = signals or {}
-    return (s.get("past_customers") or 0) > 0 or (s.get("reviewable_backlog") or 0) > 0
-
-
 def designate(signals, live_state):
     """The single win to guide this tenant toward. live_state: {sms_live, gbp_connected}.
     Always returns a reachable win (falls back to 'aeo_faq', which needs no integration)."""
     sms = bool(live_state.get("sms_live"))
     gbp = bool(live_state.get("gbp_connected"))
     s = signals or {}
-    if sms and _has_customers(signals):
+    if sms and (s.get("reviewable_backlog") or 0) > 0:
         return "review_request"
     if gbp:
         return "gbp_post"

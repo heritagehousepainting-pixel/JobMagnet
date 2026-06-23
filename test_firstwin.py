@@ -13,12 +13,12 @@ check("nothing live -> aeo_faq",
       firstwin.designate(None, {"sms_live": False, "gbp_connected": False}) == "aeo_faq")
 check("gbp connected -> gbp_post",
       firstwin.designate({}, {"sms_live": False, "gbp_connected": True}) == "gbp_post")
-check("sms live + past customers -> review_request",
-      firstwin.designate({"past_customers": 12}, {"sms_live": True, "gbp_connected": True}) == "review_request")
 check("sms live + reviewable backlog -> review_request",
       firstwin.designate({"reviewable_backlog": 3}, {"sms_live": True, "gbp_connected": False}) == "review_request")
-check("sms live, customers, no backlog, gbp off, review picked before reactivation",
-      firstwin.designate({"past_customers": 5}, {"sms_live": True, "gbp_connected": False}) == "review_request")
+check("sms live + backlog + past customers -> review_request (backlog wins)",
+      firstwin.designate({"past_customers": 12, "reviewable_backlog": 2}, {"sms_live": True, "gbp_connected": True}) == "review_request")
+check("sms live + past customers, no backlog, gbp off -> reactivation",
+      firstwin.designate({"past_customers": 5}, {"sms_live": True, "gbp_connected": False}) == "reactivation")
 check("sms live, no customers, no gbp -> aeo_faq",
       firstwin.designate({"past_customers": 0}, {"sms_live": True, "gbp_connected": False}) == "aeo_faq")
 
