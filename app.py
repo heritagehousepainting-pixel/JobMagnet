@@ -14,7 +14,7 @@ import secrets
 from datetime import datetime
 from urllib.parse import quote
 
-from flask import (Flask, render_template, request, redirect, session, url_for, abort,
+from flask import (Flask, render_template, request, redirect, session, abort,
                    jsonify)
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -44,13 +44,15 @@ import ads
 import outreach
 from config import (APP_NAME, TAGLINE, DEBUG, PORT, SECRET_KEY, SESSION_COOKIE_SECURE,
                     SEED_OWNER_EMAIL, SEED_OWNER_PASSWORD, PLATFORMS, DEFAULT_PLATFORM,
-                    WEBHOOK_TOKEN, BASE_DIR)
+                    WEBHOOK_TOKEN)
+from routes import register_blueprints
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE
+register_blueprints(app)
 db.init_db()
 
 # Wire the command-center memory into the assistant without an import cycle: the router
@@ -172,87 +174,6 @@ def inject_globals():
             "section_name": _sec[0], "section_tabs": _sec[1], "section_active": _sec[2],
             # Sidebar shows "Start Here" until a Game Plan exists, then "Game Plan".
             "has_mandate": db.has_mandate(biz["id"]) if biz else False}
-
-
-# ---- Public marketing site ----
-def _site_ctx(**extra):
-    """Shared context for the public (logged-out) marketing pages."""
-    ctx = {"plans_data": plans.PLANS, "plan_order": plans.ORDER}
-    ctx.update(extra)
-    return ctx
-
-
-@app.route("/")
-def index():
-    # The public home is the front door. Logged-in visitors still see it (the nav
-    # swaps to "Open Mason"); the app lives at /dashboard.
-    return render_template("site_home.html", **_site_ctx())
-
-
-@app.route("/pricing")
-def pricing():
-    return render_template("site_pricing.html", **_site_ctx())
-
-
-@app.route("/how-it-works")
-def how_it_works():
-    return render_template("site_how.html", **_site_ctx())
-
-
-# ---- Per-tenant hosted SMS compliance pages (A2P 10DLC privacy + terms) ----
-# Carriers fetch these during campaign review, so every contractor needs their own
-# real, compliant pages. Keyed by slug so it generalizes; onboarding will populate
-# this from tenant data instead of the hand-entered map below.
-LEGAL_UPDATED = "June 16, 2026"
-LEGAL_BUSINESSES = {
-    "heritage-house-painting": {
-        "slug": "heritage-house-painting",
-        "name": "Heritage House Painting",
-        "phone": "(267) 756-2454",
-        "email": "heritagehousepainting@gmail.com",
-    },
-}
-
-
-@app.route("/legal/<slug>/sms-privacy")
-def legal_sms_privacy(slug):
-    biz = LEGAL_BUSINESSES.get(slug)
-    if not biz:
-        abort(404)
-    return render_template("legal.html", biz=biz, kind="privacy",
-                           heading="SMS Privacy Policy", updated=LEGAL_UPDATED)
-
-
-@app.route("/legal/<slug>/sms-terms")
-def legal_sms_terms(slug):
-    biz = LEGAL_BUSINESSES.get(slug)
-    if not biz:
-        abort(404)
-    return render_template("legal.html", biz=biz, kind="terms",
-                           heading="SMS Terms & Conditions", updated=LEGAL_UPDATED)
-
-
-@app.route("/contact", methods=["GET", "POST"])
-def contact():
-    if request.method == "POST":
-        name = (request.form.get("name") or "").strip()
-        email = (request.form.get("email") or "").strip()
-        message = (request.form.get("message") or "").strip()
-        if not name or not _EMAIL_RE.match(email) or not message:
-            return render_template("site_contact.html",
-                                   error="Add your name, a valid email, and a short message.",
-                                   **_site_ctx())
-        # No transactional email is wired yet, so record the inquiry honestly to a
-        # local inbox file rather than pretending it was emailed. (See SETUP_NEEDED.)
-        try:
-            trade = (request.form.get("trade") or "").strip()
-            with open(BASE_DIR / "contact_inbox.log", "a", encoding="utf-8") as fh:
-                fh.write(f"{datetime.now().isoformat()}\t{name}\t{email}\t{trade}\t"
-                         f"{message.replace(chr(9), ' ').replace(chr(10), ' ')}\n")
-        except OSError:
-            pass
-        return render_template("site_contact.html", sent=True, **_site_ctx())
-    return render_template("site_contact.html", **_site_ctx())
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -1554,34 +1475,6 @@ def google_disconnect():
     biz = current_business()
     google_business.disconnect(biz["id"])
     return redirect("/connections")
-
-
-@app.route("/settings", methods=["GET", "POST"])
-@login_required
-def settings():
-    biz = current_business()
-    saved = False
-    if request.method == "POST":
-        fields = {k: (request.form.get(k) or "").strip() for k in
-                  ("name", "trade", "service_area", "owner_name", "brand_voice",
-                   "services", "target_customer", "differentiators", "capacity_note",
-                   "google_review_link", "mailing_address")}
-        db.update_business(biz["id"], fields)
-        biz = current_business()
-        saved = True
-    return render_template("settings.html", business=biz, saved=saved)
-
-
-@app.route("/settings/password", methods=["POST"])
-@login_required
-def settings_password():
-    u = current_user()
-    current = request.form.get("current_password") or ""
-    new = request.form.get("new_password") or ""
-    if (check_password_hash(u["password_hash"], current) and len(new) >= 8):
-        db.update_user_password(u["id"], generate_password_hash(new))
-        return redirect("/settings?pw=ok")
-    return redirect("/settings?pw=err")
 
 
 if __name__ == "__main__":
