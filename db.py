@@ -7,7 +7,8 @@ two products can later share a library.
 """
 import json
 import re
-import sqlite3
+import psycopg
+from psycopg.rows import dict_row
 from datetime import datetime, timedelta, timezone
 
 import mandate  # pure decision module (no DB deps) -- canonical playbook/election ids
@@ -16,7 +17,7 @@ import speedtolead  # pure module -- canonical lead channel/status ids
 import connections  # pure module -- canonical provider ids
 import plans  # pure module -- canonical plan ids + capabilities
 import crypto  # at-rest credential sealing (stdlib only)
-from config import DB_PATH, DEFAULT_BUSINESS
+from config import DATABASE_URL, DEFAULT_BUSINESS
 
 # The Business Brain columns the Content Engine writes from. Order-independent;
 # create_business/update_business only touch columns actually provided.
@@ -29,9 +30,9 @@ POST_STATUSES = ("draft", "approved", "scheduled", "published", "rejected")
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    # One connection per call; the existing conn.close() sites close it. dict_row
+    # keeps row["col"] / dict(row) working exactly as sqlite3.Row did.
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 
 def _ensure_columns(cursor, table, cols):

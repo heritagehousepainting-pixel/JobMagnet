@@ -12,7 +12,7 @@ existing `db.get_user(...)` call site is unchanged.
 
 Edit trades_core/db_core.py, then run `python3 trades_core/sync.py`.
 """
-import sqlite3
+import psycopg
 from datetime import datetime, timezone
 
 # Injected by the host app's db.py (db_core.get_conn = get_conn). Calling these before
@@ -27,14 +27,14 @@ def now_iso():
 # ---- Auth / users (shared `users` table) ----
 def get_user(user_id):
     conn = get_conn()
-    row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+    row = conn.execute("SELECT * FROM users WHERE id=%s", (user_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
 
 
 def get_user_by_email(email):
     conn = get_conn()
-    row = conn.execute("SELECT * FROM users WHERE email=?",
+    row = conn.execute("SELECT * FROM users WHERE email=%s",
                        (email.strip().lower(),)).fetchone()
     conn.close()
     return dict(row) if row else None
@@ -46,11 +46,12 @@ def create_user(email, password_hash, business_id):
     try:
         cur = conn.execute(
             "INSERT INTO users (email, password_hash, business_id, created_at) "
-            "VALUES (?,?,?,?)",
+            "VALUES (%s,%s,%s,%s) RETURNING id",
             (email.strip().lower(), password_hash, business_id, now_iso()))
+        uid = cur.fetchone()["id"]
         conn.commit()
-        uid = cur.lastrowid
-    except sqlite3.IntegrityError:
+    except psycopg.errors.UniqueViolation:
+        conn.rollback()
         uid = None  # email already registered
     conn.close()
     return uid
@@ -59,10 +60,11 @@ def create_user(email, password_hash, business_id):
 # ---- Assistant subsystem (shared assistant_* tables) ----
 def log_turn(convo_id, business_id, role, content, tool=None, status=None):
     conn = get_conn()
-    tid = conn.execute(
+    cur = conn.execute(
         "INSERT INTO assistant_turns (convo_id, business_id, role, content, tool, status, "
-        "created_at) VALUES (?,?,?,?,?,?,?)",
-        (convo_id, business_id, role, content, tool, status, now_iso())).lastrowid
+        "created_at) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+        (convo_id, business_id, role, content, tool, status, now_iso()))
+    tid = cur.fetchone()["id"]
     conn.commit()
     conn.close()
     return tid
@@ -71,7 +73,7 @@ def log_turn(convo_id, business_id, role, content, tool=None, status=None):
 def get_convo_turns(convo_id, business_id):
     conn = get_conn()
     rows = conn.execute(
-        "SELECT * FROM assistant_turns WHERE convo_id=? AND business_id=? ORDER BY id",
+        "SELECT * FROM assistant_turns WHERE convo_id=%s AND business_id=%s ORDER BY id",
         (convo_id, business_id)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -80,7 +82,7 @@ def get_convo_turns(convo_id, business_id):
 def flag_counts(business_id):
     conn = get_conn()
     rows = conn.execute(
-        "SELECT kind, COUNT(*) AS n FROM assistant_flags WHERE business_id=? AND resolved=0 "
+        "SELECT kind, COUNT(*) AS n FROM assistant_flags WHERE business_id=%s AND resolved=0 "
         "GROUP BY kind", (business_id,)).fetchall()
     conn.close()
     return {r["kind"]: r["n"] for r in rows}
