@@ -34,8 +34,6 @@ check("nudge non-empty day0", bool(n0))
 check("nudge changes by day", n0 != n6)
 check("no lockout language", "lock" not in (n0 + n6).lower() and "expire" not in (n0 + n6).lower())
 
-print(f"==== {_p} passed, {_f} failed ====")
-
 # ---- DB-level: real-outcome facts + milestone persistence (Postgres) ----
 import os
 if os.environ.get("TEST_DATABASE_URL"):
@@ -77,8 +75,25 @@ if os.environ.get("TEST_DATABASE_URL"):
     db.mark_milestone_celebrated(bid)
     check("celebrated flips", db.get_milestone(bid)["celebrated"] in (1, True))
 
+    # ---- app-level: first_win_block state machine (uses same DB) ----
+    import app as appmod
+    appmod.app.testing = True
+    nb = db.create_business({"name": "Brief Co", "trade": "roofing"})
+    blk = appmod.first_win_block(nb)
+    check("fresh tenant in_progress + aeo_faq fallback",
+          blk["state"] == "in_progress" and blk["win"] == "aeo_faq")
+    check("block has cta + nudge + day count",
+          blk["cta_route"] == "/local" and blk["nudge"] and blk["days_since_signup"] >= 0)
+    # real outcome -> achieved (uncelebrated first, then celebrated)
+    db.update_business(nb, {"faq": "Q: x\nA: y"})
+    blk2 = appmod.first_win_block(nb)
+    check("achieved_uncelebrated on first detection", blk2["state"] == "achieved_uncelebrated")
+    blk3 = appmod.first_win_block(nb)
+    check("celebrated only once", blk3["state"] == "achieved_celebrated")
+
     _a = psycopg.connect(_admin, autocommit=True)
     _a.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s AND pid<>pg_backend_pid()", (_name,))
     _a.execute(f'DROP DATABASE IF EXISTS "{_name}"'); _a.close()
 
+print(f"==== {_p} passed, {_f} failed ====")
 sys.exit(1 if _f else 0)

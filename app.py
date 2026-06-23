@@ -11,7 +11,7 @@ RingBack's structure so the two stay siblings.
 import hmac
 import json
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 from flask import (Flask, render_template, request, redirect, session, url_for, abort,
@@ -33,6 +33,7 @@ import offers
 import connections
 import crypto
 import google_business
+import firstwin
 import billing
 import messaging
 import publishing
@@ -331,6 +332,52 @@ def _briefing(biz, stats, drafts, due_count, mandate_ready):
             "awaiting": n_draft}
 
 
+def first_win_block(business_id):
+    """Assemble the command-center first-win block. State machine:
+    in_progress -> achieved_uncelebrated (first time a real outcome is seen)
+    -> achieved_celebrated (after one view)."""
+    biz = db.get_business(business_id) or {}
+    facts = db.first_win_facts(business_id)
+    won = firstwin.achieved(facts)
+    milestone = db.get_milestone(business_id)
+
+    # days since signup (created_at is UTC ISO text)
+    days = 0
+    if biz.get("created_at"):
+        try:
+            created = datetime.fromisoformat(biz["created_at"])
+            days = max(0, (datetime.now(timezone.utc) - created).days)
+        except ValueError:
+            days = 0
+
+    if won:
+        if not milestone:
+            db.mark_milestone_achieved(business_id, won)
+            return {"state": "achieved_uncelebrated", "win": won, "achieved_win": won,
+                    "label": firstwin.WINS.get(won, {}).get("label", "First win"),
+                    "cta_route": None, "nudge": "", "days_since_signup": days}
+        if not milestone.get("celebrated"):
+            db.mark_milestone_celebrated(business_id)
+            return {"state": "achieved_celebrated", "win": milestone["achieved_win"],
+                    "achieved_win": milestone["achieved_win"],
+                    "label": firstwin.WINS.get(milestone["achieved_win"], {}).get("label", "First win"),
+                    "cta_route": None, "nudge": "", "days_since_signup": days}
+        return {"state": "achieved_celebrated", "win": milestone["achieved_win"],
+                "achieved_win": milestone["achieved_win"],
+                "label": firstwin.WINS.get(milestone["achieved_win"], {}).get("label", "First win"),
+                "cta_route": None, "nudge": "", "days_since_signup": days}
+
+    # not yet achieved -> designate a reachable win
+    signals = db.get_signals(business_id)
+    live = {"sms_live": messaging.sms_live(business_id),
+            "gbp_connected": google_business.is_connected(business_id)}
+    win = firstwin.designate(signals, live)
+    meta = firstwin.WINS[win]
+    return {"state": "in_progress", "win": win, "achieved_win": None,
+            "label": meta["label"], "cta_route": meta["cta_route"],
+            "nudge": firstwin.nudge_copy(win, days), "days_since_signup": days}
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -349,7 +396,8 @@ def dashboard():
     return render_template("command.html", brief=brief, stats=stats,
                            mandate_ready=mandate_ready,
                            digest=convos.digest(biz["id"]),
-                           suggestions=assistant.suggestions())
+                           suggestions=assistant.suggestions(),
+                           first_win=first_win_block(biz["id"]))
 
 
 @app.route("/queue")
@@ -368,7 +416,8 @@ def queue():
     mandate_ready = db.has_mandate(biz["id"])
     brief = _briefing(biz, stats, drafts, due_count, mandate_ready)
     return render_template("dashboard.html", drafts=drafts, queue=queue_items, stats=stats,
-                           due_count=due_count, mandate_ready=mandate_ready, brief=brief)
+                           due_count=due_count, mandate_ready=mandate_ready, brief=brief,
+                           first_win=first_win_block(biz["id"]))
 
 
 @app.route("/assistant", methods=["POST"])
