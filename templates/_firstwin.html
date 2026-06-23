@@ -1,6 +1,7 @@
 {# First-win activation card. Expects `fw` = first_win_block dict. #}
 {% if fw %}
 <div class="firstwin firstwin-{{ fw.state }}">
+  {# fw.cta_route is always a static "/path" string from firstwin.WINS (safe-by-inspection, no user input in the href). #}
   {% if fw.state == 'in_progress' %}
     <p class="firstwin-kicker">Your first win · Day {{ fw.days_since_signup + 1 }} of 7</p>
     <h3 class="firstwin-label">{{ fw.label }}</h3>

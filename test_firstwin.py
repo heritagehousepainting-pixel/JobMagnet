@@ -108,6 +108,7 @@ if os.environ.get("TEST_DATABASE_URL"):
     # We use a separate DB-connected test client pointed at the live jm DB via
     # TEST_DATABASE_URL (same creds the seed was created in).
     import importlib
+    _saved_dburl = os.environ.get("DATABASE_URL")
     _seed_db_url = os.environ["TEST_DATABASE_URL"]
     os.environ["DATABASE_URL"] = _seed_db_url
     importlib.reload(db)
@@ -119,6 +120,14 @@ if os.environ.get("TEST_DATABASE_URL"):
         r = c.get("/dashboard")
         check("render test: /dashboard 200", r.status_code == 200)
         check("render test: first-win card visible", b"Your first win" in r.data)
+
+    # Restore env + module state so DROP DATABASE cleanup targets the scratch DB.
+    if _saved_dburl is None:
+        os.environ.pop("DATABASE_URL", None)
+    else:
+        os.environ["DATABASE_URL"] = _saved_dburl
+    importlib.reload(db)
+    importlib.reload(appmod)
 
     _a = psycopg.connect(_admin, autocommit=True)
     _a.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s AND pid<>pg_backend_pid()", (_name,))
