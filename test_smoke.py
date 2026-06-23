@@ -8,18 +8,33 @@ Run:  ./.venv/bin/python test_smoke.py
 """
 import os
 import sys
-import tempfile
+import uuid
+import atexit
+import psycopg
 
-# Run against a throwaway DB and the deterministic demo brain, so the suite is
-# isolated and idempotent -- it must never touch the real jobmagnet.db or depend
-# on which AI provider/key happens to be configured. Set BEFORE importing config.
-_TMP_DB = tempfile.NamedTemporaryFile(prefix="jobmagnet-test-", suffix=".db", delete=False)
-_TMP_DB.close()
-os.environ["JOBMAGNET_DB_PATH"] = _TMP_DB.name
+# Run against a throwaway Postgres DB so the suite is isolated + idempotent and
+# never touches real data. Create a uniquely-named DB, point the app at it, drop
+# it on exit. Set env BEFORE importing config/app.
+_ADMIN_URL = os.environ["TEST_DATABASE_URL"]
+_TEST_DB = "jm_test_" + uuid.uuid4().hex[:12]
+_admin = psycopg.connect(_ADMIN_URL, autocommit=True)
+_admin.execute(f'CREATE DATABASE "{_TEST_DB}"')
+_admin.close()
+# Build the app-facing URL by swapping the database name on the admin URL.
+import urllib.parse as _u
+_p = _u.urlparse(_ADMIN_URL)
+_APP_URL = _p._replace(path="/" + _TEST_DB).geturl()
+os.environ["DATABASE_URL"] = _APP_URL
+
+@atexit.register
+def _drop_test_db():
+    a = psycopg.connect(_ADMIN_URL, autocommit=True)
+    a.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+              "WHERE datname=%s AND pid<>pg_backend_pid()", (_TEST_DB,))
+    a.execute(f'DROP DATABASE IF EXISTS "{_TEST_DB}"')
+    a.close()
+
 os.environ["JOBMAGNET_PROVIDER"] = "demo"
-# Pin the seed identity and secrets the suite asserts against, so a populated local
-# .env (real owner password, secrets key) can't leak in. Real env wins over .env
-# (setdefault), so these stick. The suite drives crypto.SECRETS_KEY itself below.
 os.environ["JOBMAGNET_OWNER_PASSWORD"] = "jobmagnet123"
 os.environ["JOBMAGNET_SECRETS_KEY"] = ""
 
