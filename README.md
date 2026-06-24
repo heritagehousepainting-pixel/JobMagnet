@@ -25,11 +25,12 @@ generate demand        ──feeds──►  catch + book it
 
 ## Status
 
-**All 6 roadmap phases BUILT + tested** (Flask + SQLite, port 8900). Verified
-end-to-end by `test_smoke.py` (**260 assertions**) — run `./.venv/bin/python
-test_smoke.py`. MiniMax is the live AI brain. A **dark, premium public marketing
-site** (home, pricing, how-it-works, contact) fronts the app, and the signed-in
-dashboard is now **Mason's conversational home** (daily brief + approval queue).
+**Core workflows across the 6 roadmap phases are built + tested** (Flask + SQLite,
+port 8900), with live integrations behind honest connector gates. Verified end-to-end
+by `test_smoke.py` (**405 assertions**) — run `./.venv/bin/python test_smoke.py`.
+MiniMax is the live AI brain when configured. A **dark, premium public marketing site**
+(home, pricing, how-it-works, contact) fronts the app, and the signed-in dashboard is
+now **Mason's conversational home** (daily brief + approval queue).
 
 What is **actually working** today:
 
