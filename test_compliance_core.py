@@ -6,7 +6,8 @@ Framework-free (matches the apps' test_*.py style): run with any python, exit 0 
 
   python3 trades_core/test_compliance_core.py
 """
-import sqlite3
+import os, uuid, psycopg
+from psycopg.rows import dict_row
 import sys
 from datetime import datetime
 
@@ -29,8 +30,11 @@ def check(label, cond):
 
 
 def _conn():
-    c = sqlite3.connect(":memory:")
-    c.row_factory = sqlite3.Row
+    c = psycopg.connect(os.environ["TEST_DATABASE_URL"], row_factory=dict_row)
+    sch = "c_" + uuid.uuid4().hex[:12]
+    c.execute(f'CREATE SCHEMA "{sch}"')
+    c.execute(f'SET search_path TO "{sch}"')
+    c.commit()
     consent.ensure_ledger(c)
     return c
 
