@@ -1,7 +1,7 @@
 """JobMagnet — central configuration.
 
 Everything you'll want to tweak early lives here. Change a value, restart the
-server, done. Mirrors RingBack's config so the two products stay siblings.
+server, done. Mirrors FirstBack's config so the two products stay siblings.
 """
 import os
 from pathlib import Path
@@ -65,7 +65,7 @@ MAILING_ADDRESS = os.environ.get("JOBMAGNET_MAILING_ADDRESS", "")
 COLD_SMS_ENABLED = os.environ.get("JOBMAGNET_COLD_SMS", "").strip().lower() in ("1", "true", "yes", "on")
 COLD_VOICE_ENABLED = os.environ.get("JOBMAGNET_COLD_VOICE", "").strip().lower() in ("1", "true", "yes", "on")
 
-# Shared secret for inbound webhooks (Twilio, RingBack). When set, /webhooks/* require
+# Shared secret for inbound webhooks (Twilio, FirstBack). When set, /webhooks/* require
 # a matching `token`. Empty -> open (local dev only); MUST be set before deploying.
 WEBHOOK_TOKEN = os.environ.get("JOBMAGNET_WEBHOOK_TOKEN", "")
 
@@ -86,12 +86,12 @@ META_ACCESS_TOKEN = os.environ.get("META_ACCESS_TOKEN", "")
 # AI image generation. Empty -> image generation simulated (prompt only).
 IMAGE_API_KEY = os.environ.get("JOBMAGNET_IMAGE_KEY", "")
 
-# --- RingBack link (Phase 3): OPTIONAL booking feed for the closed loop. ---
+# --- FirstBack link (Phase 3): OPTIONAL booking feed for the closed loop. ---
 # JobMagnet is standalone; when these are set it can pull booked-job data from a
-# RingBack instance to compute cost-per-booked-job automatically. Empty -> the loop
+# FirstBack instance to compute cost-per-booked-job automatically. Empty -> the loop
 # runs on JobMagnet's own conversion data (manual mark-won / tracked numbers).
-RINGBACK_API_URL = os.environ.get("RINGBACK_API_URL", "")
-RINGBACK_API_KEY = os.environ.get("RINGBACK_API_KEY", "")
+FIRSTBACK_API_URL = os.environ.get("FIRSTBACK_API_URL", "")
+FIRSTBACK_API_KEY = os.environ.get("FIRSTBACK_API_KEY", "")
 
 # --- Billing (Stripe). Safe no-op until configured: plan buttons fall back to an
 # in-app switch until STRIPE_SECRET_KEY + the price IDs are set. ---

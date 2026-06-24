@@ -12,7 +12,7 @@ A 3-lane parallel audit (read-only agents report; fixes applied centrally):
 - **Lane B — App buttons & links:** every signed-in template's buttons/forms/links →
   do they hit a real route that does the real thing? Honest success messages?
 - **Lane C — Connector honesty (core):** the integration seams (Twilio SMS, SMTP email,
-  GBP/Meta publishing, Stripe billing, RingBack feed, AI brain). Are "live/connected/
+  GBP/Meta publishing, Stripe billing, FirstBack feed, AI brain). Are "live/connected/
   simulated" statuses driven by real config checks? Do we ever claim a live connection
   that's actually a no-op?
 

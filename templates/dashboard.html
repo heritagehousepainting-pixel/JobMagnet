@@ -21,6 +21,9 @@
   </div>
 </div>
 
+{% set fw = first_win %}
+{% include "_firstwin.html" %}
+
 {# ---------------- At a glance ---------------- #}
 <div class="glance">
   <div class="glance-tile"><span class="glance-k">Waiting on you</span><span class="glance-v" data-countup="{{ stats.draft }}">{{ stats.draft }}</span><span class="glance-s">drafts to approve</span></div>

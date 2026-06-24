@@ -5,7 +5,7 @@ draft a reply, and triage them WITHOUT the owner typing each review in by hand. 
 real pull is a Google Business Profile connector: when the tenant connects GBP, this
 module GETs their reviews and add_review()s the new ones.
 
-That GET isn't implemented yet, so this seam is honest exactly like roi.sync_ringback:
+That GET isn't implemented yet, so this seam is honest exactly like roi.sync_firstback:
 when GBP is NOT connected we report 'simulated' (monitoring is dormant, nothing pulled);
 when GBP IS connected we report 'pending' (configured, auto-pull not live yet) rather
 than claiming a live sync that fabricated reviews. The heartbeat calls it per tenant so

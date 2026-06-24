@@ -3,7 +3,7 @@
 Turns a short job update (and the Business Brain) into a ready-to-post social
 caption, in the voice of the contractor's business.
 
-Three modes, chosen by JOBMAGNET_PROVIDER, mirroring RingBack:
+Three modes, chosen by JOBMAGNET_PROVIDER, mirroring FirstBack:
   1. "claude"  -- Anthropic Claude (best quality). Needs ANTHROPIC_API_KEY.
   2. "minimax" -- MiniMax, OpenAI-compatible. Needs MINIMAX_API_KEY.
   3. "demo"    -- a built-in templated writer so the product works with ZERO

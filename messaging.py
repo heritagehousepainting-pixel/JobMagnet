@@ -1,11 +1,11 @@
 """JobMagnet's outbound spine (Phase 0).
 
 ONE gated path for every SMS/email the product sends, so consent, quiet hours, and
-the simulated-vs-live decision live in a single auditable place. Mirrors RingBack's
+the simulated-vs-live decision live in a single auditable place. Mirrors FirstBack's
 discipline: every send is a SAFE NO-OP (simulated, logged) until a real provider is
 configured, and consent is checked before anything leaves.
 
-Provider interface (standalone first, RingBack/Twilio pluggable):
+Provider interface (standalone first, FirstBack/Twilio pluggable):
   SMS   -> Twilio when TWILIO_* configured, else "simulated"
   Email -> SMTP when SMTP_* configured, else "simulated"
 

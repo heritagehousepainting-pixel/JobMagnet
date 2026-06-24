@@ -8,12 +8,12 @@ paid-ads guidance, and (compliance-gated) cold outreach — and proves it all in
 **cost per booked job**.
 
 It is **standalone first**: its own messaging, consent, and conversion data, sellable
-on its own. [RingBack](../ringback) (missed-call text-back + AI booking) is an
+on its own. [FirstBack](../firstback) (missed-call text-back + AI booking) is an
 **optional pluggable provider** — connect it and JobMagnet gets a richer booked-job
 feed for the closed loop. One vertical (the trades), one buyer (the owner).
 
 ```
-JobMagnet                         RingBack
+JobMagnet                         FirstBack
 ─────────                         ────────
 generate demand        ──feeds──►  catch + book it
 (social · cold email ·             (missed-call text-back ·
@@ -43,7 +43,7 @@ What is **actually working** today:
 | Outreach | Cold email | B2B partner emails, **CAN-SPAM** footer + working unsubscribe |
 | Cold Outreach | Cold SMS/voice | **Hard-gated** (off until attorney sign-off + written consent) |
 | Ads | Paid assist | Budget calculator (8–12% rule, LSA-first) + ad-copy generation |
-| Results | Closed loop | **Cost per booked job** per channel; optional RingBack feed |
+| Results | Closed loop | **Cost per booked job** per channel; optional FirstBack feed |
 
 **Compliance + honesty are enforced in code:** one gated messaging seam (consent +
 quiet hours + opt-out/DNC), CSRF on every form, multi-tenant isolation, and an
@@ -51,7 +51,7 @@ honest "simulated vs live" status everywhere — nothing pretends to be real unt
 its connector is configured.
 
 What needs **your setup** to go from simulated → live (Twilio, email, GBP/Meta,
-RingBack, attorney sign-off for cold phone): see **[SETUP_NEEDED.md](SETUP_NEEDED.md)**.
+FirstBack, attorney sign-off for cold phone): see **[SETUP_NEEDED.md](SETUP_NEEDED.md)**.
 
 Not built yet (honest): real social publishing connectors (assisted/ simulated for
 now), per-location landing **pages** (we generate the schema/FAQ, not standalone
@@ -67,15 +67,15 @@ The trades market is full of inbound agencies (SEO, ads, Google Business Profile
 and a separate world of horizontal AI outbound tools (Smartlead, AiSDR, Retell)
 that aren't built for the trades and aren't compliance-built for cold outreach.
 **Nobody convincingly bundles top-of-funnel demand-gen with bottom-of-funnel
-booking for one vertical.** JobMagnet + RingBack is that closed loop. The moat is
+booking for one vertical.** JobMagnet + FirstBack is that closed loop. The moat is
 the part everyone underestimates: **compliance** (TCPA / CAN-SPAM / DNC) — which
-RingBack already has a spine for.
+FirstBack already has a spine for.
 
-## What we'll reuse from RingBack
+## What we'll reuse from FirstBack
 
-JobMagnet should not reinvent infrastructure RingBack already proved out:
+JobMagnet should not reinvent infrastructure FirstBack already proved out:
 
-| RingBack asset | Reused for |
+| FirstBack asset | Reused for |
 |---|---|
 | Multi-tenant SQLite (`business_id` scoping) | Per-contractor JobMagnet accounts |
 | `messaging.send_sms` outbound seam (gated/simulated) | Cold SMS sends |
@@ -84,6 +84,6 @@ JobMagnet should not reinvent infrastructure RingBack already proved out:
 | `contacts_consent` ledger + opt-out NLU + quiet hours | **The compliance moat** |
 | Design system (`ui.css`, app shell, macros) | JobMagnet product UI |
 
-> Resolved (2026-06-15): **standalone first, RingBack optional**. JobMagnet has its
-> own messaging/consent/conversion data; RingBack plugs in as an optional provider
+> Resolved (2026-06-15): **standalone first, FirstBack optional**. JobMagnet has its
+> own messaging/consent/conversion data; FirstBack plugs in as an optional provider
 > for a richer closed loop. See [ROADMAP.md](ROADMAP.md).

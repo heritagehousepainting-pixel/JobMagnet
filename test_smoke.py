@@ -361,8 +361,8 @@ check("cost per booked job computed ($200 / 2 = $100)",
       soc["spend"] == 200 and soc["booked"] == 2 and soc["cost_per_booked"] == 100.0)
 check("revenue + ROAS computed", soc["revenue"] == 2000 and soc["roas"] == 10.0)
 check("totals aggregate cost per booked job", s["totals"]["cost_per_booked"] == 100.0)
-r = c.post("/roi/sync-ringback")
-check("RingBack sync is simulated when not connected",
+r = c.post("/roi/sync-firstback")
+check("FirstBack sync is simulated when not connected",
       "sync=simulated" in r.headers.get("Location", ""))
 r = c.post("/webhooks/booking", data={"business_id": "1", "channel": "google_lsa", "value": "1500"})
 check("booking webhook creates a booked conversion", r.status_code == 201)
@@ -889,7 +889,7 @@ print("Phase 3 reviews loop")
 import reviewsync
 _rev_biz = db.create_business({"name": "Reviews Loop Co", "trade": "painting"})
 
-# 1) pull_reviews mirrors roi.sync_ringback: simulated when GBP unconnected, pending when
+# 1) pull_reviews mirrors roi.sync_firstback: simulated when GBP unconnected, pending when
 #    connected. It never fabricates reviews (added is always 0 until the real GET ships).
 _pull = reviewsync.pull_reviews(_rev_biz)
 check("pull_reviews is simulated when GBP is unconnected",
@@ -901,7 +901,7 @@ check("pull_reviews is pending once GBP is connected (no fabricated reviews)",
       _pull_live["mode"] == "pending" and _pull_live["added"] == 0)
 publishing.gbp_live = _gbp_live_orig
 
-# 2) The manual /reviews/sync route redirects with the honest mode (mirrors /roi/sync-ringback).
+# 2) The manual /reviews/sync route redirects with the honest mode (mirrors /roi/sync-firstback).
 r = c.post("/reviews/sync", data={})
 check("/reviews/sync redirects with the simulated mode when GBP unconnected",
       r.status_code == 302 and "sync=simulated" in r.headers["Location"])
@@ -1409,61 +1409,61 @@ r = c.post("/tasks/digest", data={})
 check("the weekly digest cron emails every tenant owner",
       r.status_code == 200 and r.get_json()["sent"] >= 1)
 
-# --- Phase 4: autonomous closed-loop ROI (RingBack booking sync) ------------
-print("Phase 4 ROI ringback sync")
+# --- Phase 4: autonomous closed-loop ROI (FirstBack booking sync) ------------
+print("Phase 4 ROI firstback sync")
 import roi as _roi
 
-# Not connected (RINGBACK_* unset) -> honest no-op 'simulated', nothing added.
-_rb_biz = db.create_business({"name": "RingBack Co", "trade": "painting"})
-_rb_res = _roi.sync_ringback(_rb_biz)
-check("ringback sync is simulated when RINGBACK_* unset",
+# Not connected (FIRSTBACK_* unset) -> honest no-op 'simulated', nothing added.
+_rb_biz = db.create_business({"name": "FirstBack Co", "trade": "painting"})
+_rb_res = _roi.sync_firstback(_rb_biz)
+check("firstback sync is simulated when FIRSTBACK_* unset",
       _rb_res == {"mode": "simulated", "added": 0})
 
 # Connected: monkeypatch the creds onto the roi module AND stub the HTTP fetch, so we
 # exercise the real pull/dedup path without a network call (mirrors how the suite
 # monkeypatches module globals like crypto.SECRETS_KEY / _plans.PLANS).
-_rb_url0, _rb_key0 = _roi.RINGBACK_API_URL, _roi.RINGBACK_API_KEY
-_rb_fetch0 = _roi._fetch_ringback_bookings
-_roi.RINGBACK_API_URL = "https://ringback.example/api"
-_roi.RINGBACK_API_KEY = "test-ringback-key"
+_rb_url0, _rb_key0 = _roi.FIRSTBACK_API_URL, _roi.FIRSTBACK_API_KEY
+_rb_fetch0 = _roi._fetch_firstback_bookings
+_roi.FIRSTBACK_API_URL = "https://firstback.example/api"
+_roi.FIRSTBACK_API_KEY = "test-firstback-key"
 _rb_bookings = [
     {"id": "bk-1", "channel": "google_lsa", "value": 1800, "label": "Smith exterior"},
     {"id": "bk-2", "channel": "referral", "value": 2400, "label": "Jones cabinets"},
 ]
-_roi._fetch_ringback_bookings = lambda business_id: _rb_bookings
+_roi._fetch_firstback_bookings = lambda business_id: _rb_bookings
 try:
-    check("ringback reports connected when creds are set", _roi.ringback_connected())
-    _r1 = _roi.sync_ringback(_rb_biz)
+    check("firstback reports connected when creds are set", _roi.firstback_connected())
+    _r1 = _roi.sync_firstback(_rb_biz)
     check("a live sync adds exactly 2 bookings and reports mode=live",
           _r1 == {"mode": "live", "added": 2})
     _rb_conv = db.get_conn().execute(
-        "SELECT COUNT(*) FROM conversions WHERE business_id=%s AND origin='ringback'",
+        "SELECT COUNT(*) FROM conversions WHERE business_id=%s AND origin='firstback'",
         (_rb_biz,)).fetchone()["count"]
-    check("2 origin='ringback' conversions were created", _rb_conv == 2)
+    check("2 origin='firstback' conversions were created", _rb_conv == 2)
     _rb_row = [r for r in db.roi_summary(_rb_biz)["rows"] if r["channel"] == "google_lsa"][0]
     check("synced booking lands as a booked job under its channel", _rb_row["booked"] == 1)
     # Re-syncing the SAME booking ids must add 0 (dedup by ext_id).
-    _r2 = _roi.sync_ringback(_rb_biz)
+    _r2 = _roi.sync_firstback(_rb_biz)
     check("re-syncing the same booking ids adds 0 (deduped)",
           _r2 == {"mode": "live", "added": 0})
-    check("dedup left exactly 2 ringback conversions", db.get_conn().execute(
-        "SELECT COUNT(*) FROM conversions WHERE business_id=%s AND origin='ringback'",
+    check("dedup left exactly 2 firstback conversions", db.get_conn().execute(
+        "SELECT COUNT(*) FROM conversions WHERE business_id=%s AND origin='firstback'",
         (_rb_biz,)).fetchone()["count"] == 2)
     # A request error never fakes success.
     def _boom(business_id):
-        raise RuntimeError("ringback unreachable")
-    _roi._fetch_ringback_bookings = _boom
+        raise RuntimeError("firstback unreachable")
+    _roi._fetch_firstback_bookings = _boom
     check("a request error reports mode=error, added=0 (no fake success)",
-          _roi.sync_ringback(_rb_biz) == {"mode": "error", "added": 0})
-    # The heartbeat still returns 200 and surfaces a ringback booking count.
-    _roi._fetch_ringback_bookings = lambda business_id: []
+          _roi.sync_firstback(_rb_biz) == {"mode": "error", "added": 0})
+    # The heartbeat still returns 200 and surfaces a firstback booking count.
+    _roi._fetch_firstback_bookings = lambda business_id: []
     _tickc = appmod.app.test_client()
     _tr = _tickc.post("/tasks/tick")
     check("/tasks/tick returns 200 and surfaces a bookings_synced count",
           _tr.status_code == 200 and "bookings_synced" in _tr.get_json())
 finally:
-    _roi.RINGBACK_API_URL, _roi.RINGBACK_API_KEY = _rb_url0, _rb_key0
-    _roi._fetch_ringback_bookings = _rb_fetch0
+    _roi.FIRSTBACK_API_URL, _roi.FIRSTBACK_API_KEY = _rb_url0, _rb_key0
+    _roi._fetch_firstback_bookings = _rb_fetch0
 
 # --- Phase 5: the trust layer (in-app activity feed) ------------------------
 # A read-only viewing surface that merges autopilot runs + outbound messages +
@@ -1516,7 +1516,7 @@ check("empty state renders for a tenant with no activity",
 
 # --- Phase 2: Google Business Profile one-click OAuth -----------------------
 # Real "Connect with Google" so a contractor never pastes a token. Gated + honest at
-# every step; the Google HTTP is stubbed (like roi/_fetch_ringback_bookings) so no network.
+# every step; the Google HTTP is stubbed (like roi/_fetch_firstback_bookings) so no network.
 print("Google Business Profile OAuth")
 import google_business as _gb
 

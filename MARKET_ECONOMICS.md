@@ -57,7 +57,7 @@ Roofing is the most expensive lead in the trades; cleaning/handyman the cheapest
 **Cost per *booked job*, not cost per lead.** A $15 Facebook lead that never closes
 is worth less than a $100 Google lead that becomes a $15K job. Benchmarks worth
 anchoring to: LSA avg cost-per-paying-customer ~$233, avg ticket ~$1,826.
-→ **JobMagnet's ROI dashboard must report cost-per-booked-job (via the RingBack
+→ **JobMagnet's ROI dashboard must report cost-per-booked-job (via the FirstBack
 loop), which no point tool can compute because they don't see the booking.**
 
 ---
@@ -129,13 +129,13 @@ NiceJob the SMB pick with Jobber/Housecall integrations). Core mechanics to own:
 - **AI-suggested review responses** (Google reads them; reply to all within 72h).
 - **Aggregate + monitor** across Google/Facebook/etc.
 
-→ Cheap to build on the RingBack SMS rails, high perceived value, natural v0.2.
+→ Cheap to build on the FirstBack SMS rails, high perceived value, natural v0.2.
 
 ---
 
 ## 6. What this means for JobMagnet (design constraints)
 
-1. **Report cost-per-booked-job, not vanity metrics.** Only the JobMagnet+RingBack
+1. **Report cost-per-booked-job, not vanity metrics.** Only the JobMagnet+FirstBack
    loop can — make it the centerpiece of the ROI dashboard.
 2. **Lead with LSA + GBP + reviews** (cheapest, highest-intent, compounding,
    low legal risk) before any cold outbound.

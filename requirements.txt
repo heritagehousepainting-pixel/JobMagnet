@@ -1,4 +1,4 @@
-# JobMagnet — runtime dependencies (kept deliberately light, like RingBack).
+# JobMagnet — runtime dependencies (kept deliberately light, like FirstBack).
 psycopg[binary]>=3.2
 Flask>=3.0
 gunicorn>=21.2          # production WSGI server (Render); the dev server is local-only

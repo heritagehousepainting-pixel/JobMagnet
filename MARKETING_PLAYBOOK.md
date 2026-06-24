@@ -18,7 +18,7 @@ cutthroat markets) and rebuilt **trade-native for PA**. This is how Mason earns
 
 | # | Lever | The proof (real data) | Stolen from | Mason's trade-native play |
 |---|---|---|---|---|
-| 1 | **Speed-to-lead** | 5-min response = up to **100x** conversion vs 30 min; **78% buy from the first responder** (even if pricier); avg business takes **42 hrs**; 73% of leads never contacted | everyone — contractors fail worst | Instant text-back + AI booking on every inbound. Painter's on a ladder; Mason answers in seconds. (JobMagnet + RingBack) |
+| 1 | **Speed-to-lead** | 5-min response = up to **100x** conversion vs 30 min; **78% buy from the first responder** (even if pricier); avg business takes **42 hrs**; 73% of leads never contacted | everyone — contractors fail worst | Instant text-back + AI booking on every inbound. Painter's on a ladder; Mason answers in seconds. (JobMagnet + FirstBack) |
 | 2 | **Database reactivation** | Dental sits on **$500K–$1.5M** dormant; **4–5 touches = 81%** lift; **5–6x cheaper** than new leads; 35–40% of dormant rebook | dental recall systems | Mine the past-customer list on repaint cycles ("interior 3 yrs ago → exterior due"). Zero ad spend. |
 | 3 | **Review velocity** | 50 reviews w/ 10 fresh **beat 500 stale**; impact in **30–45 days**; #1 controllable LSA-rank factor; ~10–15% of local ranking | local SEO + dental | Continuous drip off every finished job, not a blast (Playbook #1 below). |
 | 4 | **LSA-first paid** | ~**$60**/lead, **20–25%** conversion (vs 6–8% PPC); new "Google Verified" badge (late-2025); reviews feed rank | home-services agencies | When paid is warranted, LSA before Search before Meta. Reviews (lever 3) make it cheap. |
@@ -33,7 +33,7 @@ No agency does all eight for a contractor — and none do it **trade-native + AI
 ROI-proven + at $300/mo**. But the sharp edge isn't "we do more," it's the **sequence**:
 
 > **Lead with the two free-money plays — speed-to-lead (1) + database reactivation (2).**
-> Zero ad spend, biggest bleed, JobMagnet+RingBack uniquely built for both, ROI provable
+> Zero ad spend, biggest bleed, JobMagnet+FirstBack uniquely built for both, ROI provable
 > in *weeks*. Win trust with found money, *then* layer reviews → LSA → offers → AEO.
 
 A generic agency physically cannot lead with that — they sell ad spend, not found money.
@@ -95,7 +95,7 @@ is far higher — the recovered number is bigger.
 4. **Multi-touch until they answer:** ~2 min → 1 hr → 24 hr, then stop / hand to owner.
 5. **AI qualify + book:** Mason asks the 2–3 that matter (service, address in territory,
    timeline), then **books to the calendar or hands the owner a hot, qualified lead with
-   context.** (RingBack runs the booking/voice; JobMagnet feeds it.)
+   context.** (FirstBack runs the booking/voice; JobMagnet feeds it.)
 6. **Hot-lead alert, in voice:** *"Hot one — Sarah in Lititz, kitchen cabinets, wants a
    quote this week. I've got her on text. Want me to set the estimate, or you calling?"*
 7. **Speed SLA:** target <60s first touch, measured every lead.

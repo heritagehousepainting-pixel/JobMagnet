@@ -24,6 +24,8 @@
         publish posts, send review requests, link your accounts, and set your autopilot.
         You can still work by hand in the <a href="/queue">Queue</a>.</p>
       {% if digest and digest.has_content %}<p class="convo-digest">{{ digest.line }} <a href="/training">Review in Memory</a>.</p>{% endif %}
+      {% set fw = first_win %}
+      {% include "_firstwin.html" %}
     </div>
     <div class="transcript" id="transcript" aria-live="polite"></div>
   </div>
