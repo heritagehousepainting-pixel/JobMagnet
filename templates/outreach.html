@@ -13,7 +13,7 @@
 {% if msg and msg.startswith('sent_blocked') %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That contact opted out or is on do-not-contact, so nothing was sent.</div>{% endif %}
 
 {% if not can_spam %}
-<div class="card" style="margin-bottom:var(--space-6);border-left:3px solid var(--warning,#d97706)">
+<div class="card" style="margin-bottom:var(--space-6);border-left:3px solid var(--warning)">
   <div class="card-body"><strong>Cold email is off.</strong> Add a mailing address in <a href="/settings">Business Brain</a> to enable compliant sending.</div>
 </div>
 {% endif %}

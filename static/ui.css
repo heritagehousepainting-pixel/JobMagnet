@@ -181,6 +181,9 @@ summary:focus-visible,
 [role="button"]:focus-visible,
 [tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius-sm)}
 
+/* Inline icon sized to the current text (replaces emoji used as inline glyphs). */
+.ico-inline{width:1em;height:1em;display:inline-block;vertical-align:-.125em;flex:0 0 auto}
+
 /* Honor the OS "reduce motion" setting: near-instant transitions/animations. */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{

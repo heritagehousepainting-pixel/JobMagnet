@@ -124,7 +124,7 @@
   flex:0 0 32px;width:32px;height:32px;border-radius:50%;
   display:grid;place-items:center;font-weight:800;font-size:var(--text-sm);
   background:var(--accent);color:var(--accent-ink);
-  box-shadow:0 0 0 2px rgba(16,185,129,.30);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent);
 }
 .turn.user .turn-avatar{background:var(--surface-2);color:var(--ink-soft);box-shadow:none}
 .turn-body{max-width:78%}
