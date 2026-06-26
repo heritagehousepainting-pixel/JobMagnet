@@ -8,11 +8,11 @@
     <p class="firstwin-nudge">{{ fw.nudge }}</p>
     <a class="btn btn-primary btn-sm" href="{{ fw.cta_route }}">Let's do it</a>
   {% elif fw.state == 'achieved_uncelebrated' %}
-    <p class="firstwin-kicker">🎉 First win!</p>
+    <p class="firstwin-kicker"><svg class="ico-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 22l5-3 5 3-1.21-8.11"/></svg> First win!</p>
     <h3 class="firstwin-label">{{ fw.label }} — done.</h3>
     <p class="firstwin-nudge">Nice work. That's real progress your customers will see.</p>
   {% else %}
-    <p class="firstwin-kicker firstwin-done">✓ First win complete</p>
+    <p class="firstwin-kicker firstwin-done"><svg class="ico-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> First win complete</p>
   {% endif %}
 </div>
 {% endif %}

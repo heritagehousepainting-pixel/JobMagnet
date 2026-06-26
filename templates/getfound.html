@@ -12,8 +12,8 @@
     <span class="stat-value" style="font-size:1.25rem">{{ score.pct }}%</span>
   </div>
   <div class="card-body">
-    <div style="height:10px;background:var(--surface-2,#eee);border-radius:99px;overflow:hidden;margin-bottom:var(--space-2)">
-      <div style="height:100%;width:{{ score.pct }}%;background:var(--accent,#2f6df6);border-radius:99px"></div>
+    <div style="height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:var(--space-2)">
+      <div style="height:100%;width:{{ score.pct }}%;background:var(--accent);border-radius:99px"></div>
     </div>
     <p class="dt-muted" style="margin-bottom:var(--space-4)">{{ score.done }} of {{ score.total }} done.
       {% if not score.complete and next_steps %}Next up: {{ next_steps[0].label }}.{% endif %}</p>

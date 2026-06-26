@@ -89,7 +89,7 @@
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <div class="field" style="min-width:130px;margin:0"><label class="field-label" for="ra">Reviewer</label><input class="field-control" id="ra" name="author"></div>
       <div class="field" style="width:90px;margin:0"><label class="field-label" for="rr">Rating</label>
-        <select class="field-control" id="rr" name="rating">{% for n in [5,4,3,2,1] %}<option value="{{ n }}">{{ n }}★</option>{% endfor %}</select>
+        <select class="field-control" id="rr" name="rating">{% for n in [5,4,3,2,1] %}<option value="{{ n }}">{{ n }} star{{ 's' if n != 1 }}</option>{% endfor %}</select>
       </div>
       <div class="field" style="flex:1;min-width:200px;margin:0"><label class="field-label" for="rb">Review text</label><input class="field-control" id="rb" name="body" required></div>
       <button class="btn btn-secondary" type="submit">Add &amp; draft reply</button>
@@ -101,7 +101,7 @@
         <div class="card-head">
           <div style="display:flex;gap:var(--space-2);align-items:center">
             <span class="pill pill-neutral">{{ r.source|capitalize }}</span>
-            <span class="pill {{ 'pill-booked' if (r.rating or 0) >= 4 else 'pill-warning' }}">{{ r.rating }}★</span>
+            <span class="pill {{ 'pill-booked' if (r.rating or 0) >= 4 else 'pill-warning' }}">{{ r.rating }}<svg class="ico-inline" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="margin-left:2px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg></span>
             {% if r.author %}<strong>{{ r.author }}</strong>{% endif %}
             {% if r.status == 'responded' %}<span class="pill pill-new"><span class="pill-dot"></span>Replied</span>
             {% elif (r.rating or 0) <= 3 %}<span class="pill pill-warning"><span class="pill-dot"></span>Needs your attention</span>

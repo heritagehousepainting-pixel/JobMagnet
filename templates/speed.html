@@ -6,7 +6,7 @@
 
 {% block content %}
 {% set sent = request.args.get('sent') %}
-{% if sent == 'sent' %}<div class="save-banner">Lead logged and texted for real. ✅</div>
+{% if sent == 'sent' %}<div class="save-banner"><svg class="ico-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Lead logged and texted for real.</div>
 {% elif sent == 'simulated' %}<div class="save-banner">Lead logged. The text was <strong>simulated</strong>, connect Twilio under <a href="/connections">Connections</a> to send for real.</div>
 {% elif sent == 'error' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Lead logged, but the text <strong>failed to send</strong>. Check your Twilio details in <a href="/connections">Connections</a>.</div>
 {% elif sent and sent.startswith('blocked') %}<div class="save-banner">Lead logged. Text not sent ({{ sent.replace('blocked_','') }}).</div>{% endif %}
