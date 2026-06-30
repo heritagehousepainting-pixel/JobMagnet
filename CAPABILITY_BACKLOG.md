@@ -30,7 +30,7 @@ None currently.
 
 ### Photo-by-text multimodal vision enhancement
 **Re-eval date:** Triggered — after the basic SMS reply loop (P2-15) has been live and proven for 30 days.
-**Why parked:** The basic photo-by-text loop (contractor texts a job photo → Mason drafts a text-based GBP post) is being built first (P2-15). Vision-enhanced drafts require the base loop to be live, measured, and showing adoption before adding the model-cost overhead.
+**Why parked:** The basic photo-by-text loop (contractor texts a job photo → JobMagnet drafts a text-based GBP post) is being built first (P2-15). Vision-enhanced drafts require the base loop to be live, measured, and showing adoption before adding the model-cost overhead.
 **Viability test:** Vision-enhanced draft is approved unchanged at 70%+ vs text-based baseline on 10 sample MMS inputs, measured in production on real contractor submissions (not synthetic).
 
 ---

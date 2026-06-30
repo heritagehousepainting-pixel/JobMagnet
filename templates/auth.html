@@ -72,7 +72,7 @@
       </a>
       <div>
         <h1 class="aside-lead">Already on the<br><span class="em">next job.</span></h1>
-        <p class="aside-sub">Mason runs your marketing so you can run the job. You handle the work. He handles where the next one comes from.</p>
+        <p class="aside-sub">JobMagnet runs your marketing so you can run the job. You handle the work. It handles where the next one comes from.</p>
         <ul class="aside-list">
           <li><span class="tk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span> Social, reviews, local search and outreach, run for you.</li>
           <li><span class="tk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span> Nothing goes out without your okay.</li>
@@ -81,16 +81,16 @@
       </div>
       <div class="aside-quote">
         <p>"That spring-cleanup post you almost skipped? Booked you two gutter jobs. Told you."</p>
-        <span class="who">— Mason, your marketing foreman</span>
+        <span class="who">— JobMagnet</span>
       </div>
     </aside>
 
     <main class="auth-main">
       <div class="auth-card">
         <a class="auth-back" href="/"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> Back to home</a>
-        <p class="auth-eyebrow">{{ 'Hire Mason' if mode == 'signup' else 'Welcome back' }}</p>
-        <h2 class="auth-h">{{ 'Start free in ten minutes.' if mode == 'signup' else 'Log in to Mason.' }}</h2>
-        <p class="auth-tag">{{ 'No card to begin. Mason builds your game plan first.' if mode == 'signup' else tagline }}</p>
+        <p class="auth-eyebrow">{{ 'Get started' if mode == 'signup' else 'Welcome back' }}</p>
+        <h2 class="auth-h">{{ 'Start free in ten minutes.' if mode == 'signup' else 'Log in to JobMagnet.' }}</h2>
+        <p class="auth-tag">{{ 'No card to begin. JobMagnet builds your game plan first.' if mode == 'signup' else tagline }}</p>
         {% if error %}<div class="auth-err">{{ error }}</div>{% endif %}
         <form class="auth-form" method="post" action="{{ '/signup' if mode == 'signup' else '/login' }}">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">

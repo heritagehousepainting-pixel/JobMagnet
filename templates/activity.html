@@ -2,7 +2,7 @@
 {% import "_macros.html" as ui %}
 {% block title %}Activity{% endblock %}
 {% block page_title %}Activity{% endblock %}
-{% block page_sub %}<p class="page-sub">Here's what Mason did. Every draft, message, and post shows up here, with an honest label so you always know what actually went out and what was only a preview.</p>{% endblock %}
+{% block page_sub %}<p class="page-sub">Here's what JobMagnet did. Every draft, message, and post shows up here, with an honest label so you always know what actually went out and what was only a preview.</p>{% endblock %}
 
 {% block content %}
 {% if digest and digest.has_content %}<div class="save-banner" style="margin:0">{{ digest.line }} Over the last {{ digest.days }} days across {{ digest.convos }} conversation(s).</div>{% endif %}
@@ -27,7 +27,7 @@
       </div>
       {% endfor %}
     {% else %}
-      {{ ui.empty("Nothing yet", "Nothing yet. When Mason acts, it shows up here.") }}
+      {{ ui.empty("Nothing yet", "Nothing yet. When JobMagnet acts, it shows up here.") }}
     {% endif %}
   </div>
 </div>

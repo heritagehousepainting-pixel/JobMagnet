@@ -421,10 +421,10 @@ def assistant_learn():
 
 
 # ---- Mason's Memory / Training: review conversations, call out issues, teach ----
-_ISSUE_LABEL = {"capability_gap": "Mason had no tool for this",
+_ISSUE_LABEL = {"capability_gap": "No tool was available for this",
                 "empty": "A tool returned nothing", "repeat": "You had to re-ask",
                 "negative": "You pushed back on the answer",
-                "unhelpful": "Mason's answer missed the mark"}
+                "unhelpful": "The answer missed the mark"}
 
 
 @app.route("/training")
@@ -508,7 +508,7 @@ def activity():
             "created_at": run.get("created_at"),
             "icon": "autopilot",
             "label": "Autopilot",
-            "desc": f"Mason ran autopilot: {', '.join(bits)} ({origin}).",
+            "desc": f"JobMagnet ran autopilot: {', '.join(bits)} ({origin}).",
             "tag": None if (run.get("sms_mode") or "simulated") == "live" else "simulated",
         })
 
@@ -629,7 +629,7 @@ def tasks_tick():
             if _take_over_count > 0 and _activity == 0:
                 _conn.execute(
                     "UPDATE businesses SET mason_alert=%s, mason_alert_at=%s WHERE id=%s",
-                    ("Mason has not been able to run any content in 7 days. "
+                    ("JobMagnet has not been able to run any content in 7 days. "
                      "Check your settings.", db.now_iso(), bid))
                 _conn.commit()
             _conn.close()
@@ -664,12 +664,12 @@ def tasks_tick():
                     _econn.close()
                     if _erow:
                         messaging.send_email(bid, _erow["email"],
-                                             "Mason: your next win is waiting", _nudge,
+                                             "JobMagnet: your next win is waiting", _nudge,
                                              kind="transactional", purpose="reengagement")
             elif (not _has_mandate and _hours_since > 48
                   and (messaging.sms_live(bid) or EMAIL_LIVE)):
                 # Stage 1: started walkthrough, no mandate elected, > 48h ago.
-                _nudge1 = ("You started your game plan. Finish the walkthrough and Mason "
+                _nudge1 = ("You started your game plan. Finish the walkthrough and JobMagnet "
                            "will tell you exactly what to do first.")
                 if EMAIL_LIVE:
                     _econn1 = db.get_conn()
@@ -679,7 +679,7 @@ def tasks_tick():
                     _econn1.close()
                     if _erow1:
                         messaging.send_email(bid, _erow1["email"],
-                                             "Mason: finish your game plan", _nudge1,
+                                             "JobMagnet: finish your game plan", _nudge1,
                                              kind="transactional", purpose="reengagement")
 
         rep = autopilot.run_for(bid, origin="cron")
@@ -751,7 +751,7 @@ def mandate_page():
     top_applies = [p for p in result["plays"] if p["applicability"] == "applies"]
     top_play_key = top_applies[0]["key"] if top_applies else None
     reconciliation_note = (
-        f'Mason sees {top_applies[0]["label"]} as the top play, but you flagged '
+        f'JobMagnet sees {top_applies[0]["label"]} as the top play, but you flagged '
         f'{contractor_play} as the bottleneck. Both are on.'
         if contractor_play and top_play_key and contractor_play != top_play_key else None)
     elections_updated_at = max(

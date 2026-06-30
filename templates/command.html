@@ -21,7 +21,7 @@
   {# ---- Conversation: empty hero state, then the transcript ---- #}
   <div class="convo" id="convo">
     <div class="convo-hero" id="hero">
-      <p class="convo-kicker">Mason · your command center</p>
+      <p class="convo-kicker">JobMagnet · your command center</p>
       <h1 class="convo-hello">{{ brief.hello }}</h1>
       <p class="convo-sub">Tell me what you want done. I can pull your numbers, write and
         publish posts, send review requests, link your accounts, and set your autopilot.
@@ -41,14 +41,14 @@
     <form class="command-bar" id="commandBar" autocomplete="off">
       <span class="command-spark" aria-hidden="true"></span>
       <input class="command-input" id="commandInput" name="message" type="text"
-             placeholder="Ask Mason to do something..." aria-label="Command Mason"
+             placeholder="Ask JobMagnet to do something..." aria-label="Command JobMagnet"
              autofocus>
       <button class="command-send" id="commandSend" type="submit" aria-label="Send">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
       </button>
     </form>
-    <p class="command-foot">Mason confirms before anything goes out. Nothing is sent without your okay.</p>
+    <p class="command-foot">JobMagnet confirms before anything goes out. Nothing is sent without your okay.</p>
   </div>
 
   <input type="hidden" id="csrfToken" value="{{ csrf_token }}">

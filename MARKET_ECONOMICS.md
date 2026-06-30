@@ -176,12 +176,12 @@ NiceJob the SMB pick with Jobber/Housecall integrations). Core mechanics to own:
 **Anchors:** Podium/Birdeye ~$300-600/mo for *just* reviews+messaging; agencies $1.5-5k/mo;
 Angi pay-per-lead $15-100. One extra booked job ($3-8k) pays back a plan 10-25x.
 
-**The tiers (Mason in every tier; tiers gate how much he DOES):**
+**The tiers (JobMagnet in every tier; tiers gate how much it DOES):**
 | Plan | Price | Unlocks | COGS → margin |
 |---|---|---|---|
-| **Mason Pro** | **$199/mo** | Advisor: drafts everything, you approve; all engines; ~750 texts | ~$10 → ~95% |
-| **Mason Premium** | **$299/mo** | + **Autopilot** (acts on its own), Speed-to-Lead/Reactivation/Referrals, closed-loop ROI; ~2,000 texts | ~$25-36 → ~88% |
-| **Mason Scale** | **$599/mo** | + managed paid ads (LSA/Meta), multi-location, priority; ~6,000 texts | ~$50-80 → ~85% |
+| **Pro** | **$199/mo** | Advisor: drafts everything, you approve; all engines; ~750 texts | ~$10 → ~95% |
+| **Premium** | **$299/mo** | + **Autopilot** (acts on its own), Speed-to-Lead/Reactivation/Referrals, closed-loop ROI; ~2,000 texts | ~$25-36 → ~88% |
+| **Scale** | **$599/mo** | + managed paid ads (LSA/Meta), multi-location, priority; ~6,000 texts | ~$50-80 → ~85% |
 
 Annual = ~2 months free · **$0 setup** (we handle provisioning + registration) · risk-reversal
 trial. **Engine gate is live in code** (`plans.py`): autopilot is Premium+, managed ads is
