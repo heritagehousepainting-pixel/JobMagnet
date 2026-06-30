@@ -30,7 +30,7 @@
       {% endfor %}
     {% else %}
       {{ ui.empty("Nobody's due yet",
-                  "Add last-job dates below and Mason flags customers when their repaint cycle comes around. He won't invent a goldmine that isn't there.") }}
+                  "Add last-job dates below and JobMagnet flags customers when their repaint cycle comes around. It won't invent a goldmine that isn't there.") }}
     {% endif %}
   </div>
 </div>
@@ -62,7 +62,7 @@
       {% endfor %}
     {% else %}
       {{ ui.empty("No customers yet",
-                  "Add past customers under Contacts, then set their last-job date so Mason can time the reactivation.",
+                  "Add past customers under Contacts, then set their last-job date so JobMagnet can time the reactivation.",
                   "/contacts", "Add customers") }}
     {% endif %}
   </div>

@@ -8,14 +8,14 @@
 
 ## TL;DR
 
-**JobMagnet already embodies ~65–70% of this growth playbook by design.** Mason's "not yet" restraint, the per-channel autonomy elections, the Type-1 compliance hard-gates, and the four-stage growth loop are all already in the architecture. **The gaps are almost entirely wiring problems, not conceptual ones** — the highest-leverage work is connecting circuits that already exist, not inventing new modules:
+**JobMagnet already embodies ~65–70% of this growth playbook by design.** JobMagnet's "not yet" restraint, the per-channel autonomy elections, the Type-1 compliance hard-gates, and the four-stage growth loop are all already in the architecture. **The gaps are almost entirely wiring problems, not conceptual ones** — the highest-leverage work is connecting circuits that already exist, not inventing new modules:
 
-- `_briefing()` has no `signals` param, so Mason's already-written "I won't pretend there's a goldmine" copy **never reaches the screen**.
-- `_route_system()` never injects the Mandate, so every chat session **starts cold** and Mason can contradict the contractor's own elections.
+- `_briefing()` has no `signals` param, so the already-written "I won't pretend there's a goldmine" copy **never reaches the screen**.
+- `_route_system()` never injects the Mandate, so every chat session **starts cold** and JobMagnet can contradict the contractor's own elections.
 - `connections_save()` has no activation hook, so the **highest-intent moment** (saving a credential) ends on a generic page.
 - A fifth `_FACT_WIN` entry has **no matching `WINS` key**, so the first-win celebration can render "First win: First win" with no CTA.
 
-**Closing 5 ship blockers + fixing 3 silent wiring bugs + surfacing Mason's existing restraint copy moves ship-readiness from 6/10 → ~8/10 without adding a single new module.**
+**Closing 5 ship blockers + fixing 3 silent wiring bugs + surfacing the existing restraint copy moves ship-readiness from 6/10 → ~8/10 without adding a single new module.**
 
 > **Why this matters (the alignment verdict):** the structural choices Anthropic's growth team reached *empirically* — restraint-as-trust, intake data threading through every touchpoint, autonomy elections as activation, the growth loop as the operating model, a "for them" test inside every recommendation — JobMagnet designed in *from the start*. The implication: **unusually high ROI per engineering hour.** Fixing a function signature or adding 15 lines (each under two days) unlocks capability that would take weeks to design from scratch at most products.
 
@@ -29,13 +29,13 @@ Status: ✅ already embodies · 🟡 partial (wire it) · 🔴 gap · ⚙️ adj
 |---|--------|:---:|---|
 | L1 | Activation is the highest lever | 🟡 | `firstwin.achieved()` + `onboarding_milestone` are wired, but the funnel has **one** measurement point and the post-connection moment dead-ends. → Instrument 3 stages; make `milestone.achieved_at` the north-star; fix the orphaned-win-id bug. |
 | L2 | The *right* friction increases conversion | 🔴 | No commitment questions exist. The `capacity_note` wire in `mandate.py:236-239` is correct but the textarea is **absent** and the POST handler silently drops it. → Add `success_metric` + a bottleneck question, captured explicitly. |
-| L3 | "For them" reconciliation rule | ✅ | Every play in `mandate.diagnose()` carries `applies`/`not_yet`/`gated` + a reason with real signal values; the Walkthrough teaches before asking. The rule is enforced in code. → Add a one-line reconciliation note when Mason's top play ≠ the contractor's stated pain. |
+| L3 | "For them" reconciliation rule | ✅ | Every play in `mandate.diagnose()` carries `applies`/`not_yet`/`gated` + a reason with real signal values; the Walkthrough teaches before asking. The rule is enforced in code. → Add a one-line reconciliation note when JobMagnet's top play ≠ the contractor's stated pain. |
 | L4 | Ask who they are → recommend the right thing | 🟡 | `trade` is captured and used in `generate_faq`, but `designate()` ignores it and all Mandate headlines are static. → Trade-aware `designate()`; trade+city in headlines. |
 | L5 | Quality drives growth | 🟡 | Tests are strong; first-session quality is broken in 3 spots (missing textarea, generic headlines, dead `_briefing` signature). → One sprint scoped to *Walkthrough-submit → first-win-achieved* only. |
 | L6 | Intake data is juice that keeps giving | 🟡 | Signals drive `diagnose()`/`designate()` but never reach `_route_system()`; `aeo_faq` leaves the user a *to-do*, not an artifact. → Wire signals into chat; auto-generate the FAQ; host it publicly. |
 | L7 | Break dense screens into steps | 🔴 | `walkthrough.html` is 10+ inputs on one scroll — the primary mobile bounce point. → 2-step wizard with `session` persistence on Back. |
-| L8 | Cold-start / capability overhead | 🔴 | `connections_save()` and `google_callback()` both redirect to a generic `/connections` with no Mason callout; the photo-by-text loop never replies. → Post-connection unlock callout; close the MMS reply loop. |
-| L9 | Bigger bets if AI-first | ✅ | Mason *is* the product; north-star = cost-per-booked-job; scope is 1–2 PA trades. The big AI-first bet is made by design. → Add a milestone gate: no new module until a real first win lands. |
+| L8 | Cold-start / capability overhead | 🔴 | `connections_save()` and `google_callback()` both redirect to a generic `/connections` with no JobMagnet callout; the photo-by-text loop never replies. → Post-connection unlock callout; close the MMS reply loop. |
+| L9 | Bigger bets if AI-first | ✅ | JobMagnet *is* the product; north-star = cost-per-booked-job; scope is 1–2 PA trades. The big AI-first bet is made by design. → Add a milestone gate: no new module until a real first win lands. |
 | L10 | Automate growth with the AI itself (the loop) | 🟡 | Identify/build/test stages exist; **analyze is broken** — `reviewsync.pull_reviews()` returns `pending` unconditionally even when GBP is connected. → Fix the reviews pull; add stall detection. |
 | L11 | Proactive scheduled agents | 🟡 | Heartbeat + weekly digest exist, but the brief is pull-based/web-only — a contractor at 6:30am on a job site won't open a browser. → Milestone-gated morning SMS/email; structured weekly read. |
 | L12 | Arm the AI with structured context | 🟡 | The Mandate is a typed schema — *better* than any notebook channel — but `_route_system()` never references it. → Inject `mandate_block` using the pattern already in `_h_game_plan()` (~15 lines). |
@@ -71,7 +71,7 @@ Badges: `take` = adopt directly · `adjust` = adapt to JobMagnet's context · **
 ### P1 — the wiring + first-session quality sprint
 
 **4. Fix `_briefing()` signature and surface the restraint copy** · `take` · effort S · BUILD
-- **What:** Change `_briefing(biz, stats, drafts, due_count, mandate_ready)` → add `signals=None`; update both call sites (`app.py:318`, `app.py:340`) to pass `db.get_signals(biz['id'])`. Inside, pull `not_yet` plays from `mandate.diagnose()` into a `brief_passed_on` dict; render one line: *"I'm holding off on [label] — [reason]."* Rewrite the all-caught-up state to lead with what Mason **did** ("I scheduled your Wednesday GBP post"), not that the queue is empty.
+- **What:** Change `_briefing(biz, stats, drafts, due_count, mandate_ready)` → add `signals=None`; update both call sites (`app.py:318`, `app.py:340`) to pass `db.get_signals(biz['id'])`. Inside, pull `not_yet` plays from `mandate.diagnose()` into a `brief_passed_on` dict; render one line: *"I'm holding off on [label] — [reason]."* Rewrite the all-caught-up state to lead with what JobMagnet **did** ("I scheduled your Wednesday GBP post"), not that the queue is empty.
 - **Why:** `mandate.py:167-169` ("…no dormant goldmine to mine yet, and I won't pretend there is.") is the best trust copy in the product and currently has **no output pathway**. This is the voice rule the spec promises and the differentiator no horizontal tool can match.
 - **Where:** `app.py:226-253`, `:318`, `:340`; `templates/command.html`, `templates/dashboard.html`.
 
@@ -87,11 +87,11 @@ Badges: `take` = adopt directly · `adjust` = adapt to JobMagnet's context · **
 
 **7. Wire the Mandate into `_route_system()`** · `take` · effort S · BUILD
 - **What:** In `assistant.py:403-422`, after `taught_block`, add ~15 lines copying the proven pattern from `_h_game_plan()` (`:239-252`): top-2 `applies` plays + first `not_yet` play with reason. `import db`/`import mandate` are already present.
-- **Why:** Every chat starts cold today — a contractor who set a play to "Not yet" can get Mason recommending it in the same session, the worst trust signal an assistant can produce.
+- **Why:** Every chat starts cold today — a contractor who set a play to "Not yet" can get JobMagnet recommending it in the same session, the worst trust signal an assistant can produce.
 - **Where:** `assistant.py:403-422`.
 
 **8. Trust callout above the Mandate election buttons + "last updated"** · `take` · effort S · BUILD
-- **What:** One card above the elections: what Mason does autonomously, what always comes to you first, and *"If an ad isn't worth it, I'll say so."* Add a `Last updated` line from `playbook_elections.updated_at`.
+- **What:** One card above the elections: what JobMagnet does autonomously, what always comes to you first, and *"If an ad isn't worth it, I'll say so."* Add a `Last updated` line from `playbook_elections.updated_at`.
 - **Why:** The election screen is exactly when the "will it just burn my money?" objection resolves; the voice rule is in the spec but absent from every template.
 - **Where:** `templates/mandate.html`.
 
@@ -114,15 +114,15 @@ Badges: `take` = adopt directly · `adjust` = adapt to JobMagnet's context · **
 
 **12. Trade-aware `designate()`** · `adjust` · effort S · BUILD — add `business=None`; roofers (storm-season) and HVAC (emergency-demand) get different first-win priorities than painters (repaint cycles). `firstwin.py:21-33`, `app.py:297`.
 
-**13. Bottleneck radio on the Mandate + reconciliation note** · `adjust` · effort S · BUILD — 4-option radio orients the contractor (avoids 8-card decision paralysis); when their pick ≠ Mason's top play, show *"You flagged X. Mason's starting with Y because: {reason}."* Uses the already-computed `diagnose()` result — zero new AI calls. `app.py:618-635`, `templates/mandate.html`.
+**13. Bottleneck radio on the Mandate + reconciliation note** · `adjust` · effort S · BUILD — 4-option radio orients the contractor (avoids 8-card decision paralysis); when their pick ≠ JobMagnet's top play, show *"You flagged X. JobMagnet's starting with Y because: {reason}."* Uses the already-computed `diagnose()` result — zero new AI calls. `app.py:618-635`, `templates/mandate.html`.
 
-**14. Mason's weekly self-audit (stall detection)** · `adjust` · effort S · BUILD — Monday branch in `/tasks/tick`: a `take_over` election with 0 autopilot output in 7 days → `mason_alert` ("a play is set to Take it Over but nothing went out — check /connections"). Converts a churn signal into a trust moment. `app.py:569-600`, `templates/command.html`.
+**14. Weekly self-audit (stall detection)** · `adjust` · effort S · BUILD — Monday branch in `/tasks/tick`: a `take_over` election with 0 autopilot output in 7 days → `mason_alert` ("a play is set to Take it Over but nothing went out — check /connections"). Converts a churn signal into a trust moment. `app.py:569-600`, `templates/command.html`.
 
 **15. Close the photo-by-text MMS loop** · `adjust` · effort S · SHARPEN — the `/webhooks/sms` handler (`app.py:993-1014`) detects MMS, drafts, and saves a post but **never replies**. Add a ~3-line `send_sms()` reply + wire a `photo_post` win into `WINS`/`_FACT_WIN`. (Do *not* build multimodal vision yet — text-based draft proves the loop.) Depends on live Twilio.
 
 **16. Auto-generate `aeo_faq` at Walkthrough POST + public `/faq/<slug>`** · `adjust` · effort M · SHARPEN — call `ai.generate_faq(biz)` (has a demo fallback) on submit, persist it, and render a paste-ready block on `/mandate` so the contractor leaves with a **real artifact**, not a to-do. Host at `/faq/<slug>` with JSON-LD + a "Get yours at jobmagnet.app" CTA — a zero-CAC, AI-search-indexable acquisition touchpoint. Parse with `ai._parse_qa()` (FAQ is `Q:/A:` text, not JSON). `app.py:609-614` + new public route, `templates/faq_public.html` (new).
 
-**17. Make "Mason said no" shareable: public `/insight/<slug>/<play_key>`** · `take` · effort S · BUILD — render a `not_yet` play's real-numbers reason on a public page ("Why Mason hasn't run X for {business} yet") with a clipboard share link on `/mandate`. `mandate.diagnose()` is a pure function (safe from a public route). Honest restraint with the contractor's own numbers is the most credible possible positioning. Depends on #16's `biz_slug`.
+**17. Make "JobMagnet said no" shareable: public `/insight/<slug>/<play_key>`** · `take` · effort S · BUILD — render a `not_yet` play's real-numbers reason on a public page ("Why JobMagnet hasn't run X for {business} yet") with a clipboard share link on `/mandate`. `mandate.diagnose()` is a pure function (safe from a public route). Honest restraint with the contractor's own numbers is the most credible possible positioning. Depends on #16's `biz_slug`.
 
 **18. 2-day build protocol + PMF constraint + `COMPLIANCE.md`** · `adjust` · effort S · BUILD — write the build protocol and the PMF constraint into `ROADMAP.md`; write a 1-page `COMPLIANCE.md` referencing the existing hard gates (`messaging.py:69-79,104-113,209-249`) as Type-1 behaviors so an attorney has something to review. Add a growth-loop triage filter (which stage does this strengthen?). See Adjust-warnings for the 2-day rationale.
 
@@ -150,19 +150,19 @@ JobMagnet's user is a **blue-collar contractor on a job site**, and JobMagnet is
 | **L13** Type-1/Type-2 controversy test | Anthropic's Type-1 is AI existential safety; JobMagnet's is TCPA/FCC legal liability | Adopt the *framework*, not the behaviors. JobMagnet's Type-1 list must be drafted **with a TCPA attorney**; the existing `messaging.py` gates are the starting point. |
 | **L2** add a quiz to onboarding | Masterclass/Calm users arrive cold; JobMagnet's Walkthrough already captures 10+ signals | One bottleneck radio on the Mandate is the *max* that passes the "for them" test — more questions at the commitment moment would kill conversion, not help it. |
 | **L4** route by user archetype | Anthropic routes by knowledge-worker/developer/B2B | JobMagnet routes by **trade economics** (roofer storm cycles ≠ painter repaint cycles ≠ HVAC tune-up season). |
-| **L10** growth loop over a large user population | Anthropic A/B tests across segments; JobMagnet has one tenant, no A/B infra | The loop runs against **Mason's own output** (did the `take_over` plays actually fire? did a sent review request produce a GBP review in 14 days?), not user segments. "Analyze" is the only broken stage — fix it first. |
+| **L10** growth loop over a large user population | Anthropic A/B tests across segments; JobMagnet has one tenant, no A/B infra | The loop runs against **JobMagnet's own output** (did the `take_over` plays actually fire? did a sent review request produce a GBP review in 14 days?), not user segments. "Analyze" is the only broken stage — fix it first. |
 
 ---
 
 ## Operating model (how to *build* JobMagnet)
 
 1. **2-day build threshold, applied now.** Each ship blocker and wiring fix is sub-2-day; the acceptance bar is `test_smoke.py` (405) + `test_compliance_core.py` (47) green. Put down the docs and close them.
-2. **PMF constraint as a decision filter.** Until `milestone.achieved_at IS NOT NULL` for Heritage *as a paying tenant*, the only two things worth building are (a) a real warm-channel first win and (b) the "Mason said no" surface. Everything else fails the filter.
+2. **PMF constraint as a decision filter.** Until `milestone.achieved_at IS NOT NULL` for Heritage *as a paying tenant*, the only two things worth building are (a) a real warm-channel first win and (b) the "JobMagnet said no" surface. Everything else fails the filter.
 3. **Growth-loop stage as a triage test.** Every proposal must name which stage it strengthens (identify / build / test / analyze). "Analyze" is broken (`pull_reviews()` → `pending`); that fix is P0. Stage-1 niceties (competitor count) are P2.
 4. **Prototype-to-decide for new flows.** Build the `success_metric` anchor with Heritage's *actual* answer and watch the reaction — that reaction is the spec.
 5. **Deputize the test suite as PM.** The 405+47 assertions are the machine-readable product contract; a change that breaks either has violated the spec. They replace the PRD for routine work.
 6. **`CAPABILITY_BACKLOG.md`, one morning per quarter.** Re-run viability tests on parked capabilities; graduate any that pass.
-7. **Surface `/training` as a feature, not a settings page.** Mason getting smarter from corrections *is* the LTV engine — it's built; make it visible.
+7. **Surface `/training` as a feature, not a settings page.** JobMagnet getting smarter from corrections *is* the LTV engine — it's built; make it visible.
 
 ---
 
@@ -184,8 +184,8 @@ JobMagnet's user is a **blue-collar contractor on a job site**, and JobMagnet is
 ## Top 3 bets
 
 1. **Close the 5 ship blockers + fix the orphaned-win-id display bug before anything else.** Each is sub-2-day and has sat documented for weeks. Nothing else in this plan matters until the product can produce *and correctly display* a real first win. One real Heritage SMS review request that yields a real Google review is the only evidence worth having at pre-PMF.
-2. **Surface "Mason said no" through the product.** Fix `_briefing()` to take `signals`, extract `not_yet` plays, render `brief_passed_on`, and add the Mandate trust callout. ~30 lines across 4 files, under 2 days — and it unlocks a day-1 word-of-mouth mechanism (honest restraint with real numbers) that no horizontal tool can copy.
-3. **Wire the Mandate into `_route_system()` + auto-generate the FAQ at Walkthrough POST.** 15 lines (reusing `_h_game_plan()`'s pattern) eliminates the most damaging trust failure — Mason contradicting the contractor's own elections — and turns the first-win from a to-do into an artifact Mason *already built before the contractor committed*. Together: Mason stops being a cold-start chatbot and becomes a foreman who already knows the game plan and already did the first job.
+2. **Surface "JobMagnet said no" through the product.** Fix `_briefing()` to take `signals`, extract `not_yet` plays, render `brief_passed_on`, and add the Mandate trust callout. ~30 lines across 4 files, under 2 days — and it unlocks a day-1 word-of-mouth mechanism (honest restraint with real numbers) that no horizontal tool can copy.
+3. **Wire the Mandate into `_route_system()` + auto-generate the FAQ at Walkthrough POST.** 15 lines (reusing `_h_game_plan()`'s pattern) eliminates the most damaging trust failure — JobMagnet contradicting the contractor's own elections — and turns the first-win from a to-do into an artifact JobMagnet *already built before the contractor committed*. Together: JobMagnet stops being a cold-start chatbot and becomes a foreman that already knows the game plan and already did the first job.
 
 ---
 
@@ -193,7 +193,7 @@ JobMagnet's user is a **blue-collar contractor on a job site**, and JobMagnet is
 
 1. **Is Heritage's GBP OAuth token-refresh path confirmed end-to-end?** If not, the `pull_reviews()` blocker is really two sequential tasks (confirm OAuth, *then* implement the reviews GET).
 2. **Has A2P 10DLC registration started?** 2–4 week carrier lead time, external, non-compressible — it gates the first real SMS, the photo-by-text loop, and the morning brief. Start it today.
-3. **FAQ generation at Walkthrough POST: sync or async?** An LLM call adds 2–5s to submit. Block the redirect, or redirect immediately with a "Mason is generating your FAQ" polling state?
+3. **FAQ generation at Walkthrough POST: sync or async?** An LLM call adds 2–5s to submit. Block the redirect, or redirect immediately with a "JobMagnet is generating your FAQ" polling state?
 4. **Morning-brief delivery: opt-in or opt-out?** Opt-in respects the inbox but suppresses activation before value is proven; opt-out risks early friction.
 5. **`biz_slug`: permanent lock or settings-page override?** Changing it later breaks shared FAQ/insight URLs.
 6. **Bottleneck "see AI first" option: trigger FAQ generation immediately?** Could compress time-to-first-win to <30s but needs the same sync/async decision.

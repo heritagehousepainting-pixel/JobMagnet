@@ -1,7 +1,7 @@
 {% extends "app_shell.html" %}
 {% block title %}Plan &amp; Pricing{% endblock %}
 {% block page_title %}Plan &amp; Pricing{% endblock %}
-{% block page_sub %}<p class="page-sub">Less than the cost of one job, and Mason books you several. $0 setup, we handle the whole thing.</p>{% endblock %}
+{% block page_sub %}<p class="page-sub">Less than the cost of one job, and JobMagnet books you several. $0 setup, we handle the whole thing.</p>{% endblock %}
 
 {% block content %}
 {% if request.args.get('switched') %}<div class="save-banner" style="margin-bottom:var(--space-4)">Plan updated.</div>{% endif %}
@@ -43,6 +43,6 @@
 
 <p class="dt-muted" style="margin-top:var(--space-4);font-size:.85rem">
   Annual billing saves about two months. Texting, the number, and carrier registration are
-  included, Mason handles the setup.
+  included, JobMagnet handles the setup.
   {% if not billing_live %}<br>Card payment isn't connected yet, so choosing a plan updates it in the app for now.{% endif %}</p>
 {% endblock %}

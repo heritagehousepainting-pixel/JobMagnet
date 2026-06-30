@@ -1,10 +1,10 @@
 {% extends "app_shell.html" %}
 {% block title %}Connections{% endblock %}
 {% block page_title %}Connections{% endblock %}
-{% block page_sub %}<p class="page-sub">Link your real accounts so Mason actually does the work, texts, posts, and pulls reviews, instead of just drafting. Nothing goes live until you connect it.</p>{% endblock %}
+{% block page_sub %}<p class="page-sub">Link your real accounts so JobMagnet actually does the work, texts, posts, and pulls reviews, instead of just drafting. Nothing goes live until you connect it.</p>{% endblock %}
 
 {% block content %}
-{% if unlock_callout %}<div class="save-banner" style="margin-bottom:var(--space-4)"><strong>Mason:</strong> {{ unlock_callout.message }} <a href="{{ unlock_callout.href }}">{{ unlock_callout.cta }}</a></div>{% endif %}
+{% if unlock_callout %}<div class="save-banner" style="margin-bottom:var(--space-4)"><strong>JobMagnet:</strong> {{ unlock_callout.message }} <a href="{{ unlock_callout.href }}">{{ unlock_callout.cta }}</a></div>{% endif %}
 {% if secrets_active %}
   <div class="dt-muted" style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-4);font-size:0.85rem">
     <span class="pill pill-booked"><span class="pill-dot"></span>Encrypted at rest</span>
@@ -54,7 +54,7 @@
       <button class="btn btn-primary" type="button" disabled title="Add Google credentials to enable">Connect Google Business Profile</button>
       <p class="dt-muted" style="margin-top:var(--space-2);font-size:0.85rem">Not configured yet. Add your Google credentials (<code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code>) to turn on one-click connect. See <code>SETUP_NEEDED.md</code>.</p>
     {% elif p.connected %}
-      <p class="dt-muted" style="font-size:0.9rem">Connected and live. Mason can auto-post to your Google Business Profile. Use Disconnect above to unlink.</p>
+      <p class="dt-muted" style="font-size:0.9rem">Connected and live. JobMagnet can auto-post to your Google Business Profile. Use Disconnect above to unlink.</p>
     {% else %}
       <a class="btn btn-primary" href="/connections/google/connect" role="button">Connect Google Business Profile</a>
       <p class="dt-muted" style="margin-top:var(--space-2);font-size:0.85rem">You'll be sent to Google to approve access, then brought right back. No token to copy.</p>

@@ -1,7 +1,7 @@
 {% extends "app_shell.html" %}
 {% block title %}The Walkthrough{% endblock %}
 {% block page_title %}The Walkthrough{% endblock %}
-{% block page_sub %}<p class="page-sub">A few honest questions so Mason can read where your business really stands, then build your game plan. Rough numbers are fine.</p>{% endblock %}
+{% block page_sub %}<p class="page-sub">A few honest questions so JobMagnet can read where your business really stands, then build your game plan. Rough numbers are fine.</p>{% endblock %}
 
 {% block content %}
 <form method="post" action="/walkthrough" id="walkthroughForm">
@@ -77,7 +77,7 @@
     </div>
 
     <div class="card" style="margin-bottom:var(--space-6)">
-      <div class="card-head"><h2 class="card-title">How should Mason talk to you?</h2></div>
+      <div class="card-head"><h2 class="card-title">How should JobMagnet talk to you?</h2></div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:var(--space-3)">
         {% set current_format = (signals.brief_format if signals and signals.brief_format else (biz.brief_format if biz and biz.brief_format else '')) %}
         <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">

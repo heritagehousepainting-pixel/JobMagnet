@@ -32,10 +32,10 @@ PROVIDERS = {
              "fields": [("page_id", "Facebook Page ID"), ("ig_user_id", "Instagram user ID"),
                         ("access_token", "Page access token", True)]},
     "calendar": {"label": "Calendar (Google)", "kind": "oauth", "blurb":
-                 "Lets Mason book estimates straight onto your calendar.",
+                 "Lets JobMagnet book estimates straight onto your calendar.",
                  "fields": [("access_token", "Access token", True), ("calendar_id", "Calendar ID")]},
     "website": {"label": "Website", "kind": "keys", "blurb":
-                "Your site address, so Mason can point links and embed schema there.",
+                "Your site address, so JobMagnet can point links and embed schema there.",
                 "fields": [("url", "Website URL")]},
 }
 

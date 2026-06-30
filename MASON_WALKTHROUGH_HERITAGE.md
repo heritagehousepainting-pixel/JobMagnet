@@ -1,7 +1,7 @@
 # Heritage House Painting — the founding case study (TRUE baseline)
 
 **Date:** 2026-06-15 · The real Heritage Mandate + the founding proof story. JobMagnet's
-own best marketing is its founder's shop growing **transparently** with Mason: *"here's
+own best marketing is its founder's shop growing **transparently** with JobMagnet: *"here's
 where I started, here's what I had, here's what JobMagnet got me."* Honest numbers only —
 the public website's AI inflated them; we build on the truth. Persona/onboarding mechanics
 live in [PRODUCT_SPEC.md](PRODUCT_SPEC.md); playbooks in [MARKETING_PLAYBOOK.md](MARKETING_PLAYBOOK.md).
@@ -21,7 +21,7 @@ live in [PRODUCT_SPEC.md](PRODUCT_SPEC.md); playbooks in [MARKETING_PLAYBOOK.md]
 | Positioning | Main Line luxury — Montgomery / Delaware / Bucks Counties PA |
 | Services | interior/exterior, commercial, carpentry & finish trim, drywall, color consult, specialty/faux finishes, historic restoration |
 | Google reviews | **7–9** — already from the ~15 past clients (well is tapped) |
-| Owner | **Jack Morris** (what Mason calls him) |
+| Owner | **Jack Morris** |
 | Online marketing | basically none — runs on personal connections / years in the trade |
 | Leads | **3–4 / month** |
 | Close rate | **~3 of 3** (elite — closing is not the problem) |
@@ -38,7 +38,7 @@ clients; no backlog to harvest. **Still open:** average job value (to size upsid
   *more at-bats* — leads into a funnel that already converts.
 - **A great business that's invisible.** The opportunity is the gap between the *quality*
   and the *visibility*.
-- **What does NOT apply yet (and Mason says so):** Database Reactivation (#3) — repaint
+- **What does NOT apply yet (and JobMagnet says so):** Database Reactivation (#3) — repaint
   cycles are years out; no dormant goldmine in 15 one-year-old jobs. The 15 clients are
   gold for **referrals**, not repaint reactivation. *Telling the boss this is the
   production-honesty rule in action.*
@@ -63,22 +63,22 @@ clients; no backlog to harvest. **Still open:** average job value (to size upsid
    grows (just can't bootstrap from a tapped base).
 6. **Speed-to-lead (#2)** — set up so nothing slips; low priority at 3–4 leads/mo, scales up.
 
-## Mason's Mandate — Heritage (true)
+## Your Game Plan — Heritage (true)
 
 **Who we are:** Heritage House Painting, Main Line PA (Montgomery/Delaware/Bucks). Premium
 craftsmanship, white-glove. **~1 yr, ~15 jobs, great work, nearly invisible online.**
 **Going after:** more leads for high-end interior/exterior + specialty/historic work.
 **Reality:** closes ~3 of 3 — the job is *volume*, not conversion.
 
-**What Mason runs on his own:** weekly GBP posts of real project photos; local-SEO/AEO
+**What JobMagnet runs on its own:** weekly GBP posts of real project photos; local-SEO/AEO
 content; a review-capture from every *new* completed job.
-**What Mason brings for a yes first:** the **referral/intro** ask to the 15 past clients
+**What JobMagnet brings for a yes first:** the **referral/intro** ask to the 15 past clients
 (reviews already done); social/content showcases; a targeted paid (LSA/Meta) plan.
 **Off (gated):** Reactivation (not applicable yet) · cold outreach to non-customers.
 **Rules:** honest claims only (no inflated numbers — ever); SMS only to consenting
 clients; quiet hours; clean/premium tone; spend ceiling TBD.
 
-**In Mason's words:**
+**In JobMagnet's words:**
 > Here's the straight version, Jack. You do great work and almost nobody online knows it
 > yet — that's the whole opportunity. You close everything you touch, so we don't fix
 > closing, we get you more at-bats. Your 15 happy clients already left their reviews, so I'm

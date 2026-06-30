@@ -46,7 +46,7 @@
     </table>
     {% else %}
       {{ ui.empty("No numbers to show yet",
-                  "Log what you spend per channel and the jobs each one books. Mason turns it into your cost per booked job, the only number that matters.") }}
+                  "Log what you spend per channel and the jobs each one books. JobMagnet turns it into your cost per booked job, the only number that matters.") }}
     {% endif %}
     <form method="post" action="/roi/sync-firstback" style="margin-top:var(--space-4)">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">

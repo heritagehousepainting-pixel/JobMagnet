@@ -300,14 +300,14 @@ def digest_email(business, days=7):
     d = digest(bid, days)
     unmet = top_unmet(bid)
     name = business.get("name") or "your business"
-    lines = [f"Here is your weekly Mason digest for {name}.", ""]
+    lines = [f"Here is your weekly JobMagnet digest for {name}.", ""]
     lines.append(d["line"] or "A quiet week. No gaps and nothing new to teach.")
     lines.append(f"Conversations this week: {d['convos']}. Things I learned: {d['learnings']}.")
     if unmet:
         lines += ["", "Top requests to teach me or build next:"]
         lines += [f'  {i + 1}. "{u["sample"]}" ({u["count"]}x)' for i, u in enumerate(unmet)]
-    lines += ["", "Open Mason's Memory to teach or review what I missed."]
-    return {"subject": f"Your weekly Mason digest: {d['gaps']} gap(s), {d['learnings']} learned",
+    lines += ["", "Open JobMagnet's Memory to review what was missed."]
+    return {"subject": f"Your weekly JobMagnet digest: {d['gaps']} gap(s), {d['learnings']} learned",
             "body": "\n".join(lines)}
 
 
