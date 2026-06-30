@@ -1,7 +1,7 @@
 {% extends "app_shell.html" %}
 {% block title %}Game Plan{% endblock %}
 {% block page_title %}Mason's Game Plan{% endblock %}
-{% block page_sub %}<p class="page-sub">What I'd run for you, in order, and what I'd skip for now. You decide how much I take on for each.</p>{% endblock %}
+{% block page_sub %}<p class="page-sub">What I'd run for you, in order, and what I'd skip for now. You decide how much I take on for each.{% if elections_updated_at %} · Last updated: {{ elections_updated_at[:10] }}{% endif %}</p>{% endblock %}
 {% block header_actions %}<a class="btn btn-ghost" href="/walkthrough">Redo the Walkthrough</a>{% endblock %}
 
 {% block content %}
@@ -58,6 +58,39 @@
   </div>
 </div>
 
+{# ---- Trust callout (P1-8) ---- #}
+<div class="card" style="margin-bottom:var(--space-4)">
+  <div class="card-head"><h2 class="card-title">What Mason does and doesn't do on his own</h2></div>
+  <div class="card-body">
+    <p class="post-body">Autonomously: I draft and schedule your owned-channel content (posts, FAQs, local pages). Always ask first: any message to a customer, any ad spend. If a channel is not worth it, the timing is wrong, or you do not need something, I will say so.</p>
+  </div>
+</div>
+
+{# ---- Bottleneck radio (P2-13) ---- #}
+<div class="card" style="margin-bottom:var(--space-4)">
+  <div class="card-head"><h2 class="card-title">Where's the real bottleneck right now?</h2></div>
+  <div class="card-body">
+    <p class="dt-muted" style="margin-bottom:var(--space-3)">Pick the one that most accurately describes what's holding you back. Mason will weight his plays around it.</p>
+    <form method="post" action="/mandate/bottleneck" style="display:flex;flex-direction:column;gap:var(--space-3)">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+        <input type="radio" name="bottleneck_priority" value="not_enough_leads" {{ 'checked' if bottleneck_priority == 'not_enough_leads' }}>
+        <span class="field-label" style="margin:0">Not enough leads coming in</span></label>
+      <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+        <input type="radio" name="bottleneck_priority" value="no_reviews" {{ 'checked' if bottleneck_priority == 'no_reviews' }}>
+        <span class="field-label" style="margin:0">Not enough Google reviews</span></label>
+      <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+        <input type="radio" name="bottleneck_priority" value="win_back_customers" {{ 'checked' if bottleneck_priority == 'win_back_customers' }}>
+        <span class="field-label" style="margin:0">Need to win back past customers</span></label>
+      <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+        <input type="radio" name="bottleneck_priority" value="see_ai_first" {{ 'checked' if bottleneck_priority == 'see_ai_first' }}>
+        <span class="field-label" style="margin:0">Show me what Mason thinks first</span></label>
+      <div><button class="btn btn-secondary btn-sm" type="submit">Save</button></div>
+    </form>
+    {% if reconciliation_note %}<div class="save-banner" style="margin-top:var(--space-3)">{{ reconciliation_note }}</div>{% endif %}
+  </div>
+</div>
+
 {% for p in plays %}
 <div class="card" style="margin-bottom:var(--space-4)">
   <div class="card-head">
@@ -78,6 +111,21 @@
   <div class="card-body">
     <p class="post-topic" style="margin-bottom:var(--space-2)">{{ p.blurb }}</p>
     <p class="post-body"><strong>Mason:</strong> {{ p.reason }}</p>
+    {% if p.applicability == 'not_yet' and biz_slug %}
+    <div style="margin-top:var(--space-2)">
+      <button class="btn btn-sm btn-ghost" style="font-size:.8rem" onclick="navigator.clipboard.writeText(window.location.origin+'/insight/'+{{ biz_slug|tojson }}+'/{{ p.key }}')">Share why Mason is holding off</button>
+    </div>
+    {% endif %}
+    {% if p.applicability == 'applies' and p.playbook == 'aeo_faq' and faq %}
+    <div style="margin-top:var(--space-3)">
+      <p class="dt-muted" style="margin-bottom:var(--space-2);font-size:.85rem">Paste-ready FAQ — copy and use anywhere:</p>
+      <textarea class="field-control" readonly rows="8" style="font-size:.85rem;font-family:monospace">{{ faq }}</textarea>
+      <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:var(--space-2)">
+        <button class="btn btn-sm btn-ghost" type="button" onclick="navigator.clipboard.writeText(this.previousElementSibling.previousElementSibling.value)">Copy FAQ</button>
+        {% if biz_slug %}<a class="btn btn-sm btn-ghost" href="/faq/{{ biz_slug }}" target="_blank" rel="noopener">View public FAQ page</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
     {% if p.applicability == 'applies' %}
     <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:var(--space-3);flex-wrap:wrap">
       {% for value, label in election_labels.items() %}

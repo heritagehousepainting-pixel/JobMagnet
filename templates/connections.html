@@ -4,6 +4,7 @@
 {% block page_sub %}<p class="page-sub">Link your real accounts so Mason actually does the work, texts, posts, and pulls reviews, instead of just drafting. Nothing goes live until you connect it.</p>{% endblock %}
 
 {% block content %}
+{% if unlock_callout %}<div class="save-banner" style="margin-bottom:var(--space-4)"><strong>Mason:</strong> {{ unlock_callout.message }} <a href="{{ unlock_callout.href }}">{{ unlock_callout.cta }}</a></div>{% endif %}
 {% if secrets_active %}
   <div class="dt-muted" style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-4);font-size:0.85rem">
     <span class="pill pill-booked"><span class="pill-dot"></span>Encrypted at rest</span>

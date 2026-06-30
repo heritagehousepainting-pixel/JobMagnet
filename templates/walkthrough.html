@@ -4,57 +4,107 @@
 {% block page_sub %}<p class="page-sub">A few honest questions so Mason can read where your business really stands, then build your game plan. Rough numbers are fine.</p>{% endblock %}
 
 {% block content %}
-<form method="post" action="/walkthrough">
+<form method="post" action="/walkthrough" id="walkthroughForm">
   <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
-  <div class="card" style="margin-bottom:var(--space-6)">
-    <div class="card-head"><h2 class="card-title">The work &amp; the money</h2></div>
-    <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
-      <label class="field"><span class="field-label">Years in business</span>
-        <input class="field-control" type="number" step="0.5" min="0" name="years_in_business" value="{{ signals.years_in_business if signals else '' }}" placeholder="e.g. 1"></label>
-      <label class="field"><span class="field-label">Average job value ($)</span>
-        <input class="field-control" type="number" step="100" min="0" name="avg_job_value" value="{{ signals.avg_job_value if signals else '' }}" placeholder="e.g. 7000"></label>
-      <label class="field"><span class="field-label">New jobs you complete per month</span>
-        <input class="field-control" type="number" step="0.5" min="0" name="new_jobs_per_month" value="{{ signals.new_jobs_per_month if signals else '' }}" placeholder="e.g. 3"></label>
+  {# ===== STEP 1 ===== #}
+  <div data-step="1" id="wt-step-1">
+
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div class="card-head"><h2 class="card-title">The work &amp; the money</h2></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
+        <label class="field"><span class="field-label">Years in business</span>
+          <input class="field-control" type="number" step="0.5" min="0" name="years_in_business" value="{{ signals.years_in_business if signals else '' }}" placeholder="e.g. 1"></label>
+        <label class="field"><span class="field-label">Average job value ($)</span>
+          <input class="field-control" type="number" step="100" min="0" name="avg_job_value" value="{{ signals.avg_job_value if signals else '' }}" placeholder="e.g. 7000"></label>
+        <label class="field"><span class="field-label">New jobs you complete per month</span>
+          <input class="field-control" type="number" step="0.5" min="0" name="new_jobs_per_month" value="{{ signals.new_jobs_per_month if signals else '' }}" placeholder="e.g. 3"></label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div class="card-head"><h2 class="card-title">How leads come in now</h2></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
+        <label class="field"><span class="field-label">Leads / calls per month</span>
+          <input class="field-control" type="number" step="1" min="0" name="monthly_leads" value="{{ signals.monthly_leads if signals else '' }}" placeholder="e.g. 4"></label>
+        <label class="field"><span class="field-label">Of those, how many you miss or don't get back to fast</span>
+          <input class="field-control" type="number" step="1" min="0" name="missed_leads" value="{{ signals.missed_leads if signals else '' }}" placeholder="e.g. 0"></label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div class="card-head"><h2 class="card-title">Your past customers</h2></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
+        <label class="field"><span class="field-label">Past customers (with contact info)</span>
+          <input class="field-control" type="number" step="1" min="0" name="past_customers" value="{{ signals.past_customers if signals else '' }}" placeholder="e.g. 15"></label>
+        <label class="field"><span class="field-label">How many years back the oldest job goes</span>
+          <input class="field-control" type="number" step="0.5" min="0" name="oldest_job_years" value="{{ signals.oldest_job_years if signals else '' }}" placeholder="e.g. 1"></label>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" type="button" onclick="showStep2()">Next: Market presence</button>
+  </div>
+
+  {# ===== STEP 2 ===== #}
+  <div data-step="2" id="wt-step-2" style="display:none">
+
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div class="card-head"><h2 class="card-title">Where you stand online</h2></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
+        <label class="field"><span class="field-label">Google reviews you have now</span>
+          <input class="field-control" type="number" step="1" min="0" name="review_count" value="{{ signals.review_count if signals else '' }}" placeholder="e.g. 8"></label>
+        <label class="field"><span class="field-label">Past customers who haven't reviewed yet</span>
+          <input class="field-control" type="number" step="1" min="0" name="reviewable_backlog" value="{{ signals.reviewable_backlog if signals else '' }}" placeholder="leave blank to estimate"></label>
+        <label class="field"><span class="field-label">Google reviews your strongest local competitor has (rough estimate is fine)</span>
+          <input class="field-control" type="number" step="1" min="0" name="competitor_review_count" value="{{ signals.competitor_review_count if signals else '' }}" placeholder="e.g. 45"></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+          <input type="checkbox" name="gbp_claimed" value="on" {{ 'checked' if signals and signals.gbp_claimed }}>
+          <span class="field-label" style="margin:0">Google Business Profile is claimed</span></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+          <input type="checkbox" name="runs_ads" value="on" {{ 'checked' if signals and signals.runs_ads }}>
+          <span class="field-label" style="margin:0">Currently running any paid ads</span></label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div class="card-head"><h2 class="card-title">Your goals</h2></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
+        <label class="field"><span class="field-label">What kind of work do you want more of?</span>
+          <textarea class="field-control" name="capacity_note" rows="3" placeholder="e.g. kitchen and bath repaint jobs">{{ signals.capacity_note if signals and signals.capacity_note else (biz.capacity_note if biz and biz.capacity_note else '') }}</textarea></label>
+        <label class="field"><span class="field-label">What does success look like in 90 days?</span>
+          <textarea class="field-control" name="success_metric" rows="3" placeholder="e.g. 5 more booked jobs per month">{{ signals.success_metric if signals and signals.success_metric else (biz.success_metric if biz and biz.success_metric else '') }}</textarea></label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div class="card-head"><h2 class="card-title">How should Mason talk to you?</h2></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:var(--space-3)">
+        {% set current_format = (signals.brief_format if signals and signals.brief_format else (biz.brief_format if biz and biz.brief_format else '')) %}
+        <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+          <input type="radio" name="brief_format" value="straight_and_brief" {{ 'checked' if current_format == 'straight_and_brief' }}>
+          <span class="field-label" style="margin:0">Straight and brief</span></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
+          <input type="radio" name="brief_format" value="detailed_and_explained" {{ 'checked' if current_format == 'detailed_and_explained' }}>
+          <span class="field-label" style="margin:0">Detailed and explained</span></label>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:var(--space-3);align-items:center">
+      <button class="btn btn-ghost" type="button" onclick="showStep1()">Back</button>
+      <button class="btn btn-primary" type="submit">{{ 'Rebuild the game plan' if signals else 'Build my game plan' }}</button>
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:var(--space-6)">
-    <div class="card-head"><h2 class="card-title">How leads come in now</h2></div>
-    <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
-      <label class="field"><span class="field-label">Leads / calls per month</span>
-        <input class="field-control" type="number" step="1" min="0" name="monthly_leads" value="{{ signals.monthly_leads if signals else '' }}" placeholder="e.g. 4"></label>
-      <label class="field"><span class="field-label">Of those, how many you miss or don't get back to fast</span>
-        <input class="field-control" type="number" step="1" min="0" name="missed_leads" value="{{ signals.missed_leads if signals else '' }}" placeholder="e.g. 0"></label>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:var(--space-6)">
-    <div class="card-head"><h2 class="card-title">Your past customers</h2></div>
-    <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
-      <label class="field"><span class="field-label">Past customers (with contact info)</span>
-        <input class="field-control" type="number" step="1" min="0" name="past_customers" value="{{ signals.past_customers if signals else '' }}" placeholder="e.g. 15"></label>
-      <label class="field"><span class="field-label">How many years back the oldest job goes</span>
-        <input class="field-control" type="number" step="0.5" min="0" name="oldest_job_years" value="{{ signals.oldest_job_years if signals else '' }}" placeholder="e.g. 1"></label>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:var(--space-6)">
-    <div class="card-head"><h2 class="card-title">Where you stand online</h2></div>
-    <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
-      <label class="field"><span class="field-label">Google reviews you have now</span>
-        <input class="field-control" type="number" step="1" min="0" name="review_count" value="{{ signals.review_count if signals else '' }}" placeholder="e.g. 8"></label>
-      <label class="field"><span class="field-label">Past customers who haven't reviewed yet</span>
-        <input class="field-control" type="number" step="1" min="0" name="reviewable_backlog" value="{{ signals.reviewable_backlog if signals else '' }}" placeholder="leave blank to estimate"></label>
-      <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
-        <input type="checkbox" name="gbp_claimed" value="on" {{ 'checked' if signals and signals.gbp_claimed }}>
-        <span class="field-label" style="margin:0">Google Business Profile is claimed</span></label>
-      <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
-        <input type="checkbox" name="runs_ads" value="on" {{ 'checked' if signals and signals.runs_ads }}>
-        <span class="field-label" style="margin:0">Currently running any paid ads</span></label>
-    </div>
-  </div>
-
-  <button class="btn btn-primary" type="submit">{{ 'Rebuild the game plan' if signals else 'Build my game plan' }}</button>
 </form>
+
+<script>
+function showStep1() {
+  document.getElementById('wt-step-1').style.display = '';
+  document.getElementById('wt-step-2').style.display = 'none';
+}
+function showStep2() {
+  document.getElementById('wt-step-1').style.display = 'none';
+  document.getElementById('wt-step-2').style.display = '';
+}
+</script>
 {% endblock %}

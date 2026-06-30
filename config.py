@@ -46,6 +46,7 @@ SMTP_HOST = os.environ.get("SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+EMAIL_LIVE = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
 # Quiet hours (local clock) -- no marketing SMS sends inside this window.
 # Default 9pm-8am. Transactional messages still respect opt-outs but not quiet hours.
 QUIET_HOURS_START = int(os.environ.get("JOBMAGNET_QUIET_START", "21") or "21")

@@ -13,6 +13,7 @@
     <div class="brief-main">
       <p class="brief-hi">{{ brief.hello }}</p>
       <p class="brief-line">{{ brief.line }}</p>
+      {% if brief.passed_on %}<p class="brief-line" style="font-size:.9rem;color:var(--muted)">Holding off on {{ brief.passed_on.label }}: {{ brief.passed_on.reason }}</p>{% endif %}
       <div class="brief-actions">
         <a class="btn btn-primary" href="{{ brief.todo_href }}">{{ brief.todo_label }}</a>
         <span class="brief-meta"><span class="dot"></span> Mason · on the clock</span>

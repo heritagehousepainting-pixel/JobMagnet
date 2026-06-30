@@ -37,6 +37,8 @@ it creates demand AND books it, proven in cost-per-booked-job.
 - **Assemble the moat, don't front-load it** — the cost-per-booked-job loop is wired
   *after* live channels + conversion data exist, not on an empty dataset.
 - **Thin vertical slices** — each phase is a working loop, not a horizontal module.
+- **PMF constraint:** Until onboarding_milestone.achieved_at IS NOT NULL for a paying tenant, build only warm-channel proof (reviews, GBP, reactivation) and the Mason-said-no share surface. Any other feature proposal fails this filter.
+- **CACHE triage filter:** every feature proposal must name which CACHE stage it strengthens (Capture / Activate / Convert / Habit / Expand). If it strengthens none, defer it.
 
 ---
 
@@ -92,6 +94,10 @@ The moat. Now there's activity to measure.
 - TCPA written-consent gate (SMS); FCC artificial-voice gate (voice).
 - **Default OFF; ships only after a TCPA attorney reviews the consent flows.**
 
+### Parked — milestone-gated
+
+Phase 5 (Cold email, M4) and Phase 6 (Cold SMS/Voice, M5/M6) are moved here. They ship only when all three of these are true: (a) firstwin.achieved() returns a non-simulated outcome for at least one paying contractor tenant; (b) that tenant is paying (not a trial or internal account); (c) a TCPA attorney has reviewed and signed off in writing on the cold-outbound consent flows. Until then these phases do not enter the active build queue.
+
 ---
 
 ## Status
@@ -102,10 +108,19 @@ The moat. Now there's activity to measure.
   scheduling/photo-by-text/images = Phase 2.
 - **Next:** Phase 0 seam → Phase 1 Reviews.
 
+Milestone gate: no new module launches until Heritage has sent a real SMS review request AND a real Google review was pulled as a result (reviewsync.pull_reviews() returns {mode: live} for that tenant).
+
 ## Guardrails (carried from FirstBack, every phase)
 Every integration a safe no-op until configured · honest "simulated vs live" UI ·
 nothing blocks the hot path · consent ledger is the spine of all outbound · pure,
 testable decision logic · compliance gates are hard gates, not warnings.
+
+Morning brief delivery gate: do not ship the scheduled morning brief until at least one of SMS_LIVE or EMAIL_LIVE is confirmed delivering a real message to Heritage's inbox.
+
+When a killed or deferred capability comes up in planning, check CAPABILITY_BACKLOG.md first — last month's no may be this month's yes.
+
+## Build Protocol
+Sub-2-day changes ship against test_smoke.py + test_compliance_core.py green with no spec needed. Over-2-day changes require one paragraph written before starting: why this / does it touch compliance / what am I learning. Pre-flight: does it touch TCPA/consent? Does it claim anything simulated as live? Do all three test suites stay green?
 
 ## The Assistant layer (packaging — see PRODUCT_SPEC §The Assistant)
 The named persona is the *face* over M0–M10, not a new build — it surfaces what the

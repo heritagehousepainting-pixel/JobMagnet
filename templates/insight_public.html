@@ -1,0 +1,21 @@
+{% extends "site_base.html" %}
+{% block title %}Why Mason hasn't run {{ play.label }} for {{ biz.name }} yet{% endblock %}
+{% block meta_desc %}Mason's honest read on why {{ play.label }} isn't the right move for {{ biz.name }} right now.{% endblock %}
+
+{% block body %}
+<main class="wrap" style="padding:var(--space-10) var(--space-4);max-width:720px;margin:0 auto">
+
+  <header style="margin-bottom:var(--space-8)">
+    <h1 style="font-size:2rem;font-weight:800;line-height:1.2;margin-bottom:var(--space-2)">Why Mason hasn't run {{ play.label }} for {{ biz.name }} yet</h1>
+  </header>
+
+  <div style="font-size:1.05rem;line-height:1.7;color:var(--text-1)">
+    <p>{{ play.reason }}</p>
+  </div>
+
+  <div style="margin-top:var(--space-10);padding-top:var(--space-6);border-top:1px solid var(--border);color:var(--text-2);font-size:.9rem">
+    <p>Mason is JobMagnet's AI marketing assistant for home-services contractors. He tells you when not to spend. <a href="https://jobmagnet.app" style="color:var(--brand)">jobmagnet.app</a>.</p>
+  </div>
+
+</main>
+{% endblock %}

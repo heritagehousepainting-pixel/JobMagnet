@@ -23,7 +23,8 @@ from config import DATABASE_URL, DEFAULT_BUSINESS
 # create_business/update_business only touch columns actually provided.
 _BUSINESS_COLS = ["name", "trade", "service_area", "owner_name", "brand_voice",
                   "services", "target_customer", "differentiators", "capacity_note",
-                  "google_review_link", "faq", "mailing_address"]
+                  "google_review_link", "faq", "mailing_address", "success_metric",
+                  "brief_format"]
 
 # Lifecycle of a generated post. 'scheduled' = approved + a future publish time.
 POST_STATUSES = ("draft", "approved", "scheduled", "published", "rejected")
@@ -326,6 +327,25 @@ def init_db():
     # auto-scheduled (so the heartbeat publishes it) -- but ONLY on live channels.
     # Default OFF: everything still drafts and waits for approval.
     _ensure_columns(c, "businesses", {"auto_publish": "INTEGER DEFAULT 0"})
+    # P0-1: dedup column for GBP-pulled reviews so repeated heartbeats never insert duplicates.
+    _ensure_columns(c, "reviews", {"gbp_review_id": "TEXT"})
+    # P0-3: activation funnel — when the owner first opened the Walkthrough.
+    # Lifecycle column: NOT in _BUSINESS_COLS so update_business() can't accidentally erase it.
+    _ensure_columns(c, "businesses", {"walkthrough_started_at": "TEXT"})
+    # P1-5: Business-Brain editable column (goes in _BUSINESS_COLS).
+    _ensure_columns(c, "businesses", {"success_metric": "TEXT"})
+    # P1-11: user login timestamp for engagement tracking.
+    _ensure_columns(c, "users", {"login_at": "TEXT"})
+    # P2-13: contractor-stated bottleneck (lifecycle, NOT in _BUSINESS_COLS).
+    _ensure_columns(c, "businesses", {"bottleneck_priority": "TEXT"})
+    # P2-14: Mason stall-detection alert (lifecycle cols, NOT in _BUSINESS_COLS).
+    _ensure_columns(c, "businesses", {"mason_alert": "TEXT", "mason_alert_at": "TEXT"})
+    # P2-16: public-facing slug for /faq/<slug> and /insight/<slug>/<play> routes (NOT in _BUSINESS_COLS).
+    _ensure_columns(c, "businesses", {"biz_slug": "TEXT"})
+    # P2-19: tone-preference (Brain/editable, goes in _BUSINESS_COLS).
+    _ensure_columns(c, "businesses", {"brief_format": "TEXT"})
+    # P2-20: competitor review count added to signals schema.
+    _ensure_columns(c, "business_signals", {"competitor_review_count": "INTEGER"})
     # Booking-feed product rename RingBack -> FirstBack: migrate any legacy conversion
     # rows so cost-per-booked-job dedup + attribution stay correct. Idempotent.
     c.execute("UPDATE conversions SET origin='firstback' WHERE origin='ringback'")
@@ -409,6 +429,8 @@ def update_business(business_id, fields):
 
 
 # ---- Content posts ----
+# Future rejection-drift detection requires adding a 'playbook TEXT' column here and
+# updating add_post() + all callers before writing the detection query.
 def add_post(business_id, platform, topic, body, status="draft"):
     conn = get_conn()
     cur = conn.execute(
@@ -646,16 +668,35 @@ def list_messages(business_id, limit=100):
 
 
 # ---- Reviews ----  (Phase 1)
-def add_review(business_id, source, author, rating, body, contact_id=None):
+def add_review(business_id, source, author, rating, body, contact_id=None,
+               gbp_review_id=None):
+    """Insert a new review row. gbp_review_id deduplicates GBP-pulled reviews;
+    existing callers omit it (default None) so they remain backward-compatible."""
     conn = get_conn()
-    cur = conn.execute(
-        "INSERT INTO reviews (business_id, contact_id, source, author, rating, body, "
-        "status, created_at) VALUES (%s,%s,%s,%s,%s,%s, 'new', %s) RETURNING id",
-        (business_id, contact_id, source, author, rating, body, now_iso()))
+    if gbp_review_id is not None:
+        cur = conn.execute(
+            "INSERT INTO reviews (business_id, contact_id, source, author, rating, body, "
+            "status, created_at, gbp_review_id) VALUES (%s,%s,%s,%s,%s,%s,'new',%s,%s) RETURNING id",
+            (business_id, contact_id, source, author, rating, body, now_iso(), gbp_review_id))
+    else:
+        cur = conn.execute(
+            "INSERT INTO reviews (business_id, contact_id, source, author, rating, body, "
+            "status, created_at) VALUES (%s,%s,%s,%s,%s,%s, 'new', %s) RETURNING id",
+            (business_id, contact_id, source, author, rating, body, now_iso()))
     conn.commit()
     rid = cur.fetchone()["id"]
     conn.close()
     return rid
+
+
+def review_exists_by_gbp_id(business_id, gbp_review_id):
+    """True if we already have a review row for this GBP reviewId (dedup guard)."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM reviews WHERE business_id=%s AND gbp_review_id=%s LIMIT 1",
+        (business_id, gbp_review_id)).fetchone()
+    conn.close()
+    return row is not None
 
 
 def get_review(review_id, business_id=None):
@@ -783,7 +824,7 @@ def roi_summary(business_id):
 _SIGNAL_COLS = ["years_in_business", "monthly_leads", "missed_leads", "close_rate",
                 "review_count", "new_jobs_per_month", "past_customers",
                 "oldest_job_years", "avg_job_value", "reviewable_backlog",
-                "gbp_claimed", "runs_ads"]
+                "gbp_claimed", "runs_ads", "competitor_review_count"]
 
 
 def save_signals(business_id, signals):
@@ -1502,12 +1543,60 @@ def first_win_facts(business_id):
             "AND publish_mode='live' LIMIT 1", (business_id,)),
         "faq_generated": _exists(
             "SELECT 1 FROM businesses WHERE id=%s AND COALESCE(faq,'')<>'' LIMIT 1", (business_id,)),
-        "firstback_booking": _exists(
-            "SELECT 1 FROM conversions WHERE business_id=%s AND origin IN ('firstback','firstback') "
-            "LIMIT 1", (business_id,)),
+        "photo_post_generated": _exists(
+            "SELECT 1 FROM content_posts WHERE business_id=%s AND topic LIKE %s "
+            "AND status != %s LIMIT 1", (business_id, '%[photo attached by text]%', 'rejected')),
     }
     conn.close()
     return facts
+
+
+def set_walkthrough_started(business_id):
+    """Idempotent first-visit timestamp: only written once (when walkthrough_started_at IS NULL)."""
+    conn = get_conn()
+    conn.execute(
+        "UPDATE businesses SET walkthrough_started_at=%s WHERE id=%s AND walkthrough_started_at IS NULL",
+        (now_iso(), business_id))
+    conn.commit()
+    conn.close()
+
+
+def activation_funnel_counts():
+    """Stage counts for the admin activation funnel tile on /dashboard (biz id==1 only).
+    stage1: owner opened the Walkthrough (walkthrough_started_at IS NOT NULL)
+    stage2: at least one playbook election exists (Mandate has been set)
+    stage3: first-win milestone achieved (onboarding_milestone.achieved_at IS NOT NULL)"""
+    conn = get_conn()
+    stage1 = conn.execute(
+        "SELECT COUNT(*) FROM businesses WHERE walkthrough_started_at IS NOT NULL"
+    ).fetchone()["count"]
+    stage2 = conn.execute(
+        "SELECT COUNT(DISTINCT business_id) FROM playbook_elections"
+    ).fetchone()["count"]
+    stage3 = conn.execute(
+        "SELECT COUNT(*) FROM onboarding_milestone WHERE achieved_at IS NOT NULL"
+    ).fetchone()["count"]
+    conn.close()
+    return {"stage1": stage1, "stage2": stage2, "stage3": stage3}
+
+
+def write_login_at(user_id):
+    """Record a login timestamp on the users table. Guard against None user_id."""
+    if not user_id:
+        return
+    conn = get_conn()
+    conn.execute("UPDATE users SET login_at=%s WHERE id=%s", (now_iso(), user_id))
+    conn.commit()
+    conn.close()
+
+
+def get_business_by_slug(slug):
+    """Look up a business by its public biz_slug. Returns a dict or None."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM businesses WHERE biz_slug=%s LIMIT 1", (slug,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 def get_milestone(business_id):

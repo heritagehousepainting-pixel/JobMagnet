@@ -8,6 +8,9 @@
          data-suggestions='{{ suggestions|tojson }}'
          data-hello="{{ brief.hello }}">
 
+  {# ---- Mason alert (stall detection / weekly self-audit) ---- #}
+  {% if mason_alert %}<div class="save-banner" style="background:var(--warning-bg,#fffbe6);color:var(--warning,#92610a);margin-bottom:var(--space-4)">{{ mason_alert }} <a href="?clear=mason_alert" style="margin-left:var(--space-2);font-size:.85rem">Dismiss</a></div>{% endif %}
+
   {# ---- The Jarvis core: a living orb that is the assistant's presence ---- #}
   <div class="orb-stage" aria-hidden="true">
     <div class="orb-halo"></div>
@@ -23,9 +26,11 @@
       <p class="convo-sub">Tell me what you want done. I can pull your numbers, write and
         publish posts, send review requests, link your accounts, and set your autopilot.
         You can still work by hand in the <a href="/queue">Queue</a>.</p>
+      {% if brief.passed_on %}<p class="convo-sub" style="font-size:.9rem;color:var(--muted)">I am holding off on {{ brief.passed_on.label }} — {{ brief.passed_on.reason }}</p>{% endif %}
       {% if digest and digest.has_content %}<p class="convo-digest">{{ digest.line }} <a href="/training">Review in Memory</a>.</p>{% endif %}
       {% set fw = first_win %}
       {% include "_firstwin.html" %}
+      {% if activation_funnel %}<p class="dt-muted" style="font-size:.8rem;margin-top:var(--space-3)">Funnel: {{ activation_funnel.stage1 }} started walkthrough · {{ activation_funnel.stage2 }} set elections · {{ activation_funnel.stage3 }} first win achieved</p>{% endif %}
     </div>
     <div class="transcript" id="transcript" aria-live="polite"></div>
   </div>
