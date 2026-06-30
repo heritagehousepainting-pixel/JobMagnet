@@ -1,8 +1,8 @@
-# JobMagnet / Mason — The Marketing Playbook ("the production")
+# JobMagnet — The Marketing Playbook ("the production")
 
 **Date:** 2026-06-15 · The substance behind the persona: *what actually works*, stolen
 from the best local-marketing operators on earth (dental, med-spa, home-services in
-cutthroat markets) and rebuilt **trade-native for PA**. This is how Mason earns
+cutthroat markets) and rebuilt **trade-native for PA**. This is how JobMagnet earns
 "best construction marketing group in PA" — see [PRODUCT_SPEC.md](PRODUCT_SPEC.md)
 §"The production standard". Researched from real 2025–2026 industry data (sources at end).
 
@@ -16,13 +16,13 @@ cutthroat markets) and rebuilt **trade-native for PA**. This is how Mason earns
 
 ## The proven levers (what works, and who we stole it from)
 
-| # | Lever | The proof (real data) | Stolen from | Mason's trade-native play |
+| # | Lever | The proof (real data) | Stolen from | JobMagnet's trade-native play |
 |---|---|---|---|---|
-| 1 | **Speed-to-lead** | 5-min response = up to **100x** conversion vs 30 min; **78% buy from the first responder** (even if pricier); avg business takes **42 hrs**; 73% of leads never contacted | everyone — contractors fail worst | Instant text-back + AI booking on every inbound. Painter's on a ladder; Mason answers in seconds. (JobMagnet + FirstBack) |
+| 1 | **Speed-to-lead** | 5-min response = up to **100x** conversion vs 30 min; **78% buy from the first responder** (even if pricier); avg business takes **42 hrs**; 73% of leads never contacted | everyone — contractors fail worst | Instant text-back + AI booking on every inbound. Painter's on a ladder; JobMagnet answers in seconds. (JobMagnet + FirstBack) |
 | 2 | **Database reactivation** | Dental sits on **$500K–$1.5M** dormant; **4–5 touches = 81%** lift; **5–6x cheaper** than new leads; 35–40% of dormant rebook | dental recall systems | Mine the past-customer list on repaint cycles ("interior 3 yrs ago → exterior due"). Zero ad spend. |
 | 3 | **Review velocity** | 50 reviews w/ 10 fresh **beat 500 stale**; impact in **30–45 days**; #1 controllable LSA-rank factor; ~10–15% of local ranking | local SEO + dental | Continuous drip off every finished job, not a blast (Playbook #1 below). |
 | 4 | **LSA-first paid** | ~**$60**/lead, **20–25%** conversion (vs 6–8% PPC); new "Google Verified" badge (late-2025); reviews feed rank | home-services agencies | When paid is warranted, LSA before Search before Meta. Reviews (lever 3) make it cheap. |
-| 5 | **Irresistible offer + risk-reversal** | **80%** of winning med-spa campaigns open with a low-barrier offer; offer strength inversely drives CAC | med-spas | Mason builds the seasonal hook + a satisfaction guarantee most contractors lack. |
+| 5 | **Irresistible offer + risk-reversal** | **80%** of winning med-spa campaigns open with a low-barrier offer; offer strength inversely drives CAC | med-spas | JobMagnet builds the seasonal hook + a satisfaction guarantee most contractors lack. |
 | 6 | **Maintenance plans + referrals** | retention **5–7x cheaper** than acquisition; plans stop customers calling competitors; post-job **SMS = 3x** email response | HVAC/home-services | Recurring-revenue plans + tiered referral asks off the existing base; handwritten-style thank-yous. |
 | 7 | **AEO (get cited by AI)** | AI Overviews on **~55%** of searches; ChatGPT **883M** users; **83%** of AI citations from pages updated <12 mo | cutting-edge dental | Answer-first local pages + structured data so AI names the business for "best painter in [town]." |
 | 8 | **Value-based targeting** | dental wins by pushing highest-LTV services (implants), not everything | dental/med-spa PPC | Push the jobs the contractor *wants* (cabinets, whole-house), not cheap one-rooms. Ties to the Mandate. |
@@ -37,7 +37,7 @@ ROI-proven + at $300/mo**. But the sharp edge isn't "we do more," it's the **seq
 > in *weeks*. Win trust with found money, *then* layer reviews → LSA → offers → AEO.
 
 A generic agency physically cannot lead with that — they sell ad spend, not found money.
-This is the trust-first, ROI-first wedge that makes Mason feel like he's on your side
+This is the trust-first, ROI-first wedge that makes JobMagnet feel like it's on your side
 (he's making you money before you spend a dime) — which is exactly the
 [soul rule in PRODUCT_SPEC] in action.
 
@@ -56,7 +56,7 @@ because recency beats volume and it compounds into map-pack + LSA rank within 30
 3. **One polite reminder** ~3 days later if no review — multi-touch lifts response, but
    never nag past that (we're not spammers).
 4. **Ask everyone — never "gate."** A "how'd we do?" check-in is fine, but routing only
-   happy customers to Google and burying unhappy ones **violates Google policy** — Mason
+   happy customers to Google and burying unhappy ones **violates Google policy** — JobMagnet
    won't do it. Unhappy → a fast *service-recovery* alert to the owner (fix it), with the
    customer still free to review. Honesty *is* production.
 5. **Respond to 100% of reviews within 72h** (Google reads responses; it lifts rank).
@@ -76,7 +76,7 @@ a response — and we can show the rank/lead lift it produced.
 
 **Goal:** every inbound lead gets a real response in *seconds*, because the first
 responder wins **78%** of multi-quote shoppers and a 5-min reply converts up to **100x**
-better than 30 min. A contractor on a ladder physically can't do this — Mason always can.
+better than 30 min. A contractor on a ladder physically can't do this — JobMagnet always can.
 This is the single biggest gap between "has leads" and "books jobs."
 
 **The math (why it's free money):** missed-call text-back recovers **30–60%** of unanswered
@@ -93,7 +93,7 @@ is far higher — the recovered number is bigger.
    call right back."*
 3. **Web form / message → instant acknowledgment + one qualifying question** within seconds.
 4. **Multi-touch until they answer:** ~2 min → 1 hr → 24 hr, then stop / hand to owner.
-5. **AI qualify + book:** Mason asks the 2–3 that matter (service, address in territory,
+5. **AI qualify + book:** JobMagnet asks the 2–3 that matter (service, address in territory,
    timeline), then **books to the calendar or hands the owner a hot, qualified lead with
    context.** (FirstBack runs the booking/voice; JobMagnet feeds it.)
 6. **Hot-lead alert, in voice:** *"Hot one — Sarah in Lititz, kitchen cabinets, wants a
@@ -137,7 +137,7 @@ cycles** — **5–6x cheaper** than new leads, and a list almost no contractor 
 cost-per-booked-job vs. new-lead cost (it'll be a fraction).
 
 **Compliance:** past customers are a warm, established relationship (low risk) — but the
-consent ledger, opt-out, and quiet hours still apply. Mason **never** cold-texts
+consent ledger, opt-out, and quiet hours still apply. JobMagnet **never** cold-texts
 non-customers; that stays gated (M5).
 
 ## Playbook #4 — GBP + Review-Fed LSA Paid Play  *(when paid is warranted)*
@@ -194,7 +194,7 @@ low-barrier offer). Give every campaign an honest, compelling hook + risk revers
 3. **Personal touch:** handwritten-style thank-you, loyalty discount on next service.
 4. **Communication discipline:** 24-hr-before confirmations, a dedicated point of contact,
    **post-service SMS survey** (3x the response of email).
-5. **Mason orchestrates:** spots who just had a great experience → fires the referral ask;
+5. **JobMagnet orchestrates:** spots who just had a great experience → fires the referral ask;
    tracks plan renewals so nothing lapses.
 
 **Measure:** plan enrollment, referral rate, repeat rate, LTV.
@@ -214,7 +214,7 @@ of AI citations come from pages updated within 12 months.
 2. **Entity clarity + structured data:** LocalBusiness + Service + FAQ schema, consistent
    NAP, crisp what/where/why-relevant.
 3. **Per-location / per-service pages** generated from the Business Brain.
-4. **Freshness:** Mason refreshes pages on a cadence (<12 mo) — that's where 83% of
+4. **Freshness:** JobMagnet refreshes pages on a cadence (<12 mo) — that's where 83% of
    citations come from.
 5. Lean on reviews + GBP as the trust signals AI reads.
 

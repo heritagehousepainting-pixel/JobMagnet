@@ -8,20 +8,20 @@ allowed to DO -- advise (Pro) vs act on autopilot (Premium) vs managed ads (Scal
 
 PLANS = {
     "pro": {
-        "name": "Mason Pro", "price": 199, "autopilot": False, "managed_ads": False,
-        "text_cap": 750, "daily_cap": 40, "tagline": "Mason advises. You approve every send.",
+        "name": "JobMagnet Pro", "price": 199, "autopilot": False, "managed_ads": False,
+        "text_cap": 750, "daily_cap": 40, "tagline": "JobMagnet advises. You approve every send.",
         "features": ["Game Plan + every engine",
                      "Drafts content, review requests & lead replies (you approve)",
                      "Texting line you connect (live once your number is linked)",
                      "Up to 750 texts / month"]},
     "premium": {
-        "name": "Mason Premium", "price": 299, "autopilot": True, "managed_ads": False,
-        "text_cap": 2000, "daily_cap": 100, "tagline": "Mason runs it on autopilot, within your rules.",
-        "features": ["Everything in Pro", "Autopilot: Mason acts on his own",
+        "name": "JobMagnet Premium", "price": 299, "autopilot": True, "managed_ads": False,
+        "text_cap": 2000, "daily_cap": 100, "tagline": "JobMagnet runs it on autopilot, within your rules.",
+        "features": ["Everything in Pro", "Autopilot: acts on your behalf",
                      "Speed-to-Lead, Reactivation & Referrals",
                      "Closed-loop cost-per-booked-job", "Up to 2,000 texts / month"]},
     "scale": {
-        "name": "Mason Scale", "price": 599, "autopilot": True, "managed_ads": True,
+        "name": "JobMagnet Scale", "price": 599, "autopilot": True, "managed_ads": True,
         "text_cap": 6000, "daily_cap": 300, "tagline": "Premium plus managed ads & multi-location.",
         "features": ["Everything in Premium", "Paid-ads guidance (LSA + Meta budgets & copy)",
                      "Multi-location & multiple numbers", "Priority support",

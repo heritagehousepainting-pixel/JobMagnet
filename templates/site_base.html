@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Mason — your AI marketing foreman for the trades{% endblock %} · {{ app_name }}</title>
-  <meta name="description" content="{% block meta_desc %}JobMagnet is the AI marketing crew built for the trades. Mason creates the demand and helps you book the job, and proves it in cost per booked job.{% endblock %}">
+  <title>{% block title %}JobMagnet — AI marketing for the trades{% endblock %} · {{ app_name }}</title>
+  <meta name="description" content="{% block meta_desc %}JobMagnet is the AI marketing crew built for the trades. It creates the demand and helps you book the job, and proves it in cost per booked job.{% endblock %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -34,12 +34,12 @@
     </button>
     <div class="site-links" id="site-links">
       <a class="site-link" href="/how-it-works">How it works</a>
-      <a class="site-link" href="/#engine">What Mason runs</a>
+      <a class="site-link" href="/#engine">What JobMagnet runs</a>
       <a class="site-link" href="/pricing">Pricing</a>
       <a class="site-link" href="/contact">Contact</a>
       <div class="site-nav-cta">
         {% if logged_in %}
-          <a class="btn btn-primary btn-sm" href="/dashboard">Open Mason</a>
+          <a class="btn btn-primary btn-sm" href="/dashboard">Open JobMagnet</a>
         {% else %}
           <a class="site-link" href="/login">Log in</a>
           <a class="btn btn-primary btn-sm" href="/signup">Start free</a>
@@ -56,14 +56,14 @@
     <div class="foot-grid">
       <div class="foot-brand">
         <a class="site-brand" href="/">{{ brandmark }}{{ app_name }}</a>
-        <p>The AI marketing crew built for the trades. Mason creates the demand and helps you book the job, and proves it in cost per booked job.</p>
+        <p>The AI marketing crew built for the trades. JobMagnet creates the demand and helps you book the job, and proves it in cost per booked job.</p>
       </div>
       <div class="foot-col">
         <h4>Product</h4>
         <a href="/how-it-works">How it works</a>
-        <a href="/#engine">What Mason runs</a>
+        <a href="/#engine">What JobMagnet runs</a>
         <a href="/pricing">Pricing</a>
-        <a href="/#mason">Meet Mason</a>
+        <a href="/#mason">Meet JobMagnet</a>
       </div>
       <div class="foot-col">
         <h4>Company</h4>
@@ -81,7 +81,7 @@
     </div>
     <div class="foot-bar">
       <span>© {{ year }} {{ app_name }}. Built for the trades, in PA.</span>
-      <span>Mason. Already on the next job.</span>
+      <span>JobMagnet. Already on the next job.</span>
     </div>
   </div>
 </footer>

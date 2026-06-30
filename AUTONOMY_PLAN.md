@@ -4,7 +4,7 @@
 button-driven* to *true and autonomous*. Everything in the left column already works;
 the engine is correctly built behind gated seams. What's missing is a **heartbeat** that
 runs the work on its own, plus an honest **trust dial** that lets the owner raise how much
-Mason does unattended.
+JobMagnet does unattended.
 
 This plan does NOT loosen any guardrail. Every autonomous action still flows through the
 same seams a button uses today: `messaging.send_sms` (consent + quiet hours + caps),
@@ -94,7 +94,7 @@ auto-publishing for the first and only time, behind the dial, default OFF.
   on a later tick — but **only on live channels** (GBP/FB connected) and owned/warm content.
   Assisted channels (IG/LinkedIn) can't be auto-published by definition; they stay drafts.
 - When OFF (default): unchanged — everything drafts and waits for approval.
-- Show the dial prominently in the Game Plan so the owner always knows what Mason does alone.
+- Show the dial prominently in the Game Plan so the owner always knows what JobMagnet does alone.
 
 ### Phase 3 — Autonomous reviews loop  ✅ SHIPPED
 Built: pure `reviewsync.py` (`pull_reviews(business_id)`) mirroring `roi.sync_firstback` —
@@ -134,7 +134,7 @@ Closes "bookings reach ROI by webhook or manual log."
 
 ### Phase 5 — The trust layer (so unattended feels safe, not scary) ✅ SHIPPED
 Autonomy without visibility erodes trust fast.
-- An **activity feed** — "Here's what Mason did" — from `autopilot_runs` + the messages log.
+- An **activity feed** — "Here's what JobMagnet did" — from `autopilot_runs` + the messages log.
 - An optional **daily/weekly digest** (email/SMS via the seam, or in-app), reusing
   `convos.digest`. Tell the owner what went out, what's queued, what got capped/paced.
 
@@ -155,5 +155,5 @@ Autonomy without visibility erodes trust fast.
 - Content posts itself end-to-end on connected channels; assisted channels auto-prepare.
 - Reviews are pulled, replied to (gated), and escalated without the owner typing them in.
 - Booked jobs reach the ROI dashboard automatically.
-- The owner can see and tune everything Mason did unattended.
+- The owner can see and tune everything JobMagnet did unattended.
 - Suite green; every new autonomous path has a test; marketing copy updated truthfully.

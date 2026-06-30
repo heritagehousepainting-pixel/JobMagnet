@@ -1,6 +1,6 @@
 {% extends "app_shell.html" %}
 {% import "_macros.html" as ui %}
-{% block title %}Mason's home{% endblock %}
+{% block title %}Your home{% endblock %}
 {% block page_title %}Home{% endblock %}
 {% block page_sub %}<p class="page-sub">Your morning brief, and anything waiting on your okay.</p>{% endblock %}
 {% block header_actions %}<a class="btn btn-secondary" href="/compose">New post</a>{% endblock %}
@@ -9,14 +9,14 @@
 {# ---------------- Mason's briefing ---------------- #}
 <div class="brief-hero">
   <div class="brief-row">
-    <span class="brief-mason">M</span>
+    <span class="brief-mason">J</span>
     <div class="brief-main">
       <p class="brief-hi">{{ brief.hello }}</p>
       <p class="brief-line">{{ brief.line }}</p>
       {% if brief.passed_on %}<p class="brief-line" style="font-size:.9rem;color:var(--muted)">Holding off on {{ brief.passed_on.label }}: {{ brief.passed_on.reason }}</p>{% endif %}
       <div class="brief-actions">
         <a class="btn btn-primary" href="{{ brief.todo_href }}">{{ brief.todo_label }}</a>
-        <span class="brief-meta"><span class="dot"></span> Mason · on the clock</span>
+        <span class="brief-meta"><span class="dot"></span> JobMagnet · on the clock</span>
       </div>
     </div>
   </div>
@@ -30,11 +30,11 @@
   <div class="glance-tile"><span class="glance-k">Waiting on you</span><span class="glance-v" data-countup="{{ stats.draft }}">{{ stats.draft }}</span><span class="glance-s">drafts to approve</span></div>
   <div class="glance-tile"><span class="glance-k">Approved</span><span class="glance-v" data-countup="{{ stats.approved }}">{{ stats.approved }}</span><span class="glance-s">ready or scheduled</span></div>
   <div class="glance-tile"><span class="glance-k">Published</span><span class="glance-v" data-countup="{{ stats.published }}">{{ stats.published }}</span><span class="glance-s">live so far</span></div>
-  <div class="glance-tile"><span class="glance-k">Total created</span><span class="glance-v" data-countup="{{ stats.total }}">{{ stats.total }}</span><span class="glance-s">posts Mason wrote</span></div>
+  <div class="glance-tile"><span class="glance-k">Total created</span><span class="glance-v" data-countup="{{ stats.total }}">{{ stats.total }}</span><span class="glance-s">posts JobMagnet wrote</span></div>
 </div>
 
 {% if not mandate_ready %}
-<div class="save-banner" style="margin:0">Start here: run <a href="/walkthrough">the Walkthrough</a> and Mason will build your Game Plan, what to do first, and what to skip.</div>
+<div class="save-banner" style="margin:0">Start here: run <a href="/walkthrough">the Walkthrough</a> and JobMagnet will build your Game Plan, what to do first, and what to skip.</div>
 {% endif %}
 
 {% set pub = request.args.get('pub') %}
@@ -90,7 +90,7 @@
       <div class="empty">
         <span class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
         <p class="empty-title">All clear. Nothing needs your okay.</p>
-        <p class="empty-msg">When Mason drafts a post, it lands here for your approval before anything goes out.</p>
+        <p class="empty-msg">When JobMagnet drafts a post, it lands here for your approval before anything goes out.</p>
         <a class="btn btn-primary empty-action" href="/compose">Write something new</a>
       </div>
     {% endif %}

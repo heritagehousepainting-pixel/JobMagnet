@@ -522,7 +522,7 @@ check("mandate persisted for the tenant", db.has_mandate(1))
 check("signals persisted for the tenant", db.get_signals(1)["past_customers"] == 15)
 r = c.get("/mandate")
 check("mandate page renders with Mason's read",
-      r.status_code == 200 and b"Mason's read" in r.data and b"Get Found" in r.data)
+      r.status_code == 200 and b"JobMagnet's read" in r.data and b"Get Found" in r.data)
 check("mandate page honestly shows reactivation as Not yet",
       b"Database Reactivation" in r.data and b"Not yet" in r.data)
 m = {p["playbook"]: p for p in db.get_mandate(1)}
@@ -1124,7 +1124,7 @@ db.set_plan(1, "premium")
 r = c.post("/autopilot/run", data={})
 check("Premium plan runs autopilot", "ap_blocked" not in r.headers["Location"])
 r = c.get("/plan")
-check("plan page renders the tiers", r.status_code == 200 and b"Mason Premium" in r.data and b"$299" in r.data)
+check("plan page renders the tiers", r.status_code == 200 and b"JobMagnet Premium" in r.data and b"$299" in r.data)
 r = c.post("/plan/switch", data={"plan": "scale"})
 check("switching plan works", db.get_plan(1) == "scale")
 db.set_plan(1, "premium")
@@ -1221,12 +1221,12 @@ pc = client()
 r = pc.get("/")
 check("home renders the hero line",
       r.status_code == 200 and b"Already on" in r.data and b"next job" in r.data)
-check("home shows real plans from plans.py", b"Mason Premium" in r.data and b"$299" in r.data)
+check("home shows real plans from plans.py", b"JobMagnet Premium" in r.data and b"$299" in r.data)
 check("home lists the engine modules", b"Cost per booked job" in r.data)
 r = pc.get("/pricing")
 check("pricing renders all three tiers",
-      r.status_code == 200 and b"Mason Pro" in r.data and b"Mason Premium" in r.data
-      and b"Mason Scale" in r.data)
+      r.status_code == 200 and b"JobMagnet Pro" in r.data and b"JobMagnet Premium" in r.data
+      and b"JobMagnet Scale" in r.data)
 r = pc.get("/how-it-works")
 check("how-it-works renders", r.status_code == 200 and b"game plan" in r.data.lower())
 r = pc.get("/contact")
@@ -1316,7 +1316,7 @@ check("a taught tool mapping runs that tool",
 # The Training page renders, and teaching through it resolves the flag + adds a learning.
 r = c.get("/training")
 check("training page renders the memory surface",
-      r.status_code == 200 and b"Mason's Memory" in r.data)
+      r.status_code == 200 and b"JobMagnet's Memory" in r.data)
 _fl = db.list_flags(1, resolved=0, limit=5)
 if _fl:
     _fid = _fl[0]["id"]
@@ -1401,7 +1401,7 @@ _cv._tool_suggest_hook = _orig_hook
 # Emailed weekly digest: builder + per-owner send + the cron route.
 _em = _cv.digest_email(db.get_business(1))
 check("the digest email has a subject and a body with the build list",
-      bool(_em["subject"]) and "Mason digest" in _em["body"])
+      bool(_em["subject"]) and "JobMagnet digest" in _em["body"])
 r = c.post("/digest/send", data={})
 check("emailing the digest goes through the gated seam (simulated until SMTP)",
       r.status_code == 302 and "digest=" in r.headers["Location"])
@@ -1477,7 +1477,7 @@ db.log_message(1, "sms", "+15551230000", "Mind leaving us a review?",
                "simulated", "simulated", purpose="review_request")
 r = c.get("/activity")
 check("/activity renders 200 for a logged-in owner", r.status_code == 200)
-check("/activity shows a recent autopilot run", b"Mason ran autopilot" in r.data)
+check("/activity shows a recent autopilot run", b"JobMagnet ran autopilot" in r.data)
 check("/activity shows a recent outbound message", b"review request" in r.data)
 check("/activity labels simulated activity honestly", b"simulated" in r.data)
 check("/activity is reachable in the Home nav", b"/activity" in r.data)
@@ -1501,7 +1501,7 @@ check("OTHER tenant sees its own message", b"Replied to a new lead" in r2.data)
 check("OTHER tenant does NOT see business 1's review request (isolation)",
       b"review request" not in r2.data)
 check("OTHER tenant does NOT see business 1's autopilot runs (isolation)",
-      b"Mason ran autopilot" not in r2.data)
+      b"JobMagnet ran autopilot" not in r2.data)
 
 # Empty state: a brand-new tenant with no activity at all.
 _act_empty = db.create_business({"name": "No Activity Co", "trade": "painting"})
@@ -1512,7 +1512,7 @@ _ace.post("/login", data={"email": _ace_email, "password": "emptypass12345"})
 r3 = _ace.get("/activity")
 check("empty-state tenant renders 200", r3.status_code == 200)
 check("empty state renders for a tenant with no activity",
-      b"Nothing yet. When Mason acts, it shows up here." in r3.data)
+      b"Nothing yet. When JobMagnet acts, it shows up here." in r3.data)
 
 # --- Phase 2: Google Business Profile one-click OAuth -----------------------
 # Real "Connect with Google" so a contractor never pastes a token. Gated + honest at

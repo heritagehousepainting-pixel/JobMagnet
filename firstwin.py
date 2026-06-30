@@ -16,7 +16,7 @@ WINS = {
     "aeo_faq":        {"label": "Generate your AI-search FAQ + schema", "cta_route": "/local",
                        "nudge": "Answer-first FAQ + schema is real, paste-ready value AI search engines cite -- no account needed."},
     "photo_post":     {"label": "Draft a Google post from a job photo", "cta_route": "/queue",
-                       "nudge": "Mason drafted a post from your job photo. Approve it in your queue and publish it to Google."},
+                       "nudge": "JobMagnet drafted a post from your job photo. Approve it in your queue and publish it to Google."},
 }
 
 

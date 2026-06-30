@@ -1,12 +1,12 @@
 {% extends "app_shell.html" %}
 {% block title %}Game Plan{% endblock %}
-{% block page_title %}Mason's Game Plan{% endblock %}
+{% block page_title %}Your Game Plan{% endblock %}
 {% block page_sub %}<p class="page-sub">What I'd run for you, in order, and what I'd skip for now. You decide how much I take on for each.{% if elections_updated_at %} · Last updated: {{ elections_updated_at[:10] }}{% endif %}</p>{% endblock %}
 {% block header_actions %}<a class="btn btn-ghost" href="/walkthrough">Redo the Walkthrough</a>{% endblock %}
 
 {% block content %}
 <div class="card" style="margin-bottom:var(--space-6)">
-  <div class="card-head"><h2 class="card-title">Mason's read</h2></div>
+  <div class="card-head"><h2 class="card-title">JobMagnet's read</h2></div>
   <div class="card-body">
     <p class="post-body" style="font-size:1.05rem">{{ result.headline }}</p>
     <ul class="dt-muted" style="margin:var(--space-3) 0 0;padding-left:1.1rem">
@@ -23,7 +23,7 @@
   <div class="card-body">
     {% set apo = request.args.get('ap_posts') %}{% set apm = request.args.get('ap_msgs') %}{% set aps = request.args.get('ap_sms') %}
     {% if apo is not none %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot ran: drafted {{ apo }} post(s) and {{ 'sent' if aps == 'live' else 'queued' }} {{ apm }} message(s){% if aps and aps != 'live' %} (simulated until you connect a texting number){% endif %}.{% if request.args.get('ap_capped') %} {{ request.args.get('ap_capped') }} more are paced for the next few days to stay carrier-friendly, and continue automatically.{% endif %} Drafts are waiting in your <a href="/queue">queue</a>.</div>{% endif %}
-    {% if request.args.get('ap_blocked') %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot is a Premium feature. <a href="/plan">Upgrade</a> to let Mason act on his own.</div>{% endif %}
+    {% if request.args.get('ap_blocked') %}<div class="save-banner" style="margin-bottom:var(--space-3)">Autopilot is a Premium feature. <a href="/plan">Upgrade</a> to let JobMagnet act on its own.</div>{% endif %}
     {% if can_autopilot %}
     <p class="dt-muted" style="margin-bottom:var(--space-3)">Runs every play you set to <strong>Take it over</strong>. Drafts wait for your approval; texts respect consent and quiet hours.</p>
     <form method="post" action="/autopilot/run" style="display:inline">
@@ -53,14 +53,14 @@
       {% if auto_publish %}<p class="dt-muted" style="margin-top:var(--space-3);font-size:.85rem">Auto publishing only applies to connected channels. Everything else still drafts for your approval.</p>{% endif %}
     </div>
     {% else %}
-    <p class="dt-muted">On <strong>Pro</strong>, Mason drafts everything and asks first. <a href="/plan">Upgrade to Premium</a> to turn on Autopilot, so Mason acts on his own within your rules.</p>
+    <p class="dt-muted">On <strong>Pro</strong>, JobMagnet drafts everything and asks first. <a href="/plan">Upgrade to Premium</a> to turn on Autopilot, so JobMagnet acts on its own within your rules.</p>
     {% endif %}
   </div>
 </div>
 
 {# ---- Trust callout (P1-8) ---- #}
 <div class="card" style="margin-bottom:var(--space-4)">
-  <div class="card-head"><h2 class="card-title">What Mason does and doesn't do on his own</h2></div>
+  <div class="card-head"><h2 class="card-title">What JobMagnet does and doesn't do on its own</h2></div>
   <div class="card-body">
     <p class="post-body">Autonomously: I draft and schedule your owned-channel content (posts, FAQs, local pages). Always ask first: any message to a customer, any ad spend. If a channel is not worth it, the timing is wrong, or you do not need something, I will say so.</p>
   </div>
@@ -70,7 +70,7 @@
 <div class="card" style="margin-bottom:var(--space-4)">
   <div class="card-head"><h2 class="card-title">Where's the real bottleneck right now?</h2></div>
   <div class="card-body">
-    <p class="dt-muted" style="margin-bottom:var(--space-3)">Pick the one that most accurately describes what's holding you back. Mason will weight his plays around it.</p>
+    <p class="dt-muted" style="margin-bottom:var(--space-3)">Pick the one that most accurately describes what's holding you back. JobMagnet will weight its plays around it.</p>
     <form method="post" action="/mandate/bottleneck" style="display:flex;flex-direction:column;gap:var(--space-3)">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
@@ -84,7 +84,7 @@
         <span class="field-label" style="margin:0">Need to win back past customers</span></label>
       <label class="field" style="flex-direction:row;align-items:center;gap:var(--space-2)">
         <input type="radio" name="bottleneck_priority" value="see_ai_first" {{ 'checked' if bottleneck_priority == 'see_ai_first' }}>
-        <span class="field-label" style="margin:0">Show me what Mason thinks first</span></label>
+        <span class="field-label" style="margin:0">Show me what JobMagnet thinks first</span></label>
       <div><button class="btn btn-secondary btn-sm" type="submit">Save</button></div>
     </form>
     {% if reconciliation_note %}<div class="save-banner" style="margin-top:var(--space-3)">{{ reconciliation_note }}</div>{% endif %}
@@ -110,10 +110,10 @@
   </div>
   <div class="card-body">
     <p class="post-topic" style="margin-bottom:var(--space-2)">{{ p.blurb }}</p>
-    <p class="post-body"><strong>Mason:</strong> {{ p.reason }}</p>
+    <p class="post-body"><strong>JobMagnet:</strong> {{ p.reason }}</p>
     {% if p.applicability == 'not_yet' and biz_slug %}
     <div style="margin-top:var(--space-2)">
-      <button class="btn btn-sm btn-ghost" style="font-size:.8rem" onclick="navigator.clipboard.writeText(window.location.origin+'/insight/'+{{ biz_slug|tojson }}+'/{{ p.key }}')">Share why Mason is holding off</button>
+      <button class="btn btn-sm btn-ghost" style="font-size:.8rem" onclick="navigator.clipboard.writeText(window.location.origin+'/insight/'+{{ biz_slug|tojson }}+'/{{ p.key }}')">Share why JobMagnet is holding off</button>
     </div>
     {% endif %}
     {% if p.applicability == 'applies' and p.playbook == 'aeo_faq' and faq %}
@@ -141,7 +141,7 @@
         {% endif %}
       {% endfor %}
       {% if p.recommended and p.recommended != p.election %}
-        <span class="dt-muted" style="font-size:.85rem">Mason suggests: {{ election_labels[p.recommended] }}</span>
+        <span class="dt-muted" style="font-size:.85rem">JobMagnet suggests: {{ election_labels[p.recommended] }}</span>
       {% endif %}
     </div>
     {% endif %}

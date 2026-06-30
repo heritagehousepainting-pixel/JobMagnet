@@ -37,7 +37,7 @@ it creates demand AND books it, proven in cost-per-booked-job.
 - **Assemble the moat, don't front-load it** — the cost-per-booked-job loop is wired
   *after* live channels + conversion data exist, not on an empty dataset.
 - **Thin vertical slices** — each phase is a working loop, not a horizontal module.
-- **PMF constraint:** Until onboarding_milestone.achieved_at IS NOT NULL for a paying tenant, build only warm-channel proof (reviews, GBP, reactivation) and the Mason-said-no share surface. Any other feature proposal fails this filter.
+- **PMF constraint:** Until onboarding_milestone.achieved_at IS NOT NULL for a paying tenant, build only warm-channel proof (reviews, GBP, reactivation) and the 'JobMagnet said no' share surface. Any other feature proposal fails this filter.
 - **CACHE triage filter:** every feature proposal must name which CACHE stage it strengthens (Capture / Activate / Convert / Habit / Expand). If it strengthens none, defer it.
 
 ---
@@ -133,7 +133,7 @@ gated by the same hard compliance gates above:** it acts freely on owned/warm ch
 but every regulated/cold touch (M4–M6) stays rule-bound or one-tap-approved — never
 silent-fire. The persona ships meaningfully once Phase 1–2 give it real work to narrate.
 
-**Mason's home (the shell):** a later surface that makes Mason the *front door* — a
+**JobMagnet's home (the shell):** a later surface that makes JobMagnet the *front door* — a
 persistent conversation (daily rundown + approval queue + wins) that **wraps the existing
 routes**, turning the feature-grid into back rooms he operates. Not a rewrite; a
 conversational layer + per-tenant memory that accrues his "character" per user. Build the

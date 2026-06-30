@@ -9,7 +9,7 @@
   {% for t in turns %}
   <div class="card" style="margin-bottom:var(--space-3)">
     <div class="card-head">
-      <span class="pill {{ 'pill-neutral' if t.role == 'user' else 'pill-new' }}"><span class="pill-dot"></span>{{ 'You' if t.role == 'user' else 'Mason' }}{% if t.tool %} · {{ t.tool }}{% endif %}{% if t.status and t.status != 'ok' %} · {{ t.status }}{% endif %}</span>
+      <span class="pill {{ 'pill-neutral' if t.role == 'user' else 'pill-new' }}"><span class="pill-dot"></span>{{ 'You' if t.role == 'user' else 'JobMagnet' }}{% if t.tool %} · {{ t.tool }}{% endif %}{% if t.status and t.status != 'ok' %} · {{ t.status }}{% endif %}</span>
     </div>
     <div class="card-body"><p class="post-body">{{ t.content }}</p></div>
   </div>

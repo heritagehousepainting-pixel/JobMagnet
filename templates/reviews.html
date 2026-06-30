@@ -64,7 +64,7 @@
     </table>
     {% else %}
     {{ ui.empty("No customers added yet",
-                "Add a finished customer above and Mason will text them a review request at the right moment.") }}
+                "Add a finished customer above and JobMagnet will text them a review request at the right moment.") }}
     {% endif %}
   </div>
 </div>
@@ -82,7 +82,7 @@
   </div>
   <div class="card-body">
     <p class="dt-muted" style="font-size:.85rem;margin-bottom:var(--space-4)">
-      {% if gbp_connected %}Mason watches for new reviews, drafts a reply, and flags critical ones for you. You always tap to post the public reply.
+      {% if gbp_connected %}JobMagnet watches for new reviews, drafts a reply, and flags critical ones for you. You always tap to post the public reply.
       {% else %}Automatic monitoring activates when you connect Google Business Profile. Until then, add reviews here to draft replies.{% endif %}
     </p>
     <form method="post" action="/reviews/import" style="display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4)">
@@ -110,7 +110,7 @@
         </div>
         <div class="card-body">
           {% if r.status != 'responded' and (r.rating or 0) <= 3 %}
-          <p class="dt-muted" style="font-size:.85rem;margin-bottom:var(--space-2)">A critical review. Mason drafted a gracious reply, but it is never auto-sent. Review it and post when you are ready.</p>
+          <p class="dt-muted" style="font-size:.85rem;margin-bottom:var(--space-2)">A critical review. JobMagnet drafted a gracious reply, but it is never auto-sent. Review it and post when you are ready.</p>
           {% endif %}
           <p class="post-body">{{ r.body }}</p>
           <form method="post" action="/reviews/{{ r.id }}/respond" style="margin-top:var(--space-3)">
@@ -127,7 +127,7 @@
       {% endfor %}
     {% else %}
       {{ ui.empty("No reviews here yet",
-                  "Add a review above and Mason drafts a reply you can edit. Google reads your replies, so every one counts.") }}
+                  "Add a review above and JobMagnet drafts a reply you can edit. Google reads your replies, so every one counts.") }}
     {% endif %}
   </div>
 </div>

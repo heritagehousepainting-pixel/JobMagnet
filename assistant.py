@@ -319,7 +319,7 @@ TOOLS = {
                         "desc": "Link an account: calendar, Google profile, Facebook/Instagram, texting, email, website.",
                         "params": ["provider"]},
     "game_plan":       {"fn": _h_game_plan, "confirm": False,
-                        "desc": "Show Mason's ranked marketing game plan for this business.",
+                        "desc": "Show JobMagnet's ranked marketing game plan for this business.",
                         "params": []},
     "set_autopilot":   {"fn": _h_set_autopilot, "confirm": True,
                         "desc": "Set a playbook to take_over, ask_first, or off.",
@@ -332,7 +332,7 @@ TOOLS = {
 _CONFIRM_SUMMARY = {
     "publish_post": "Publish this post to its platform.",
     "request_reviews": "Text a review request to every eligible customer who has not been asked.",
-    "set_autopilot": "Change which marketing plays Mason runs on his own.",
+    "set_autopilot": "Change which marketing plays JobMagnet runs on its own.",
     "run_autopilot": "Run the plays you have set to take over.",
 }
 
@@ -424,7 +424,7 @@ def _route_system(business=None):
             style_block = "\nCommunication style preference: {}.\n".format(
                 business["brief_format"])
     return (
-        "You are Mason, the control assistant inside JobMagnet, an AI marketing app for a "
+        "You are the JobMagnet assistant, an AI marketing control center for a "
         "home-services contractor. Decide which ONE tool best answers the owner's message, "
         "and extract its parameters from what they said.\n\n"
         "TOOLS:\n" + _tool_catalog() + "\n" + mandate_block + style_block + taught_block + "\n"
@@ -448,7 +448,7 @@ def _llm_route(business, message, history):
         return None
     convo = ""
     for turn in (history or [])[-6:]:
-        who = "Owner" if turn.get("role") == "user" else "Mason"
+        who = "Owner" if turn.get("role") == "user" else "JobMagnet"
         convo += f"{who}: {turn.get('content', '')}\n"
     user_text = f"{convo}Owner: {message}\n\nReturn the JSON now."
     try:
@@ -573,8 +573,8 @@ def _chat_reply(message):
     if provider in ("claude", "minimax"):
         try:
             complete = ai._claude_complete if provider == "claude" else ai._minimax_complete
-            sys = ("You are Mason, a warm, concise marketing assistant for a home-services "
-                   "contractor inside the JobMagnet app. Answer in 1 to 3 sentences. Do not "
+            sys = ("You are the JobMagnet assistant, a warm and concise marketing AI for a "
+                   "home-services contractor. Answer in 1 to 3 sentences. Do not "
                    "use dashes; use periods and commas. If they seem to want an action you can "
                    "take (draft a post, send reviews, connect an account, show stats, set "
                    "autopilot), offer it. Never call something a 'feature request' or say it is "

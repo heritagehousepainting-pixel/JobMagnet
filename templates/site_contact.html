@@ -1,6 +1,6 @@
 {% extends "site_base.html" %}
 {% block title %}Contact — talk to a human{% endblock %}
-{% block meta_desc %}Questions about JobMagnet or Mason? Talk to a real human. We build for the trades, in PA.{% endblock %}
+{% block meta_desc %}Questions about JobMagnet? Talk to a real human. We build for the trades, in PA.{% endblock %}
 
 {% block body %}
 <header class="hero" style="padding-bottom:var(--space-12)">
@@ -9,7 +9,7 @@
   <div class="wrap hero-inner" data-reveal-stagger="90">
     <span class="hero-badge" data-reveal><span class="dot"></span> A real person, not a bot wall</span>
     <h1 data-reveal style="font-size:clamp(2.4rem,6vw,4rem)">Let's talk shop.</h1>
-    <p class="hero-sub" data-reveal>Wondering if Mason fits your trade or your town? Ask. We'd rather tell you the
+    <p class="hero-sub" data-reveal>Wondering if JobMagnet fits your trade or your town? Ask. We'd rather tell you the
       honest answer than sell you the wrong thing.</p>
   </div>
 </header>
@@ -18,7 +18,7 @@
   <div class="wrap contact-grid" data-reveal-stagger="100">
     <div data-reveal>
       <span class="eyebrow">How to reach us</span>
-      <h2 class="h-section" style="margin-top:var(--space-3)">We answer like Mason does — fast.</h2>
+      <h2 class="h-section" style="margin-top:var(--space-3)">We answer fast.</h2>
       <ul class="contact-points">
         <li>
           <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
@@ -49,7 +49,7 @@
         {% if error %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);font-size:var(--text-sm)">{{ error }}</div>{% endif %}
         <div class="field">
           <label class="field-label" for="name">Your name</label>
-          <input class="field-control" id="name" name="name" placeholder="Jordan Mason" required>
+          <input class="field-control" id="name" name="name" placeholder="Jordan Lee" required>
         </div>
         <div class="field">
           <label class="field-label" for="email">Email</label>
@@ -61,7 +61,7 @@
         </div>
         <div class="field">
           <label class="field-label" for="message">What's on your mind?</label>
-          <textarea class="field-control" id="message" name="message" rows="4" placeholder="Tell us about your business and what you're hoping Mason can do." required></textarea>
+          <textarea class="field-control" id="message" name="message" rows="4" placeholder="Tell us about your business and what you're hoping JobMagnet can do." required></textarea>
         </div>
         <button class="btn btn-primary btn-block btn-lg" type="submit">Send it</button>
         <p style="margin:0;text-align:center;font-size:var(--text-xs);color:var(--ink-faint)">No spam, ever. We hate it as much as you do.</p>

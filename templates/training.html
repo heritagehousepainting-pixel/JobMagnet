@@ -1,11 +1,11 @@
 {% extends "app_shell.html" %}
 {% import "_macros.html" as ui %}
-{% block title %}Mason's Memory{% endblock %}
-{% block page_title %}Mason's Memory{% endblock %}
-{% block page_sub %}<p class="page-sub">Every conversation you have with Mason is saved here. He calls out where he fell short, and you teach him so he gets it right next time.</p>{% endblock %}
+{% block title %}JobMagnet's Memory{% endblock %}
+{% block page_title %}JobMagnet's Memory{% endblock %}
+{% block page_sub %}<p class="page-sub">Every conversation you have with JobMagnet is saved here. It flags where it fell short, and you teach it so it gets it right next time.</p>{% endblock %}
 
 {% block content %}
-{% if request.args.get('taught') %}<div class="save-banner" style="margin:0">Got it. Mason learned that and will use it from now on.</div>{% endif %}
+{% if request.args.get('taught') %}<div class="save-banner" style="margin:0">Got it. JobMagnet learned that and will use it from now on.</div>{% endif %}
 {% set _dg = request.args.get('digest') %}
 {% if _dg == 'sent' %}<div class="save-banner" style="margin:0">Emailed your digest.</div>{% elif _dg == 'simulated' %}<div class="save-banner" style="margin:0">Digest prepared (simulated). Connect email in Connections to actually send it.</div>{% elif _dg %}<div class="save-banner" style="margin:0">Couldn't email the digest just now.</div>{% endif %}
 
@@ -13,7 +13,7 @@
 <div class="glance">
   <div class="glance-tile"><span class="glance-k">No tool yet</span><span class="glance-v">{{ counts.get('capability_gap', 0) }}</span><span class="glance-s">couldn't act</span></div>
   <div class="glance-tile"><span class="glance-k">Re-asks</span><span class="glance-v">{{ counts.get('repeat', 0) }}</span><span class="glance-s">you repeated yourself</span></div>
-  <div class="glance-tile"><span class="glance-k">Pushback</span><span class="glance-v">{{ counts.get('negative', 0) }}</span><span class="glance-s">you corrected him</span></div>
+  <div class="glance-tile"><span class="glance-k">Pushback</span><span class="glance-v">{{ counts.get('negative', 0) }}</span><span class="glance-s">you corrected it</span></div>
   <div class="glance-tile"><span class="glance-k">Learned</span><span class="glance-v">{{ learnings|length }}</span><span class="glance-s">things you taught</span></div>
 </div>
 
@@ -26,7 +26,7 @@
 <div class="card">
   <div class="card-head"><div class="section-label"><h2 class="card-title">Build these next</h2></div></div>
   <div class="card-body">
-    <p class="card-body" style="padding-top:0">The requests Mason couldn't handle, most frequent first. Teach him below, or build the tool.</p>
+    <p class="card-body" style="padding-top:0">The requests JobMagnet couldn't handle, most frequent first. Teach it below, or build the tool.</p>
     {% for u in top_unmet %}
     <div class="card" style="margin-bottom:var(--space-2)">
       <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-3)">
@@ -50,16 +50,16 @@
           <span class="pill pill-warning"><span class="pill-dot"></span>{{ issue_label.get(f.kind, f.kind) }}</span>
         </div>
         <div class="card-body">
-          {% if f.detail and f.kind == 'unhelpful' %}<p class="dt-muted" style="margin-bottom:var(--space-2)">Mason's review: {{ f.detail }}</p>{% endif %}
+          {% if f.detail and f.kind == 'unhelpful' %}<p class="dt-muted" style="margin-bottom:var(--space-2)">JobMagnet's review: {{ f.detail }}</p>{% endif %}
           {% if f.turn_content %}<p class="post-topic">You said:</p><p class="post-body">{{ f.turn_content }}</p>{% endif %}
           <details class="post-edit">
-            <summary>Teach Mason what to do when you say this</summary>
+            <summary>Teach JobMagnet what to do when you say this</summary>
             <form method="post" action="/training/teach" style="margin-top:var(--space-3);display:flex;flex-direction:column;gap:var(--space-2)">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="flag_id" value="{{ f.id }}">
               <label class="field-label">When I say something like</label>
               <input class="field-control" name="pattern" value="{{ f.turn_content }}">
-              <label class="field-label">Mason should</label>
+              <label class="field-label">JobMagnet should</label>
               <select class="field-control" name="action">
                 <optgroup label="Run a tool">
                   {% for t in tools %}<option value="{{ t }}">Run: {{ t }}</option>{% endfor %}
@@ -68,7 +68,7 @@
                 <option value="answer">Say this</option>
               </select>
               <input class="field-control" name="value" placeholder="Page path (e.g. /plan) or the exact reply -- leave blank when running a tool">
-              <button class="btn btn-primary btn-sm" type="submit" style="align-self:flex-start">Teach Mason</button>
+              <button class="btn btn-primary btn-sm" type="submit" style="align-self:flex-start">Teach JobMagnet</button>
             </form>
           </details>
           <form method="post" action="/training/resolve" style="display:inline;margin-top:var(--space-2)">
@@ -80,14 +80,14 @@
       </div>
       {% endfor %}
     {% else %}
-      {{ ui.empty("Nothing to review", "When Mason can't do something, has to ask twice, or you correct him, it shows up here to teach.") }}
+      {{ ui.empty("Nothing to review", "When JobMagnet can't do something, has to ask twice, or you correct it, it shows up here to teach.") }}
     {% endif %}
   </div>
 </div>
 
 {# ---- What Mason has learned ---- #}
 <div class="card">
-  <div class="card-head"><div class="section-label"><h2 class="card-title">What you've taught Mason</h2></div></div>
+  <div class="card-head"><div class="section-label"><h2 class="card-title">What you've taught JobMagnet</h2></div></div>
   <div class="card-body">
     {% if learnings %}
       {% for l in learnings %}
@@ -99,7 +99,7 @@
       </div>
       {% endfor %}
     {% else %}
-      <p class="card-body">Nothing taught yet. Teach Mason from a flagged exchange above and it lands here.</p>
+      <p class="card-body">Nothing taught yet. Teach JobMagnet from a flagged exchange above and it lands here.</p>
     {% endif %}
   </div>
 </div>
@@ -116,7 +116,7 @@
       </a>
       {% endfor %}
     {% else %}
-      <p class="card-body">No conversations yet. Talk to Mason on the <a href="/dashboard">Command Center</a> and they'll be saved here.</p>
+      <p class="card-body">No conversations yet. Talk to JobMagnet on the <a href="/dashboard">Command Center</a> and they'll be saved here.</p>
     {% endif %}
   </div>
 </div>
