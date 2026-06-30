@@ -10,6 +10,9 @@
 __pycache__/
 *.pyc
 
+# Session scratch (transcripts, ad-hoc verification scripts)
+scratchpad/
+
 # Logs
 *.log
 

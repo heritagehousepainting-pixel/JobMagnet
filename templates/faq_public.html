@@ -1,0 +1,36 @@
+{% extends "site_base.html" %}
+{% block title %}{{ biz.name }} — Frequently Asked Questions{% endblock %}
+{% block meta_desc %}Frequently asked questions about {{ biz.name }}{% if biz.trade %}, {{ biz.trade }} contractor{% endif %}{% if biz.service_area %} serving {{ biz.service_area }}{% endif %}.{% endblock %}
+
+{% block body %}
+<main class="wrap" style="padding:var(--space-10) var(--space-4);max-width:720px;margin:0 auto">
+
+  <script type="application/ld+json">{{ faq_jsonld | tojson }}</script>
+
+  <header style="margin-bottom:var(--space-8)">
+    <h1 style="font-size:2rem;font-weight:800;line-height:1.2;margin-bottom:var(--space-2)">{{ biz.name }} — Frequently Asked Questions</h1>
+    {% if biz.trade or biz.service_area %}
+    <p class="dt-muted">
+      {% if biz.trade %}{{ biz.trade | capitalize }}{% endif %}{% if biz.trade and biz.service_area %} · {% endif %}{% if biz.service_area %}{{ biz.service_area }}{% endif %}
+    </p>
+    {% endif %}
+  </header>
+
+  <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+    {% for pair in faq_pairs %}
+    <details style="border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-4)">
+      <summary style="font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+        {{ pair.q }}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;flex-shrink:0;margin-left:var(--space-2)"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <p style="margin-top:var(--space-3);color:var(--text-2)">{{ pair.a }}</p>
+    </details>
+    {% endfor %}
+  </div>
+
+  <div style="margin-top:var(--space-10);padding-top:var(--space-6);border-top:1px solid var(--border);color:var(--text-2);font-size:.9rem">
+    <p>This FAQ was built by Mason, JobMagnet's AI marketing assistant for {% if biz.trade %}{{ biz.trade }}{% else %}home-services{% endif %} contractors{% if biz.service_area %} in {{ biz.service_area }}{% endif %}. Get yours at <a href="https://jobmagnet.app" style="color:var(--brand)">jobmagnet.app</a>.</p>
+  </div>
+
+</main>
+{% endblock %}

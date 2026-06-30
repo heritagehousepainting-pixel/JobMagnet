@@ -87,6 +87,7 @@ def normalize_signals(raw):
         "reviewable_backlog": backlog,
         "gbp_claimed": _bool(raw.get("gbp_claimed")),
         "runs_ads": _bool(raw.get("runs_ads")),
+        "competitor_review_count": max(0, int(_num(raw.get("competitor_review_count"), 0))),
     }
 
 
@@ -131,18 +132,24 @@ def diagnose(business, raw_signals):
     add("get_found", "applies", "take_over", gf, gf_reason)
 
     # --- Review Velocity (can't be bootstrapped from a tapped base) ---
+    comp_rv = s.get("competitor_review_count", 0)
+    _comp_suffix = (f" Your top local competitor has roughly {comp_rv} reviews vs your "
+                    f"{s['review_count']} — that gap is costing you clicks."
+                    if comp_rv and comp_rv > s["review_count"] and (comp_rv - s["review_count"]) >= 20
+                    else "")
     if s["reviewable_backlog"] >= 10:
         add("reviews", "applies", "take_over", 80,
             f"You've got about {s['reviewable_backlog']} happy past clients who haven't "
-            "left a review yet. That's the fastest way to climb in search.")
+            "left a review yet. That's the fastest way to climb in search." + _comp_suffix)
     elif s["new_jobs_per_month"] >= 3:
         add("reviews", "applies", "take_over", 55,
-            "Capture a review from every job. Steady velocity is what lifts your ranking.")
+            "Capture a review from every job. Steady velocity is what lifts your ranking."
+            + _comp_suffix)
     else:
         add("reviews", "applies", "ask_first", 30,
             "Your past clients have already reviewed and you're not closing enough new "
             "jobs yet to spin a 'review flywheel' (chicken and egg). I'll grab one from "
-            "every new job, but it can't be the lead engine yet.")
+            "every new job, but it can't be the lead engine yet." + _comp_suffix)
 
     # --- Speed-to-Lead (priority scales with volume + missed) ---
     if s["missed_leads"] >= 3 or missed_ratio >= 0.25:
@@ -213,24 +220,27 @@ def diagnose(business, raw_signals):
     # "Dormant" means an old customer base that's the *cheapest* next play -- which is only
     # true when fresh demand isn't already pouring in. A shop drowning in leads is leaky or
     # growing, not dormant, even if it has an old base, so gate dormant on modest lead flow.
+    trade = (business.get("trade") or "contractor").strip() or "contractor"
+    area = (business.get("service_area") or "your area").strip() or "your area"
     if s["past_customers"] >= 50 and s["oldest_job_years"] >= 3 and ml < 15:
         state = "established_dormant"
-        headline = ("You've got a goldmine you're barely touching. A base of past customers "
-                    "coming due on their repaint cycle is the cheapest revenue you'll ever "
-                    "book, so we mine that first.")
+        headline = (f"You've got a goldmine you're barely touching. A base of past {trade} "
+                    f"customers in {area} coming due on their repaint cycle is the cheapest "
+                    "revenue you'll ever book, so we mine that first.")
     elif ml >= 15 and missed_ratio >= 0.3:
         state = "high_volume_leaky"
-        headline = ("You've got the leads. You're just dropping them. We plug the leak first, "
-                    "because whoever answers first wins the job.")
+        headline = (f"You've got the leads. You're dropping about {s['missed_leads']} of them. "
+                    f"For a {trade} in {area}, whoever answers first wins the job — we plug "
+                    "the leak before anything else.")
     elif s["years_in_business"] <= 2 and s["review_count"] < 20 and ml < 10:
         state = "new_invisible"
-        headline = ("Here's the straight version: you do great work and almost nobody online "
-                    "knows it yet. You close what you get, so we don't fix closing, we go get "
-                    "you found and put more at-bats in front of you.")
+        headline = (f"Here is the straight version: you do great {trade} work in {area} "
+                    "and almost nobody online knows it yet. You close what you get, so we "
+                    "don't fix closing, we go get you found and put more at-bats in front of you.")
     else:
         state = "growing"
-        headline = ("Solid base. Now we compound it: get found, keep the reviews fresh, and "
-                    "put your work in front of more of the right people.")
+        headline = (f"Solid base for a {trade} in {area}. Now we compound it: get found, "
+                    "keep the reviews fresh, and put your work in front of more of the right people.")
 
     woven = []
     want = (business.get("capacity_note") or "").strip()

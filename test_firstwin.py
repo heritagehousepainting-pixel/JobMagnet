@@ -25,7 +25,7 @@ check("sms live, no customers, no gbp -> aeo_faq",
 # achieved(): any real outcome; None when none
 check("no facts -> None", firstwin.achieved({}) is None)
 check("review_sent -> review_request", firstwin.achieved({"review_sent": True}) == "review_request")
-check("only firstback booking counts", firstwin.achieved({"firstback_booking": True}) == "firstback_booking")
+check("photo_post_generated counts", firstwin.achieved({"photo_post_generated": True}) == "photo_post")
 check("faq counts even as fallback", firstwin.achieved({"faq_generated": True}) == "aeo_faq")
 
 # nudge_copy(): day-aware, no lockout language

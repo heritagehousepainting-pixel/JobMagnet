@@ -404,11 +404,30 @@ def _route_system(business=None):
     taught = _learning_examples(business) if business else ""
     taught_block = ("\nThe owner has TAUGHT you these corrections; honor them:\n" + taught
                     + "\n") if taught else ""
+    # P1-7: inject the Mandate so chat never contradicts the tenant's elections.
+    # P2-19: inject communication style preference captured at Walkthrough.
+    mandate_block = ""
+    style_block = ""
+    if business:
+        signals = db.get_signals(business["id"])
+        if signals and db.has_mandate(business["id"]):
+            result = mandate.diagnose(business, signals)
+            top = [p for p in result["plays"] if p["applicability"] == "applies"][:2]
+            not_yet = [p for p in result["plays"] if p["applicability"] == "not_yet"][:1]
+            lines = ["Current game plan (do not contradict these elections):"]
+            lines += [f'{p["label"]}: {p["reason"][:80]}' for p in top]
+            if not_yet:
+                lines.append(
+                    f'Holding off on {not_yet[0]["label"]}: {not_yet[0]["reason"][:80]}')
+            mandate_block = "\n" + "\n".join(lines) + "\n"
+        if business.get("brief_format"):
+            style_block = "\nCommunication style preference: {}.\n".format(
+                business["brief_format"])
     return (
         "You are Mason, the control assistant inside JobMagnet, an AI marketing app for a "
         "home-services contractor. Decide which ONE tool best answers the owner's message, "
         "and extract its parameters from what they said.\n\n"
-        "TOOLS:\n" + _tool_catalog() + "\n" + taught_block + "\n"
+        "TOOLS:\n" + _tool_catalog() + "\n" + mandate_block + style_block + taught_block + "\n"
         "Respond with ONLY a JSON object, no prose, no code fences, in this exact shape:\n"
         '{\"tool\": \"<tool name or chat>\", \"args\": {<params>}, \"reply\": \"<one short '
         'friendly sentence to say while doing it>\"}\n'

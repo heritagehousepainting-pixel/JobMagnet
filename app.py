@@ -10,8 +10,9 @@ FirstBack's structure so the two stay siblings.
 """
 import hmac
 import json
+import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 from flask import (Flask, render_template, request, redirect, session, abort,
@@ -45,7 +46,7 @@ import ads
 import outreach
 from config import (APP_NAME, TAGLINE, DEBUG, PORT, SECRET_KEY, SESSION_COOKIE_SECURE,
                     SEED_OWNER_EMAIL, SEED_OWNER_PASSWORD, PLATFORMS, DEFAULT_PLATFORM,
-                    WEBHOOK_TOKEN)
+                    WEBHOOK_TOKEN, EMAIL_LIVE)
 from routes import register_blueprints
 
 app = Flask(__name__)
@@ -223,7 +224,7 @@ def logout():
     return redirect("/login")
 
 
-def _briefing(biz, stats, drafts, due_count, mandate_ready):
+def _briefing(biz, stats, drafts, due_count, mandate_ready, signals=None):
     """Mason's morning brief — derived only from real state, never fabricated.
     Returns the greeting, a one-line status, and the single thing to do today."""
     hour = datetime.now().hour
@@ -246,11 +247,17 @@ def _briefing(biz, stats, drafts, due_count, mandate_ready):
                 f"{'they' if n_draft != 1 else 'it'} go{'' if n_draft != 1 else 'es'} out.")
         todo = (f"Approve {n_draft} draft{'s' if n_draft != 1 else ''}", "#review")
     else:
-        line = ("You're all caught up. I'm lining up your next posts. "
-                "Nothing needs you right now.")
+        line = "I am lining up your next posts. Nothing needs you right now."
         todo = ("Write something new", "/compose")
+    passed_on = None
+    if signals and mandate_ready:
+        result = mandate.diagnose(biz, signals)
+        not_yet = [p for p in result["plays"] if p["applicability"] == "not_yet"]
+        if not_yet:
+            play = not_yet[0]
+            passed_on = {"label": play["label"], "reason": play["reason"][:100]}
     return {"hello": hello, "line": line, "todo_label": todo[0], "todo_href": todo[1],
-            "awaiting": n_draft}
+            "awaiting": n_draft, "passed_on": passed_on}
 
 
 def first_win_block(business_id):
@@ -294,7 +301,7 @@ def first_win_block(business_id):
     signals = db.get_signals(business_id)
     live = {"sms_live": messaging.sms_live(business_id),
             "gbp_connected": google_business.is_connected(business_id)}
-    win = firstwin.designate(signals, live)
+    win = firstwin.designate(signals, live, biz)
     meta = firstwin.WINS[win]
     return {"state": "in_progress", "win": win, "achieved_win": None,
             "label": meta["label"], "cta_route": meta["cta_route"],
@@ -308,6 +315,15 @@ def dashboard():
     owner runs the whole product by conversation. The card-based view still lives at
     /queue for working by hand."""
     biz = current_business()
+    db.write_login_at(session.get("uid"))
+    mason_alert = biz.get("mason_alert")
+    if request.args.get("clear") == "mason_alert":
+        conn = db.get_conn()
+        conn.execute("UPDATE businesses SET mason_alert=NULL, mason_alert_at=NULL WHERE id=%s",
+                     (biz["id"],))
+        conn.commit()
+        conn.close()
+        return redirect("/dashboard")
     stats = db.content_stats(biz["id"])
     mandate_ready = db.has_mandate(biz["id"])
     posts = db.list_posts(biz["id"])
@@ -315,12 +331,16 @@ def dashboard():
     now = db.now_iso()
     due_count = sum(1 for p in posts if p["status"] == "scheduled"
                     and (p["scheduled_for"] or "") <= now)
-    brief = _briefing(biz, stats, drafts, due_count, mandate_ready)
+    signals = db.get_signals(biz["id"])
+    activation_funnel = db.activation_funnel_counts() if biz["id"] == 1 else None
+    brief = _briefing(biz, stats, drafts, due_count, mandate_ready, signals=signals)
     return render_template("command.html", brief=brief, stats=stats,
                            mandate_ready=mandate_ready,
                            digest=convos.digest(biz["id"]),
                            suggestions=assistant.suggestions(),
-                           first_win=first_win_block(biz["id"]))
+                           first_win=first_win_block(biz["id"]),
+                           mason_alert=mason_alert,
+                           activation_funnel=activation_funnel)
 
 
 @app.route("/queue")
@@ -337,7 +357,8 @@ def queue():
     due_count = sum(1 for p in posts if p["status"] == "scheduled"
                     and (p["scheduled_for"] or "") <= now)
     mandate_ready = db.has_mandate(biz["id"])
-    brief = _briefing(biz, stats, drafts, due_count, mandate_ready)
+    brief = _briefing(biz, stats, drafts, due_count, mandate_ready,
+                      signals=db.get_signals(biz["id"]))
     return render_template("dashboard.html", drafts=drafts, queue=queue_items, stats=stats,
                            due_count=due_count, mandate_ready=mandate_ready, brief=brief,
                            first_win=first_win_block(biz["id"]))
@@ -590,6 +611,77 @@ def tasks_tick():
         # A safe no-op (mode 'simulated', added 0) until FIRSTBACK_* is configured; deduped
         # by ext_id so repeated ticks never double-count the same booking.
         booked += roi.sync_firstback(bid)["added"]
+
+        # P2-14: Monday stall-detection — take_over election with 0 autopilot output
+        # in 7 days -> set mason_alert so the dashboard amber callout surfaces it.
+        if datetime.now().weekday() == 0:
+            _conn = db.get_conn()
+            _take_over_count = _conn.execute(
+                "SELECT COUNT(*) FROM playbook_elections "
+                "WHERE business_id=%s AND election='take_over'",
+                (bid,)).fetchone()["count"]
+            _seven_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+            _activity_row = _conn.execute(
+                "SELECT COALESCE(SUM(posts + msgs), 0) AS total FROM autopilot_runs "
+                "WHERE business_id=%s AND created_at >= %s",
+                (bid, _seven_ago)).fetchone()
+            _activity = int(_activity_row["total"]) if _activity_row else 0
+            if _take_over_count > 0 and _activity == 0:
+                _conn.execute(
+                    "UPDATE businesses SET mason_alert=%s, mason_alert_at=%s WHERE id=%s",
+                    ("Mason has not been able to run any content in 7 days. "
+                     "Check your settings.", db.now_iso(), bid))
+                _conn.commit()
+            _conn.close()
+
+        # P0-3 stage-aware re-engagement (after Monday stall block).
+        _biz_row = db.get_business(bid) or {}
+        _walkthrough_started = _biz_row.get("walkthrough_started_at")
+        if _walkthrough_started:
+            try:
+                _started_dt = datetime.fromisoformat(_walkthrough_started)
+                if _started_dt.tzinfo is None:
+                    _started_dt = _started_dt.replace(tzinfo=timezone.utc)
+                _hours_since = (datetime.now(timezone.utc) - _started_dt).total_seconds() / 3600
+            except (ValueError, TypeError):
+                _hours_since = 0
+            _has_mandate = db.has_mandate(bid)
+            _milestone = db.get_milestone(bid)
+            if (_has_mandate and not (_milestone and _milestone.get("achieved_at"))
+                    and _hours_since > 168 and (messaging.sms_live(bid) or EMAIL_LIVE)):
+                # Stage 2: has mandate, no first win, > 7 days since walkthrough start.
+                _signals = db.get_signals(bid) or {}
+                _live_state = {"sms_live": messaging.sms_live(bid),
+                               "gbp_connected": google_business.is_connected(bid)}
+                _win = firstwin.designate(_signals, _live_state, _biz_row)
+                _nudge = firstwin.WINS.get(_win, {}).get(
+                    "nudge", "Your next win is waiting. Finish your first play.")
+                if EMAIL_LIVE:
+                    _econn = db.get_conn()
+                    _erow = _econn.execute(
+                        "SELECT email FROM users WHERE business_id=%s LIMIT 1",
+                        (bid,)).fetchone()
+                    _econn.close()
+                    if _erow:
+                        messaging.send_email(bid, _erow["email"],
+                                             "Mason: your next win is waiting", _nudge,
+                                             kind="transactional", purpose="reengagement")
+            elif (not _has_mandate and _hours_since > 48
+                  and (messaging.sms_live(bid) or EMAIL_LIVE)):
+                # Stage 1: started walkthrough, no mandate elected, > 48h ago.
+                _nudge1 = ("You started your game plan. Finish the walkthrough and Mason "
+                           "will tell you exactly what to do first.")
+                if EMAIL_LIVE:
+                    _econn1 = db.get_conn()
+                    _erow1 = _econn1.execute(
+                        "SELECT email FROM users WHERE business_id=%s LIMIT 1",
+                        (bid,)).fetchone()
+                    _econn1.close()
+                    if _erow1:
+                        messaging.send_email(bid, _erow1["email"],
+                                             "Mason: finish your game plan", _nudge1,
+                                             kind="transactional", purpose="reengagement")
+
         rep = autopilot.run_for(bid, origin="cron")
         if rep["blocked"]:
             continue
@@ -611,7 +703,32 @@ def walkthrough():
         signals = mandate.normalize_signals(raw)
         db.save_signals(biz["id"], signals)
         db.save_mandate(biz["id"], mandate.diagnose(biz, signals)["plays"])
+        # P1-5 + P1-10 + P2-19: capture Brain/editable columns in one consolidated call.
+        brain = {f: request.form.get(f, "").strip()
+                 for f in ("capacity_note", "success_metric", "brief_format")
+                 if request.form.get(f, "").strip()}
+        if brain:
+            db.update_business(biz["id"], brain)
+        # P2-16: auto-generate AEO FAQ when designate() picks aeo_faq as the first win.
+        live_state = {"sms_live": messaging.sms_live(biz["id"]),
+                      "gbp_connected": google_business.is_connected(biz["id"])}
+        if firstwin.designate(signals, live_state, biz) == "aeo_faq":
+            pairs = ai.generate_faq(biz)
+            faq_text = "\n".join(f"Q: {q}\nA: {a}" for q, a in pairs)
+            db.update_business(biz["id"], {"faq": faq_text})
+            biz_name = (biz.get("name") or "").strip()
+            raw_slug = re.sub(r"[^a-z0-9]+", "-", biz_name.lower()).strip("-") if biz_name else ""
+            biz_slug = raw_slug or str(biz["id"])
+            _sconn = db.get_conn()
+            _sconn.execute(
+                "UPDATE businesses SET biz_slug=%s WHERE id=%s "
+                "AND (biz_slug IS NULL OR biz_slug='')",
+                (biz_slug, biz["id"]))
+            _sconn.commit()
+            _sconn.close()
         return redirect("/mandate")
+    # P0-3: record when this tenant first opens the Walkthrough (idempotent).
+    db.set_walkthrough_started(biz["id"])
     return render_template("walkthrough.html", signals=db.get_signals(biz["id"]))
 
 
@@ -626,13 +743,31 @@ def mandate_page():
     signals = db.get_signals(biz["id"]) or {}
     plays = db.get_mandate(biz["id"])
     ap_plan = autopilot.plan({p["playbook"]: p["election"] for p in plays})
+    # P2-13: extract result to a named var so we can build reconciliation_note.
+    result = mandate.diagnose(biz, signals)
+    BOTTLENECK_MAP = {"not_enough_leads": "paid", "no_reviews": "reviews",
+                      "win_back_customers": "reactivation", "see_ai_first": "get_found"}
+    contractor_play = BOTTLENECK_MAP.get(biz.get("bottleneck_priority", "") or "")
+    top_applies = [p for p in result["plays"] if p["applicability"] == "applies"]
+    top_play_key = top_applies[0]["key"] if top_applies else None
+    reconciliation_note = (
+        f'Mason sees {top_applies[0]["label"]} as the top play, but you flagged '
+        f'{contractor_play} as the bottleneck. Both are on.'
+        if contractor_play and top_play_key and contractor_play != top_play_key else None)
+    elections_updated_at = max(
+        (p.get("updated_at", "") for p in plays if p.get("updated_at")), default=None)
     return render_template("mandate.html", plays=plays,
-                           result=mandate.diagnose(biz, signals),
+                           result=result,
                            election_labels=mandate.ELECTION_LABELS,
                            ap_summary=autopilot.summary(ap_plan),
                            can_autopilot=plans.can_autopilot(db.get_plan(biz["id"])),
                            auto_publish=db.get_auto_publish(biz["id"]),
-                           last_run=db.last_autopilot_run(biz["id"]))
+                           last_run=db.last_autopilot_run(biz["id"]),
+                           bottleneck_priority=biz.get("bottleneck_priority"),
+                           reconciliation_note=reconciliation_note,
+                           elections_updated_at=elections_updated_at,
+                           biz_slug=biz.get("biz_slug"),
+                           faq=biz.get("faq"))
 
 
 @app.route("/autopilot/run", methods=["POST"])
@@ -672,6 +807,22 @@ def mandate_autopilot_publish():
     biz = current_business()
     if plans.can_autopilot(db.get_plan(biz["id"])):
         db.set_auto_publish(biz["id"], request.form.get("on") == "1")
+    return redirect("/mandate")
+
+
+@app.route("/mandate/bottleneck", methods=["POST"])
+@login_required
+def mandate_bottleneck():
+    """P2-13: Contractor states their bottleneck so Mason can frame the Mandate relative
+    to what they feel the problem is. Written via direct UPDATE (lifecycle col, not
+    _BUSINESS_COLS, so Settings form can never accidentally erase it)."""
+    bottleneck_priority = (request.form.get("bottleneck_priority") or "").strip()
+    biz = current_business()
+    conn = db.get_conn()
+    conn.execute("UPDATE businesses SET bottleneck_priority=%s WHERE id=%s",
+                 (bottleneck_priority, biz["id"]))
+    conn.commit()
+    conn.close()
     return redirect("/mandate")
 
 
@@ -1010,6 +1161,11 @@ def webhook_sms():
             topic += " [photo attached by text]"
         draft = ai.generate_post(biz, topic, DEFAULT_PLATFORM)
         db.add_post(business_id, DEFAULT_PLATFORM, topic, draft, status="draft")
+        # P2-15: close the MMS loop — reply to the sender so they know the draft is ready.
+        if messaging.sms_live(business_id):
+            messaging.send_sms(business_id, frm,
+                               "Draft post from your job photo is ready. Review it at /queue.",
+                               kind="transactional", purpose="photo_post_reply")
         return ("", 201)
     return ("", 204)
 
@@ -1436,6 +1592,25 @@ def connections_page():
     """The Connections hub: link real accounts so Mason actually acts (texts, posts,
     pulls reviews) instead of simulating. Honest status per provider."""
     biz = current_business()
+    # P1-6: pop capability-unlock flags and build the callout shown right after connection.
+    sms_just_unlocked = session.pop("sms_just_unlocked", False)
+    gbp_just_unlocked = session.pop("gbp_just_unlocked", False)
+    if sms_just_unlocked:
+        signals = db.get_signals(biz["id"])
+        backlog = (signals.get("reviewable_backlog", 0) or 0) if signals else 0
+        unlock_callout = {
+            "message": f"SMS is live. You have {backlog} past customers who haven't reviewed yet.",
+            "href": "/reviews",
+            "cta": "Start review requests",
+        }
+    elif gbp_just_unlocked:
+        unlock_callout = {
+            "message": "Google Business Profile is connected. I can now publish posts and pull reviews.",
+            "href": "/getfound",
+            "cta": "See what's next",
+        }
+    else:
+        unlock_callout = None
     status = db.connection_status(biz["id"])
     providers = []
     for pid, meta in connections.PROVIDERS.items():
@@ -1450,7 +1625,8 @@ def connections_page():
     return render_template("connections.html", providers=providers,
                            secrets_active=crypto.secrets_active(),
                            google_configured=google_business.configured(),
-                           google_connected=google_business.is_connected(biz["id"]))
+                           google_connected=google_business.is_connected(biz["id"]),
+                           unlock_callout=unlock_callout)
 
 
 @app.route("/connections/<provider>", methods=["POST"])
@@ -1468,6 +1644,8 @@ def connections_save(provider):
             else:
                 creds[f["key"]] = submitted
         db.set_connection(biz["id"], provider, creds)
+        if provider == "twilio":
+            session["sms_just_unlocked"] = True
         return redirect(f"/connections?saved={provider}")
     return redirect("/connections")
 
@@ -1517,6 +1695,7 @@ def google_callback():
     except Exception as e:                   # noqa: BLE001 -- never 500 the owner here
         print(f"[jobmagnet] google connect failed (biz {biz['id']}): {e}", flush=True)
         return redirect("/connections?msg=google_error")
+    session["gbp_just_unlocked"] = True
     return redirect("/connections?saved=gbp")
 
 
@@ -1526,6 +1705,47 @@ def google_disconnect():
     biz = current_business()
     google_business.disconnect(biz["id"])
     return redirect("/connections")
+
+
+@app.route("/faq/<slug>")
+def faq_public(slug):
+    """P2-16: Public AEO FAQ page for a business. Serves JSON-LD for AI search indexing
+    and a paste-ready block for the contractor. No login required."""
+    biz = db.get_business_by_slug(slug)
+    if not biz:
+        abort(404)
+    faq_text = biz.get("faq", "")
+    if not faq_text:
+        abort(404)
+    faq_pairs = [{"q": q, "a": a} for q, a in ai._parse_qa(faq_text)]
+    faq_jsonld = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {"@type": "Question", "name": p["q"],
+             "acceptedAnswer": {"@type": "Answer", "text": p["a"]}}
+            for p in faq_pairs
+        ],
+    }
+    return render_template("faq_public.html", biz=biz, faq_pairs=faq_pairs,
+                           faq_jsonld=faq_jsonld)
+
+
+@app.route("/insight/<slug>/<play_key>")
+def insight_public(slug, play_key):
+    """P2-17: Public 'Mason said no' page — renders a not_yet play's real-numbers reason
+    so contractors can share it. mandate.diagnose() is pure, safe for public routes."""
+    biz = db.get_business_by_slug(slug)
+    if not biz:
+        abort(404)
+    signals = db.get_signals(biz["id"]) or {}
+    result = mandate.diagnose(biz, signals)
+    not_yet_plays = [p for p in result["plays"]
+                     if p["applicability"] == "not_yet" and p["key"] == play_key]
+    if not not_yet_plays:
+        abort(404)
+    play = not_yet_plays[0]
+    return render_template("insight_public.html", play=play, biz=biz)
 
 
 if __name__ == "__main__":

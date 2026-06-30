@@ -15,28 +15,47 @@ WINS = {
                        "nudge": "A friendly check-in to a past customer often books the next job."},
     "aeo_faq":        {"label": "Generate your AI-search FAQ + schema", "cta_route": "/local",
                        "nudge": "Answer-first FAQ + schema is real, paste-ready value AI search engines cite -- no account needed."},
+    "photo_post":     {"label": "Draft a Google post from a job photo", "cta_route": "/queue",
+                       "nudge": "Mason drafted a post from your job photo. Approve it in your queue and publish it to Google."},
 }
 
 
-def designate(signals, live_state):
+def designate(signals, live_state, business=None):
     """The single win to guide this tenant toward. live_state: {sms_live, gbp_connected}.
+    business: optional dict with 'trade' for trade-specific priority branches.
     Always returns a reachable win (falls back to 'aeo_faq', which needs no integration)."""
     sms = bool(live_state.get("sms_live"))
     gbp = bool(live_state.get("gbp_connected"))
     s = signals or {}
-    if sms and (s.get("reviewable_backlog") or 0) > 0:
+    trade = ((business or {}).get("trade") or "").lower()
+    comp = (s.get("competitor_review_count") or 0)
+    rev = (s.get("review_count") or 0)
+
+    # Trade-specific priority branches (roofers and HVAC) before generic logic.
+    if sms and "roof" in trade and (s.get("past_customers") or 0) > 10:
+        return "reactivation"
+    if sms and "hvac" in trade and (s.get("missed_leads") or 0) > 0:
+        return "reactivation" if (s.get("past_customers") or 0) > 5 else "review_request"
+
+    # Competitor-aware review_request threshold: if the competitor has 3x more reviews,
+    # lower the bar from >0 to >=3 backlog.
+    if sms and ((s.get("reviewable_backlog") or 0) > 0 or
+                (comp > rev * 3 and (s.get("reviewable_backlog") or 0) >= 3)):
         return "review_request"
     if gbp:
         return "gbp_post"
     if sms and (s.get("past_customers") or 0) > 0:
         return "reactivation"
+    # Photo-post branch: SMS connected, GBP connected, but thin backlog — photo draft is next.
+    if sms and gbp and (s.get("reviewable_backlog") or 0) < 5:
+        return "photo_post"
     return "aeo_faq"
 
 
 # Real-outcome fact key -> the win it satisfies (order = which wins first if several true).
 _FACT_WIN = (("review_sent", "review_request"), ("gbp_live_post", "gbp_post"),
              ("reactivation_sent", "reactivation"), ("faq_generated", "aeo_faq"),
-             ("firstback_booking", "firstback_booking"))
+             ("photo_post_generated", "photo_post"))
 
 
 def achieved(facts):
