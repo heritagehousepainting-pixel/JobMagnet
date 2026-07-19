@@ -17,6 +17,7 @@ AUTONOMOUS_ACTIONS = {
     "reviews":      "Text review requests to customers not yet asked",
     "reactivation": "Text past customers who are due on their cycle",
     "referrals":    "Ask happy customers for a referral",
+    "radius_mail":  "Draft a neighbor mail campaign for each completed job",
 }
 
 
@@ -54,6 +55,7 @@ import ai
 import messaging
 import reactivation
 import referrals
+import radiusmail
 import plans
 import cadence
 import posting
@@ -157,6 +159,19 @@ def run_for(business_id, origin="manual"):
                 if _eligible(cu) and cu["id"] not in asked:
                     _text(cu, referrals.referral_ask_sms(biz, cu.get("name", "")),
                           "marketing", "referral_request")
+        elif pb == "radius_mail":
+            # Draft (never send/spend: mail v0 is assisted print-it-yourself) one
+            # neighbor campaign per completed job that has a jobsite address and no
+            # campaign yet. Counted with posts: it's a draft awaiting approval.
+            done = db.mail_campaign_contact_ids(business_id)
+            for cu in db.list_contacts(business_id, kind="customer"):
+                if (cu.get("last_job_at") and (cu.get("address") or "").strip()
+                        and cu["id"] not in done):
+                    camp = radiusmail.campaign_from_job(
+                        biz, {"address": cu["address"],
+                              "service": cu.get("last_service", "")})
+                    db.add_mail_campaign(business_id, camp, contact_id=cu["id"])
+                    posts += 1
     db.log_autopilot_run(business_id, posts, msgs, capped, sms_mode, origin=origin)
     return {"blocked": False, "posts": posts, "msgs": msgs, "capped": capped,
             "sms_mode": sms_mode}

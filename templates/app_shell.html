@@ -74,7 +74,7 @@
         </a>
       </details>
 
-      <details class="nav-group" {{ 'open' if path.startswith('/speed') or path.startswith('/reactivation') or path.startswith('/referrals') or path.startswith('/offer') }}>
+      <details class="nav-group" {{ 'open' if path.startswith('/speed') or path.startswith('/reactivation') or path.startswith('/referrals') }}>
         <summary>{{ chev }}<span>Win the Job</span></summary>
         <a class="nav-item {{ 'active' if path.startswith('/speed') }}" href="/speed">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -88,25 +88,21 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           <span>Referrals</span>
         </a>
-        <a class="nav-item {{ 'active' if path.startswith('/offer') }}" href="/offer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          <span>Offer</span>
-        </a>
       </details>
 
-      <details class="nav-group" {{ 'open' if path.startswith('/ads') or path.startswith('/outreach') or path.startswith('/cold') }}>
-        <summary>{{ chev }}<span>Advertise</span></summary>
-        <a class="nav-item {{ 'active' if path.startswith('/ads') }}" href="/ads">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
-          <span>Ads</span>
+      <details class="nav-group" {{ 'open' if path.startswith('/ads') or path.startswith('/outreach') or path.startswith('/radiusmail') }}>
+        <summary>{{ chev }}<span>New Clients</span></summary>
+        <a class="nav-item {{ 'active' if path.startswith('/radiusmail') }}" href="/radiusmail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10h14V10"/><path d="M9 21v-6h6v6"/></svg>
+          <span>Neighbor Mail</span>
         </a>
         <a class="nav-item {{ 'active' if path.startswith('/outreach') }}" href="/outreach">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          <span>Outreach</span>
+          <span>Partners</span>
         </a>
-        <a class="nav-item {{ 'active' if path.startswith('/cold') }}" href="/cold">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          <span>Cold Outreach</span>
+        <a class="nav-item {{ 'active' if path.startswith('/ads') }}" href="/ads">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          <span>Paid Leads</span>
         </a>
       </details>
 

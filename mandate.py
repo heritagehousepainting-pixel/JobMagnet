@@ -28,6 +28,8 @@ PLAYBOOKS = {
                       "blurb": "Put your best projects in front of the right homeowners. Your work is the unfair advantage."},
     "referrals":     {"label": "Referrals & Plans",
                       "blurb": "Turn happy customers into a referral habit and recurring maintenance work."},
+    "radius_mail":   {"label": "Neighbor Mail",
+                      "blurb": "After every finished job, a letter and door hanger for the closest neighbors. Your jobsite is the ad, and paper needs no consent."},
     "paid":          {"label": "Targeted Paid",
                       "blurb": "Local Services Ads and targeted ads. The realistic lead injector when organic isn't enough yet."},
     "offer":         {"label": "Offer & Guarantee",
@@ -189,6 +191,17 @@ def diagnose(business, raw_signals):
     else:
         add("referrals", "applies", "ask_first", 35,
             "Build the referral habit early so word of mouth compounds as you grow.")
+
+    # --- Neighbor Mail (the one lawful cold reach; every job advertises its street) ---
+    if s["new_jobs_per_month"] >= 1 or s["past_customers"] >= 10:
+        add("radius_mail", "applies", "ask_first", 66,
+            "Every finished job is proof the whole street can see. A neighbor letter "
+            "around each jobsite is the cheapest cold reach there is, and the only "
+            "kind that needs no consent.")
+    else:
+        add("radius_mail", "not_yet", "off", 0,
+            "No completed jobs to anchor a neighbor campaign yet. The moment you "
+            "finish one, we put it to work on its own street.")
 
     # --- Targeted Paid (the injector when organic can't spin yet) ---
     if (not organic_fuel) and ml < 8:

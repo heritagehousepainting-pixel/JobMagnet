@@ -180,9 +180,10 @@ Angi pay-per-lead $15-100. One extra booked job ($3-8k) pays back a plan 10-25x.
 | Plan | Price | Unlocks | COGS → margin |
 |---|---|---|---|
 | **Pro** | **$199/mo** | Advisor: drafts everything, you approve; all engines; ~750 texts | ~$10 → ~95% |
-| **Premium** | **$299/mo** | + **Autopilot** (acts on its own), Speed-to-Lead/Reactivation/Referrals, closed-loop ROI; ~2,000 texts | ~$25-36 → ~88% |
-| **Scale** | **$599/mo** | + managed paid ads (LSA/Meta), multi-location, priority; ~6,000 texts | ~$50-80 → ~85% |
+| **Premium** | **$299/mo** | + **Autopilot** (acts on its own), Speed-to-Lead/Reactivation/Referrals/Neighbor Mail, closed-loop ROI; ~2,000 texts | ~$25-36 → ~88% |
+| **Scale** | **$599/mo** | + LSA Concierge & paid-leads playbook, multi-location, priority; ~6,000 texts | ~$50-80 → ~85% |
 
 Annual = ~2 months free · **$0 setup** (we handle provisioning + registration) · risk-reversal
-trial. **Engine gate is live in code** (`plans.py`): autopilot is Premium+, managed ads is
-Scale, text volume capped per plan. Real card billing (Stripe) = next step.
+trial. **Engine gate is live in code** (`plans.py`): autopilot is Premium+, text volume capped
+per plan. ("Managed ads" was retired from Scale 2026-07-19 — nothing in code manages an ad
+account; see CAPABILITY_BACKLOG.md.) Real card billing (Stripe) = next step.

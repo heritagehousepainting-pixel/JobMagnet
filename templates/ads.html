@@ -1,9 +1,40 @@
 {% extends "app_shell.html" %}
-{% block title %}Ads{% endblock %}
-{% block page_title %}Paid Ads Assist{% endblock %}
-{% block page_sub %}<p class="page-sub">Budget guidance and ad copy. Spend Local Services Ads first, it is the cheapest qualified lead.</p>{% endblock %}
+{% block title %}Paid Leads{% endblock %}
+{% block page_title %}Paid Leads{% endblock %}
+{% block page_sub %}<p class="page-sub">Local Services Ads are the cheapest qualified lead in the trades (~$53, pay-per-lead). The concierge walks you through Google Screened; the calculator sizes the budget. Guidance only — we never touch your ad account, and we say so.</p>{% endblock %}
 
 {% block content %}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">LSA Concierge</h2>
+    <span class="pill {{ 'pill-booked' if lsa_score == 100 else 'pill-neutral' }}"><span class="pill-dot"></span>{{ lsa_score }}% set up</span>
+  </div>
+  <div class="card-body">
+    {% if lsa_next %}
+    <p class="post-body" style="margin-bottom:var(--space-3)"><strong>Next:</strong> {{ lsa_next[0].label }} — {{ lsa_next[0].help }}</p>
+    {% else %}
+    <p class="post-body" style="margin-bottom:var(--space-3)">Fully set up. Keep the weekly habits below checked honest — answering fast and disputing junk leads is where the money is.</p>
+    {% endif %}
+    <ul style="list-style:none;padding:0;margin:0">
+      {% for item in lsa_checklist %}
+      <li style="display:flex;gap:var(--space-3);align-items:flex-start;padding:var(--space-2) 0;border-bottom:1px solid var(--border)">
+        <form method="post" action="/ads/check" style="margin-top:2px">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="hidden" name="item" value="{{ item.key }}">
+          <input type="hidden" name="done" value="{{ '0' if item.key in lsa_done else '1' }}">
+          <button class="btn btn-sm {{ 'btn-primary' if item.key in lsa_done else 'btn-secondary' }}" type="submit" aria-label="{{ 'Mark not done' if item.key in lsa_done else 'Mark done' }}: {{ item.label }}">{{ '✓' if item.key in lsa_done else '○' }}</button>
+        </form>
+        <div>
+          <strong {% if item.key in lsa_done %}style="opacity:.6"{% endif %}>{{ item.label }}</strong>
+          <div class="dt-muted" style="font-size:.9rem">{{ item.help }}</div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="field-help" style="margin-top:var(--space-3)">Your <a href="/reviews">Reviews</a> engine feeds LSA rank directly, and <a href="/speed">Speed-to-Lead</a> is how you keep the responsiveness score up.</p>
+  </div>
+</div>
+
 <div class="card" style="margin-bottom:var(--space-6)">
   <div class="card-head"><h2 class="card-title">Budget calculator</h2></div>
   <div class="card-body">
