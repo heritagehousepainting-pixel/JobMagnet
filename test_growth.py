@@ -180,15 +180,22 @@ check("P1-4 passed_on populated when a not_yet play exists",
 check("P0-1 pull_reviews simulated when GBP unconnected",
       reviewsync.pull_reviews(1) == {"mode": "simulated", "added": 0})
 
-# P2-14: a mason_alert can be set and cleared via the dashboard.
+# P2-14: a jobmagnet_alert (renamed from mason_alert) can be set + cleared via the dashboard.
 _conn = db.get_conn()
-_conn.execute("UPDATE businesses SET mason_alert=%s WHERE id=1", ("stall test",))
+_conn.execute("UPDATE businesses SET jobmagnet_alert=%s WHERE id=1", ("stall test",))
 _conn.commit()
 _conn.close()
-check("P2-14 mason_alert set", (db.get_business(1).get("mason_alert") or "") == "stall test")
-c.get("/dashboard?clear=mason_alert")
-check("P2-14 mason_alert cleared via /dashboard?clear=mason_alert",
-      not db.get_business(1).get("mason_alert"))
+check("P2-14 jobmagnet_alert set", (db.get_business(1).get("jobmagnet_alert") or "") == "stall test")
+c.get("/dashboard?clear=jobmagnet_alert")
+check("P2-14 jobmagnet_alert cleared via /dashboard?clear=jobmagnet_alert",
+      not db.get_business(1).get("jobmagnet_alert"))
+# Backfill safety: the old mason_alert column still exists (not dropped) so the rename
+# is reversible and never lost data.
+_bc = db.get_conn()
+_has_old = _bc.execute("SELECT column_name FROM information_schema.columns "
+                       "WHERE table_name='businesses' AND column_name='mason_alert'").fetchone()
+_bc.close()
+check("legacy mason_alert column preserved (reversible rename)", _has_old is not None)
 
 print(f"==== {_p} passed, {_f} failed ====")
 sys.exit(1 if _f else 0)

@@ -378,6 +378,14 @@ def init_db():
     _ensure_columns(c, "businesses", {"bottleneck_priority": "TEXT"})
     # P2-14: JobMagnet stall-detection alert (lifecycle cols, NOT in _BUSINESS_COLS).
     _ensure_columns(c, "businesses", {"mason_alert": "TEXT", "mason_alert_at": "TEXT"})
+    # Rename mason_alert -> jobmagnet_alert (persona rename cleanup). SAFE + reversible:
+    # add the new columns, backfill from the old ones once, and switch the code to the new
+    # names. The old columns are LEFT IN PLACE (not dropped) so there is zero data-loss
+    # risk and the change can be rolled back; a later migration can drop them. Idempotent.
+    _ensure_columns(c, "businesses", {"jobmagnet_alert": "TEXT", "jobmagnet_alert_at": "TEXT"})
+    c.execute("UPDATE businesses SET jobmagnet_alert = mason_alert, "
+              "jobmagnet_alert_at = mason_alert_at "
+              "WHERE jobmagnet_alert IS NULL AND mason_alert IS NOT NULL")
     # P2-16: public-facing slug for /faq/<slug> and /insight/<slug>/<play> routes (NOT in _BUSINESS_COLS).
     _ensure_columns(c, "businesses", {"biz_slug": "TEXT"})
     # P2-19: tone-preference (Brain/editable, goes in _BUSINESS_COLS).

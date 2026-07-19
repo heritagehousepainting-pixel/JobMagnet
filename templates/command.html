@@ -9,7 +9,7 @@
          data-hello="{{ brief.hello }}">
 
   {# ---- JobMagnet alert (stall detection / weekly self-audit) ---- #}
-  {% if mason_alert %}<div class="save-banner" style="background:var(--warning-bg,#fffbe6);color:var(--warning,#92610a);margin-bottom:var(--space-4)">{{ mason_alert }} <a href="?clear=mason_alert" style="margin-left:var(--space-2);font-size:.85rem">Dismiss</a></div>{% endif %}
+  {% if jobmagnet_alert %}<div class="save-banner" style="background:var(--warning-bg,#fffbe6);color:var(--warning,#92610a);margin-bottom:var(--space-4)">{{ jobmagnet_alert }} <a href="?clear=jobmagnet_alert" style="margin-left:var(--space-2);font-size:.85rem">Dismiss</a></div>{% endif %}
 
   {# ---- The Jarvis core: a living orb that is the assistant's presence ---- #}
   <div class="orb-stage" aria-hidden="true">

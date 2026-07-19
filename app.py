@@ -320,11 +320,11 @@ def dashboard():
     /queue for working by hand."""
     biz = current_business()
     db.write_login_at(session.get("uid"))
-    mason_alert = biz.get("mason_alert")
-    if request.args.get("clear") == "mason_alert":
+    jobmagnet_alert = biz.get("jobmagnet_alert")
+    if request.args.get("clear") == "jobmagnet_alert":
         conn = db.get_conn()
-        conn.execute("UPDATE businesses SET mason_alert=NULL, mason_alert_at=NULL WHERE id=%s",
-                     (biz["id"],))
+        conn.execute("UPDATE businesses SET jobmagnet_alert=NULL, jobmagnet_alert_at=NULL "
+                     "WHERE id=%s", (biz["id"],))
         conn.commit()
         conn.close()
         return redirect("/dashboard")
@@ -343,7 +343,7 @@ def dashboard():
                            digest=convos.digest(biz["id"]),
                            suggestions=assistant.suggestions(),
                            first_win=first_win_block(biz["id"]),
-                           mason_alert=mason_alert,
+                           jobmagnet_alert=jobmagnet_alert,
                            activation_funnel=activation_funnel)
 
 
@@ -617,7 +617,7 @@ def tasks_tick():
         booked += roi.sync_firstback(bid)["added"]
 
         # P2-14: Monday stall-detection — take_over election with 0 autopilot output
-        # in 7 days -> set mason_alert so the dashboard amber callout surfaces it.
+        # in 7 days -> set jobmagnet_alert so the dashboard amber callout surfaces it.
         if datetime.now().weekday() == 0:
             _conn = db.get_conn()
             _take_over_count = _conn.execute(
@@ -632,7 +632,8 @@ def tasks_tick():
             _activity = int(_activity_row["total"]) if _activity_row else 0
             if _take_over_count > 0 and _activity == 0:
                 _conn.execute(
-                    "UPDATE businesses SET mason_alert=%s, mason_alert_at=%s WHERE id=%s",
+                    "UPDATE businesses SET jobmagnet_alert=%s, jobmagnet_alert_at=%s "
+                    "WHERE id=%s",
                     ("JobMagnet has not been able to run any content in 7 days. "
                      "Check your settings.", db.now_iso(), bid))
                 _conn.commit()
