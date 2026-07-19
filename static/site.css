@@ -293,3 +293,50 @@ html:has(.site-body){overflow-x:hidden}
   .foot-grid{grid-template-columns:1fr 1fr}
   .hero-cta .btn,.cta-band .btn{width:100%}
 }
+
+/* ============================ Features hero ============================= */
+/* Editorial split: type stack left, the honest "system readout" artifact
+   right — the brand's stat-card-as-hero motif built from true statuses
+   instead of invented numbers. Differentiates from the centered home hero. */
+.fhero{display:grid;grid-template-columns:1.08fr .92fr;gap:var(--space-16);
+  align-items:center;padding-top:var(--space-10)}
+.fhero-copy h1{margin:0 0 var(--space-5);font-weight:900;letter-spacing:-.03em;
+  line-height:1.04;font-size:clamp(2.3rem,4.4vw,3.7rem)}
+.fhero-copy h1 .accent{color:var(--accent-strong)}
+.fhero-copy .lede{max-width:32rem;margin:0 0 var(--space-6)}
+.fhero-legend{display:flex;flex-direction:column;gap:var(--space-2);
+  margin-bottom:var(--space-8)}
+.fhero-legend .lg{display:inline-flex;align-items:baseline;gap:10px;
+  font-size:var(--text-sm);color:var(--ink-soft)}
+.fhero-legend .lg strong{color:var(--ink);font-weight:600}
+.lg-dot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;
+  background:var(--ink-faint);transform:translateY(-1px)}
+.lg-dot.on{background:var(--accent)}
+.fhero-cta{justify-content:flex-start;margin-top:0}
+.fhero-card{border:1px solid var(--border-strong);border-radius:22px;
+  background:linear-gradient(180deg,var(--surface),var(--bg));
+  padding:var(--space-6) var(--space-6) var(--space-4)}
+.ledger{list-style:none;margin:var(--space-2) 0 0;padding:0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--text-xs);letter-spacing:.06em}
+.ledger li{display:flex;align-items:center;justify-content:space-between;
+  gap:var(--space-4);padding:11px 2px;border-top:1px solid var(--border)}
+.ledger li:first-child{border-top:0}
+.ledger li>span:first-child{color:var(--ink);font-weight:600;white-space:nowrap}
+.ledger .st{display:inline-flex;align-items:center;gap:8px;color:var(--ink-faint);
+  text-align:right}
+.ledger .st::before{content:"";flex:0 0 auto;width:7px;height:7px;
+  border-radius:50%;background:var(--ink-faint)}
+.ledger .st.on{color:var(--accent-strong)}
+.ledger .st.on::before{background:var(--accent)}
+.ledger .st.off::before{content:"✕";width:auto;height:auto;border-radius:0;
+  background:none;color:var(--ink-faint);font-size:10px;line-height:1}
+.ledger li.never>span:first-child{color:var(--ink-faint);
+  text-decoration:line-through;
+  text-decoration-color:color-mix(in srgb,var(--ink-faint) 55%,transparent)}
+@media (max-width:900px){
+  .fhero{grid-template-columns:1fr;gap:var(--space-10);padding-top:var(--space-6)}
+  .fhero-card{order:2}
+  .ledger li{padding:9px 0}
+  .ledger .st{letter-spacing:.02em}
+}
