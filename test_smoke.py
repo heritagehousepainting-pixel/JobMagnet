@@ -1835,6 +1835,20 @@ for _i in range(6):
 check("contact form accepts normal traffic then 429s a burst (per-IP limit)",
       _rl_codes[0] in (200,) and _rl_codes[-1] == 429)
 
+# --- Public /features page (the honest feature tour) ------------------------
+print("Features page")
+r = c.get("/features")
+check("features page renders", r.status_code == 200)
+check("features page covers the new-client engines",
+      b"Neighbor Mail" in r.data and b"Partner engine" in r.data
+      and b"LSA Concierge" in r.data)
+check("features page carries the honesty badges (no overclaims)",
+      b"Works day one" in r.data and b"when your line is connected" in r.data)
+check("features page never claims cold calling",
+      b"No cold calls. Ever." in r.data)
+check("site nav links to the features page",
+      b'href="/features"' in c.get("/").data)
+
 # --- Cleanup ----------------------------------------------------------------
 # (Postgres DB is dropped by the atexit handler registered at the top of this file.)
 

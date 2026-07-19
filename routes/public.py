@@ -55,6 +55,13 @@ def how_it_works():
     return render_template("site_how.html", **_site_ctx())
 
 
+@bp.route("/features")
+def features():
+    """The full honest feature tour: every engine, what it does, and its true
+    day-one status (works now vs live-when-connected). AUDIT_TRUTH applies."""
+    return render_template("site_features.html", **_site_ctx())
+
+
 # Per-tenant hosted SMS compliance pages (A2P 10DLC privacy + terms).
 LEGAL_UPDATED = "June 16, 2026"
 LEGAL_BUSINESSES = {
