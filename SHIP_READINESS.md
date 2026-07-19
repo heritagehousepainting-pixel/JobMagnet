@@ -38,31 +38,38 @@ Source of truth for details: `SETUP_NEEDED.md` and `AUDIT_TRUTH.md`.
     point the placeholder `hello@jobmagnet.app` at a real mailbox.
 
 ### Reviews (reviews value loop)
-- [ ] **Finish Google Business Profile review-pull** in `reviewsync.pull_reviews`.
-  OAuth connect is wired and the heartbeat calls the seam, but the reviews GET is unimplemented
-  (reports `pending`; never fabricates reviews).
-  - Implement the GBP reviews GET; map+dedupe into the reviews table.
-  - Confirm status flips `simulated` → `pending` → `live`; verify `POST /reviews/sync` and `/tasks/tick`.
+- [x] **GBP review-pull implemented** (`reviewsync.pull_reviews`) — fixed 2026-07-19: it now
+  uses the stored combined `accounts/X/locations/Y` resource + on-demand token refresh (a
+  phantom `account_id` read had forced `pending` forever). Live path covered by stubbed-API
+  tests: ingest, rating map, dedupe.
+- [ ] **Verify at first real connect**: the GET uses the v4 host matching the stored resource
+  shape; Google keeps migrating Business Profile APIs — confirm the endpoint against a real
+  connected account, then confirm `simulated` → `pending` → `live` end-to-end.
 
 ---
 
 ## 8 → 9+ — Launch polish & remaining build (after blockers)
 
 ### Public site / launch ops
-- [ ] **Domain + favicon + Open Graph / social share image** (site is deploy-ready; needs these).
-- [ ] **Rate-limit the public `POST /contact`** (CSRF-protected but unauthenticated — add a per-IP limit).
-- [ ] **SEO meta** — add `<link rel=canonical>`, `<meta name=description>`, Open Graph tags, and
-  JSON-LD structured data to the public templates (flagged by the UI audit).
+- [ ] **Domain + Open Graph / social share image** (site is deploy-ready; favicons are DONE —
+  `/static/favicon-*.png`).
+- [x] **Rate-limit the public `POST /contact`** — per-IP sliding window added 2026-07-19 (429 on burst).
+- [ ] **SEO meta** — add `<link rel=canonical>`, Open Graph tags, and JSON-LD structured data to
+  the public templates (`<meta name=description>` is already in `site_base.html`).
 
 ### Still-simulated integrations (build or cut from the pitch)
 - [ ] **AI image generation** — `ai.generate_image` is prompt-only (always `simulated`); wire a provider call, or drop the claim.
-- [ ] **Managed paid ads** — `ads.py` is advisory (budgets + copy), not ad-account management. Keep copy as "guidance" or build management.
+- [x] **Managed paid ads** — RESOLVED 2026-07-19 by retirement: the promise was removed from Scale
+  (nothing managed an ad account) and replaced with the real LSA Concierge. See CAPABILITY_BACKLOG.
+- [ ] **Neighbor Mail v1** — v0 (assisted print + EDDM) is live; automated print-and-mail (Lob) is
+  parked with a MONEY-gate trigger in CAPABILITY_BACKLOG.
 - [ ] **FirstBack booking-sync** — wired and gated, but the bookings GET shape (`/bookings`, Bearer, list/envelope JSON) needs matching to FirstBack's real API once `FIRSTBACK_API_URL` + `FIRSTBACK_API_KEY` are set.
 
 ---
 
 ## Already done (the 8–9 foundation)
-- Test suite robust: `test_smoke` 405 pass, `test_compliance_core` 47 pass, first-win logic pass (the only failures are dirty-shared-DB artifacts in the render tests, not regressions).
+- Test suite robust: `test_smoke` ~440 pass, `test_compliance_core` 47, `test_firstwin` 30,
+  `test_growth` 39 — all green as of 2026-07-19 (new-client engines + reviewsync fix included).
 - Honest integration gating — every seam reports real `simulated`/`live`/`error` and never fakes success (`AUDIT_TRUTH.md`).
 - Security hardening — CSRF, fail-closed Twilio webhook signatures, session auth, credential sealing (when the key above is set).
 - Deploy-ready — `render.yaml` + gunicorn; SQLite→Postgres migration complete.

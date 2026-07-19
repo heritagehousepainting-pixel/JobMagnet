@@ -10,11 +10,14 @@ When GBP IS connected we attempt the live GBP Reviews API GET; any error (expire
 network failure) returns 'error' rather than fabricating reviews. The heartbeat calls it
 per tenant so monitoring is autonomous-ready the moment GBP is wired.
 
-OPS NOTE: The GBP Reviews API (mybusiness.googleapis.com/v4) requires:
-  - A valid OAuth2 access_token stored in the GBP connection credentials
-  - The account_id and location_id stored in the connection credentials
-  - The Business Profile API enabled in the Google Cloud project
-  These must be set up via the Google Cloud console and the /connections/google flow.
+OPS NOTE: The GBP connection (google_business.py) stores `location_id` as the COMBINED
+resource name "accounts/X/locations/Y" — this module uses it directly (a previous
+version read a separate `account_id` field that was never stored, so the pull always
+reported 'pending'; fixed 2026-07-19). The access token is fetched via
+google_business.access_token(), which refreshes on demand, mirroring the publish side.
+VERIFY AT FIRST LIVE CONNECT: the reviews GET below uses the v4 host that matches the
+stored resource shape; Google has been migrating Business Profile APIs, so confirm the
+endpoint against a real connected account before trusting live mode (SETUP_NEEDED.md).
 """
 import publishing
 
@@ -45,20 +48,22 @@ def pull_reviews(business_id):
         import urllib.request
         import json as _json
 
+        import google_business
+
         conn_creds = db.get_connection(business_id, "gbp")
         if not conn_creds:
             return {"mode": "pending", "added": 0}
 
         creds = conn_creds if isinstance(conn_creds, dict) else {}
-        access_token = creds.get("access_token", "")
-        account_id = creds.get("account_id", "")
-        location_id = creds.get("location_id", "")
+        # Freshest token (refreshes on demand) — mirrors publishing._gbp_creds.
+        access_token = google_business.access_token(business_id) or creds.get("access_token", "")
+        # The stored location_id IS the combined "accounts/X/locations/Y" resource name.
+        location = creds.get("location_id", "")
 
-        if not (access_token and account_id and location_id):
+        if not (access_token and location):
             return {"mode": "pending", "added": 0}
 
-        url = (f"https://mybusiness.googleapis.com/v4/accounts/{account_id}"
-               f"/locations/{location_id}/reviews")
+        url = f"https://mybusiness.googleapis.com/v4/{location}/reviews"
         req = urllib.request.Request(
             url, headers={"Authorization": f"Bearer {access_token}"})
         with urllib.request.urlopen(req, timeout=10) as resp:

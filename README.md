@@ -25,9 +25,11 @@ generate demand        ──feeds──►  catch + book it
 
 ## Status
 
-**Core workflows across the 6 roadmap phases are built + tested** (Flask + SQLite,
-port 8900), with live integrations behind honest connector gates. Verified end-to-end
-by `test_smoke.py` (**405 assertions**) — run `./.venv/bin/python test_smoke.py`.
+**Core workflows across the 6 roadmap phases are built + tested** (Flask + **Postgres**
+via psycopg3, port 8900), with live integrations behind honest connector gates. Verified
+end-to-end by four standalone suites (`test_smoke.py` ~440 checks, `test_compliance_core`,
+`test_firstwin`, `test_growth`) — run each with a throwaway-DB URL, e.g.
+`TEST_DATABASE_URL="postgresql://jack@127.0.0.1:5432/postgres" ./.venv/bin/python test_smoke.py`.
 MiniMax is the live AI brain when configured. A **dark, premium public marketing site**
 (home, pricing, how-it-works, contact) fronts the app, and the signed-in dashboard is
 now **JobMagnet's conversational home** (daily brief + approval queue).
@@ -77,7 +79,7 @@ JobMagnet should not reinvent infrastructure FirstBack already proved out:
 
 | FirstBack asset | Reused for |
 |---|---|
-| Multi-tenant SQLite (`business_id` scoping) | Per-contractor JobMagnet accounts |
+| Multi-tenant storage pattern (`business_id` scoping; now Postgres here) | Per-contractor JobMagnet accounts |
 | `messaging.send_sms` outbound seam (gated/simulated) | Cold SMS sends |
 | Pluggable Claude/MiniMax AI brain | Content + outreach generation |
 | Gated-integration pattern (`configured()`/`is_connected()`) | Email/social/ads connectors |

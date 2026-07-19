@@ -1,5 +1,5 @@
 /* =========================================================================
-   Command Center -- Mason's "Jarvis" control surface.
+   Command Center -- JobMagnet's "Jarvis" control surface.
    Built on the shared tokens in ui.css / app.css. Motion uses one clock
    (the --dur/--ease tokens); every animated element has a reduced-motion
    rest state, and the orb degrades to a static glow with no WebGL / no JS.

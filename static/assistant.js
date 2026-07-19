@@ -276,7 +276,7 @@
     var wrap = el("div", "cards"); wrap.appendChild(c); body.appendChild(wrap); scrollDown();
   }
 
-  /* ---- proactive teaching offer (Mason offers to remember a recurring gap) ---- */
+  /* ---- proactive teaching offer (JobMagnet offers to remember a recurring gap) ---- */
   function renderCoach(coach, body) {
     var c = el("div", "a-card confirm-card");
     c.appendChild(el("div", "cc-q", coach.prompt || "Want me to remember that?"));

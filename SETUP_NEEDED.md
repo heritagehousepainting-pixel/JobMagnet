@@ -39,10 +39,10 @@ says so:
   visitor a confirmation. To get inquiries in your inbox, wire it to the email
   provider (Phase 0 SMTP) or a form service. The `hello@jobmagnet.app` address shown
   on the page is a placeholder — point it at a real mailbox.
-- ⬜ **Domain + favicon + OG/social image.** The site is ready to deploy; it needs a
-  domain, a favicon, and an Open Graph share image for link previews.
-- ⬜ (Optional) **Rate-limit the public contact POST.** It's CSRF-protected but
-  unauthenticated; add a simple per-IP limit before launch to avoid log spam.
+- ⬜ **Domain + OG/social image.** The site is ready to deploy; it needs a domain and an
+  Open Graph share image for link previews. (Favicons are DONE — `/static/favicon-*.png`.)
+- ✅ **Rate-limit the public contact POST.** Per-IP in-process limit added 2026-07-19
+  (on top of CSRF): bursts get a 429, honest message shown.
 
 ## Security — before onboarding real tenants  ⚠️
 - ⬜ **`JOBMAGNET_SECRETS_KEY`** — encrypts stored connection credentials (Twilio/Google/
@@ -51,6 +51,11 @@ says so:
   `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Set this **before any real
   account is connected**. (Existing plaintext rows keep working after you set it; new writes
   are sealed. If you ever rotate this key, re-enter each connection's credentials.)
+- ⬜ **Change the seeded owner password.** ⚠️ First boot seeds the owner account with
+  `JOBMAGNET_OWNER_PASSWORD`, which **defaults to `jobmagnet123`** (config.py
+  `SEED_OWNER_PASSWORD`). Any deploy that doesn't override the env var has a known
+  default login. Set `JOBMAGNET_OWNER_PASSWORD` before first boot, or log in and
+  change it immediately after. Never onboard a tenant on the default.
 
 ## Phase 0 — Messaging & consent (to send real SMS/email)
 - ⬜ **Twilio account + phone number** (SMS). Need: Account SID, Auth Token, a sending
@@ -68,9 +73,12 @@ says so:
 - ⬜ **Google Business Profile API access** for pulling/monitoring reviews automatically.
   The pull seam (`reviewsync.pull_reviews`) and the heartbeat hook (`/tasks/tick` calls it
   per tenant) are already wired and activate the moment GBP is connected; `POST /reviews/sync`
-  triggers it manually. Until connected it honestly reports 'simulated' (monitoring dormant),
-  and once connected 'pending' until the reviews GET is implemented — it never fabricates
-  reviews. Reply auto-posting is intentionally out of scope (no real GBP reply connector).
+  triggers it manually. Until connected it honestly reports 'simulated' (monitoring dormant);
+  once connected with full credentials the reviews GET runs live (implemented + tested against
+  a stubbed API 2026-07-19 — **at first real connect, verify the API host**: the call uses the
+  v4 shape matching the stored combined location resource, and Google keeps migrating the
+  Business Profile APIs). It never fabricates reviews. Reply auto-posting is intentionally out
+  of scope (no real GBP reply connector).
 
 ## Phase 2 — Content & Local
 - 🟡 **Google Business Profile — one-click "Connect with Google" (OAuth) is WIRED.**

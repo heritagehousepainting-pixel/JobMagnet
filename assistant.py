@@ -1,4 +1,4 @@
-"""Mason's command center -- the conversational control surface (the "Jarvis").
+"""JobMagnet's command center -- the conversational control surface (the "Jarvis").
 
 ONE natural-language seam over the whole product. The signed-in home is a chat: the
 owner types "how many leads this week", "draft an Instagram post about the Oak St
@@ -466,7 +466,7 @@ def _llm_route(business, message, history):
 
 
 def suggest_tool_for(message):
-    """Given a request Mason fell back on (a recurring gap), ask the brain whether ONE
+    """Given a request JobMagnet fell back on (a recurring gap), ask the brain whether ONE
     existing tool would genuinely satisfy it. Returns a tool name only on high confidence,
     else None. Powers the proactive 'I think I can actually do that now' offer."""
     provider = ai._active_provider()
@@ -593,7 +593,7 @@ def _chat_reply(message):
 
 def _chat_or_route(message, llm_reply=""):
     """Chat answer, but first route known topics to a real page (capability honesty).
-    A routed reply is a capability_gap (Mason had no native tool, so he pointed elsewhere);
+    A routed reply is a capability_gap (JobMagnet had no native tool, so he pointed elsewhere);
     a plain chat reply is just conversation. Both are logged so we can learn from them."""
     routed = _route_topic(message)
     if routed:
@@ -650,7 +650,7 @@ def run(business, message, history=None):
 
 
 def _apply_learning(business, message):
-    """If the tenant taught Mason a confirmed correction matching this message, honor it
+    """If the tenant taught JobMagnet a confirmed correction matching this message, honor it
     (deterministic override, consulted before the brain). The lookup hook is wired by the
     app to convos.lookup; it returns a full result, or a {'_run_tool': name} directive we
     execute here so tool execution stays in this module (no import cycle)."""

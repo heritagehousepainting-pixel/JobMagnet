@@ -1,6 +1,6 @@
 """Connections -- the contractor's real account links, per business.
 
-This is what turns Mason from a logbook into an assistant with hands. Each tenant
+This is what turns JobMagnet from a logbook into an assistant with hands. Each tenant
 connects their OWN accounts (their Twilio number, their Google profile, their Facebook
 page); the messaging + publishing seams then read that tenant's connection and go LIVE
 instead of simulating. No connection -> still a safe simulated/assisted no-op (the

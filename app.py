@@ -65,7 +65,7 @@ db.init_db()
 # confirmed corrections into its routing prompt (convos.learnings_for_prompt).
 assistant._learning_lookup = convos.lookup
 assistant._learning_examples_hook = convos.learnings_for_prompt
-# When a gap recurs, let Mason check if a real tool now fits it (proactive self-teaching).
+# When a gap recurs, let JobMagnet check if a real tool now fits it (proactive self-teaching).
 convos._tool_suggest_hook = assistant.suggest_tool_for
 
 # Seed an owner login for "client zero" (business 1 = Heritage) on first run.
@@ -203,7 +203,7 @@ def signup():
             return render_template("auth.html", mode="signup",
                                    error="That email is already registered. Try logging in.")
         session["uid"] = uid
-        # New tenants start with the Walkthrough so Mason can build their Game Plan
+        # New tenants start with the Walkthrough so JobMagnet can build their Game Plan
         # before anything else -- he's the front door, not the feature grid.
         return redirect("/walkthrough")
     return render_template("auth.html", mode="signup")
@@ -229,7 +229,7 @@ def logout():
 
 
 def _briefing(biz, stats, drafts, due_count, mandate_ready, signals=None):
-    """Mason's morning brief — derived only from real state, never fabricated.
+    """JobMagnet's morning brief — derived only from real state, never fabricated.
     Returns the greeting, a one-line status, and the single thing to do today."""
     hour = datetime.now().hour
     part = "Morning" if hour < 12 else ("Afternoon" if hour < 17 else "Evening")
@@ -315,7 +315,7 @@ def first_win_block(business_id):
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    """The signed-in home is now Mason's command center: an AI control surface where the
+    """The signed-in home is now JobMagnet's command center: an AI control surface where the
     owner runs the whole product by conversation. The card-based view still lives at
     /queue for working by hand."""
     biz = current_business()
@@ -350,7 +350,7 @@ def dashboard():
 @app.route("/queue")
 @login_required
 def queue():
-    """The manual view: Mason's morning brief, the approval queue, and the schedule.
+    """The manual view: JobMagnet's morning brief, the approval queue, and the schedule.
     Everything the command center can do by chat, you can still do here by hand."""
     biz = current_business()
     posts = db.list_posts(biz["id"])
@@ -371,7 +371,7 @@ def queue():
 @app.route("/assistant", methods=["POST"])
 @login_required
 def assistant_chat():
-    """One natural-language turn against Mason's command center. Form-encoded (so the
+    """One natural-language turn against JobMagnet's command center. Form-encoded (so the
     existing CSRF gate applies unchanged); returns the reply, any inline cards, and an
     optional pending_action that needs an explicit confirm before it runs."""
     biz = current_business()
@@ -387,7 +387,7 @@ def assistant_chat():
     if message:
         convo_id, _ = convos.record_exchange(biz["id"], request.form.get("convo_key", ""),
                                              message, out)
-        # At a natural close, let Mason proactively offer to remember a recurring gap.
+        # At a natural close, let JobMagnet proactively offer to remember a recurring gap.
         out["coach"] = convos.coach_offer(biz["id"], convo_id, message)
     return jsonify(out)
 
@@ -414,7 +414,7 @@ def assistant_confirm():
 @app.route("/assistant/learn", methods=["POST"])
 @login_required
 def assistant_learn():
-    """Accept Mason's proactive teaching offer: store the learning + resolve the gap."""
+    """Accept JobMagnet's proactive teaching offer: store the learning + resolve the gap."""
     biz = current_business()
     pattern = (request.form.get("pattern") or "").strip()
     action = (request.form.get("action") or "route").strip()
@@ -424,7 +424,7 @@ def assistant_learn():
     return jsonify({"ok": bool(pattern)})
 
 
-# ---- Mason's Memory / Training: review conversations, call out issues, teach ----
+# ---- JobMagnet's Memory / Training: review conversations, call out issues, teach ----
 _ISSUE_LABEL = {"capability_gap": "No tool was available for this",
                 "empty": "A tool returned nothing", "repeat": "You had to re-ask",
                 "negative": "You pushed back on the answer",
@@ -434,8 +434,8 @@ _ISSUE_LABEL = {"capability_gap": "No tool was available for this",
 @app.route("/training")
 @login_required
 def training():
-    """What Mason has heard, where he fell short, and what you've taught him. The owner
-    turns a flagged exchange into a learning Mason honors next time."""
+    """What JobMagnet has heard, where he fell short, and what you've taught him. The owner
+    turns a flagged exchange into a learning JobMagnet honors next time."""
     biz = current_business()
     return render_template("training.html",
                            flags=db.list_flags(biz["id"], resolved=0, limit=40),
@@ -462,7 +462,7 @@ def training_convo(convo_id):
 @app.route("/training/teach", methods=["POST"])
 @login_required
 def training_teach():
-    """Teach Mason a correction from a flagged exchange (and resolve the flag)."""
+    """Teach JobMagnet a correction from a flagged exchange (and resolve the flag)."""
     biz = current_business()
     pattern = (request.form.get("pattern") or "").strip()
     action = (request.form.get("action") or "").strip()
@@ -494,7 +494,7 @@ def training_resolve():
 @app.route("/activity")
 @login_required
 def activity():
-    """The trust layer: a reverse-chronological, honest feed of everything Mason did
+    """The trust layer: a reverse-chronological, honest feed of everything JobMagnet did
     for THIS tenant -- autopilot runs, outbound messages, and published posts -- so the
     owner can see (and never be misled about) what went out on its own vs simulated.
     Read-only: it never changes how anything runs or sends."""
@@ -699,7 +699,7 @@ def tasks_tick():
 @app.route("/walkthrough", methods=["GET", "POST"])
 @login_required
 def walkthrough():
-    """Mason's onboarding interview. The answers ARE the diagnostic signals that drive
+    """JobMagnet's onboarding interview. The answers ARE the diagnostic signals that drive
     the Mandate, so the interview writes his own guardrails."""
     biz = current_business()
     if request.method == "POST":
@@ -739,7 +739,7 @@ def walkthrough():
 @app.route("/mandate")
 @login_required
 def mandate_page():
-    """Mason's Game Plan: the ranked, honest playbook list with each one's election.
+    """JobMagnet's Game Plan: the ranked, honest playbook list with each one's election.
     Empty until the Walkthrough has run."""
     biz = current_business()
     if not db.has_mandate(biz["id"]):
@@ -804,7 +804,7 @@ def mandate_election():
 @app.route("/mandate/autopilot-publish", methods=["POST"])
 @login_required
 def mandate_autopilot_publish():
-    """The trust dial (Phase 2): owner opts in to let Mason auto-schedule & publish
+    """The trust dial (Phase 2): owner opts in to let JobMagnet auto-schedule & publish
     autopilot content -- but only on connected (live) channels; everything else still
     drafts for approval. Premium+ only; defense in depth so a Pro tenant can never
     enable it even by posting the form directly."""
@@ -817,7 +817,7 @@ def mandate_autopilot_publish():
 @app.route("/mandate/bottleneck", methods=["POST"])
 @login_required
 def mandate_bottleneck():
-    """P2-13: Contractor states their bottleneck so Mason can frame the Mandate relative
+    """P2-13: Contractor states their bottleneck so JobMagnet can frame the Mandate relative
     to what they feel the problem is. Written via direct UPDATE (lifecycle col, not
     _BUSINESS_COLS, so Settings form can never accidentally erase it)."""
     bottleneck_priority = (request.form.get("bottleneck_priority") or "").strip()
@@ -1658,7 +1658,7 @@ def webhook_stripe():
 @app.route("/connections")
 @login_required
 def connections_page():
-    """The Connections hub: link real accounts so Mason actually acts (texts, posts,
+    """The Connections hub: link real accounts so JobMagnet actually acts (texts, posts,
     pulls reviews) instead of simulating. Honest status per provider."""
     biz = current_business()
     # P1-6: pop capability-unlock flags and build the callout shown right after connection.
@@ -1802,7 +1802,7 @@ def faq_public(slug):
 
 @app.route("/insight/<slug>/<play_key>")
 def insight_public(slug, play_key):
-    """P2-17: Public 'Mason said no' page — renders a not_yet play's real-numbers reason
+    """P2-17: Public 'JobMagnet said no' page — renders a not_yet play's real-numbers reason
     so contractors can share it. mandate.diagnose() is pure, safe for public routes."""
     biz = db.get_business_by_slug(slug)
     if not biz:

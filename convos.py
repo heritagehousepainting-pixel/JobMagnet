@@ -1,4 +1,4 @@
-"""Command-center conversation memory: record what the owner says to Mason, call out the
+"""Command-center conversation memory: record what the owner says to JobMagnet, call out the
 weak spots automatically, and learn from confirmed corrections.
 
 This is the logic layer over db's assistant_* tables. It is deliberately separate from
@@ -40,7 +40,7 @@ def _similar(a, b):
 
 # ---- Record + flag ----
 def record_exchange(business_id, session_key, message, result):
-    """Log the owner's message and Mason's reply (with tool/status), then flag the weak
+    """Log the owner's message and JobMagnet's reply (with tool/status), then flag the weak
     spots. Also kick off an LLM grade in the background (it catches subtler misses than the
     heuristics). Returns (convo_id, user_turn_id)."""
     convo_id = db.start_or_get_convo(business_id, session_key)
@@ -50,7 +50,7 @@ def record_exchange(business_id, session_key, message, result):
     user_tid = db.log_turn(convo_id, business_id, "user", message)
     db.log_turn(convo_id, business_id, "assistant", reply,
                 tool=meta.get("tool"), status=meta.get("status"))
-    # When Mason pointed the owner to a page (a capability gap), remember WHICH page, so a
+    # When JobMagnet pointed the owner to a page (a capability gap), remember WHICH page, so a
     # later proactive offer can crystallize that exact route into a learning.
     gap_route = ""
     if meta.get("status") == "capability_gap":
@@ -71,7 +71,7 @@ def _flag(business_id, convo_id, user_tid, message, meta, prior, gap_route=""):
     if status == "capability_gap":
         db.add_flag(business_id, convo_id, user_tid, "capability_gap",
                     ("route:" + gap_route) if gap_route
-                    else "Mason had no tool for this and pointed elsewhere.")
+                    else "JobMagnet had no tool for this and pointed elsewhere.")
     elif status == "empty":
         db.add_flag(business_id, convo_id, user_tid, "empty",
                     "A tool ran but came back with nothing.")
@@ -173,7 +173,7 @@ def _is_closing(message):
 
 def coach_offer(business_id, convo_id, message):
     """At a natural end-of-conversation moment, if a capability gap has RECURRED, return a
-    one-tap offer for Mason to remember the route he already takes for it (or None). He
+    one-tap offer for JobMagnet to remember the route he already takes for it (or None). He
     offers at most once per conversation, and never for something already taught."""
     if not convo_id or db.has_coach_offer(business_id, convo_id):
         return None
@@ -193,7 +193,7 @@ def coach_offer(business_id, convo_id, message):
     top = sorted(cands, key=lambda x: -x["count"])[0]
     db.mark_coach_offered(business_id, convo_id)
     # If the brain is confident an existing TOOL would actually satisfy this, offer to run
-    # it (a real upgrade); otherwise offer to remember the route Mason already takes.
+    # it (a real upgrade); otherwise offer to remember the route JobMagnet already takes.
     tool = None
     suggest = globals().get("_tool_suggest_hook")
     if suggest:
@@ -262,7 +262,7 @@ def lookup(business, message):
 
 
 def digest(business_id, days=7):
-    """A short weekly digest for the command center: how often Mason fell short, how much
+    """A short weekly digest for the command center: how often JobMagnet fell short, how much
     you taught him, plus a one-line summary. `has_content` gates whether to show it."""
     from datetime import datetime, timedelta, timezone
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()

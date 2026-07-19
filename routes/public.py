@@ -10,6 +10,26 @@ from config import BASE_DIR
 
 bp = Blueprint("public", __name__)
 
+# --- Per-IP rate limit for the public contact POST -------------------------
+# The form is CSRF-protected but unauthenticated; without a limit one IP can spam
+# contact_inbox.log. Simple in-process sliding window (per worker) — honest 429,
+# no dependency. Good enough until real email delivery/a form service is wired.
+_CONTACT_WINDOW_SEC = 3600
+_CONTACT_MAX_PER_WINDOW = 5
+_contact_hits = {}   # ip -> [timestamps]
+
+
+def _contact_rate_limited(ip, now_ts):
+    hits = [t for t in _contact_hits.get(ip, []) if now_ts - t < _CONTACT_WINDOW_SEC]
+    limited = len(hits) >= _CONTACT_MAX_PER_WINDOW
+    if not limited:
+        hits.append(now_ts)
+    _contact_hits[ip] = hits
+    if len(_contact_hits) > 10000:   # bound memory: drop the stalest ips
+        for stale in sorted(_contact_hits, key=lambda k: max(_contact_hits[k] or [0]))[:5000]:
+            _contact_hits.pop(stale, None)
+    return limited
+
 
 def _site_ctx(**extra):
     """Shared context for the public marketing pages."""
@@ -21,7 +41,7 @@ def _site_ctx(**extra):
 @bp.route("/")
 def index():
     # The public home is the front door. Logged-in visitors still see it; the nav
-    # swaps to "Open Mason" via the global template context.
+    # swaps to "Open JobMagnet" via the global template context.
     return render_template("site_home.html", **_site_ctx())
 
 
@@ -68,6 +88,13 @@ def legal_sms_terms(slug):
 @bp.route("/contact", methods=["GET", "POST"])
 def contact():
     if request.method == "POST":
+        ip = (request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+              or request.remote_addr or "?")
+        if _contact_rate_limited(ip, datetime.now().timestamp()):
+            return (render_template("site_contact.html",
+                                    error="Too many messages from this connection — "
+                                          "please try again in an hour.",
+                                    **_site_ctx()), 429)
         name = (request.form.get("name") or "").strip()
         email = (request.form.get("email") or "").strip()
         message = (request.form.get("message") or "").strip()

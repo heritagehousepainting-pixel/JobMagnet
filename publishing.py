@@ -65,6 +65,9 @@ def _gbp_creds(business_id):
 
 
 def _gbp_post(creds, post):
+    # VERIFY AT FIRST LIVE CONNECT: v4 host matches the stored combined resource shape,
+    # but Google keeps migrating Business Profile APIs — confirm against a real
+    # connected account before trusting live mode (see SETUP_NEEDED.md).
     import requests
     location = creds.get("location_id", "")
     resp = requests.post(

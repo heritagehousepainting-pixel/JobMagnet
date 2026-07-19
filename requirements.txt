@@ -1,7 +1,9 @@
 # JobMagnet — runtime dependencies (kept deliberately light, like FirstBack).
+# Floors refreshed 2026-07-19 to match the tested .venv (psycopg 3.3, Flask 3.1,
+# gunicorn 26, anthropic 0.114, stripe 15.3) — old floors trailed by major versions.
 psycopg[binary]>=3.2
-Flask>=3.0
-gunicorn>=21.2          # production WSGI server (Render); the dev server is local-only
+Flask>=3.1
+gunicorn>=23.0          # production WSGI server (Render); the dev server is local-only
 requests>=2.31
-anthropic>=0.40         # used when JOBMAGNET_PROVIDER=claude
-stripe>=9.0             # used when Stripe billing env vars are configured
+anthropic>=0.100        # used when JOBMAGNET_PROVIDER=claude
+stripe>=15.0            # used when Stripe billing env vars are configured

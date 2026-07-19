@@ -9,7 +9,7 @@
 {% set _dg = request.args.get('digest') %}
 {% if _dg == 'sent' %}<div class="save-banner" style="margin:0">Emailed your digest.</div>{% elif _dg == 'simulated' %}<div class="save-banner" style="margin:0">Digest prepared (simulated). Connect email in Connections to actually send it.</div>{% elif _dg %}<div class="save-banner" style="margin:0">Couldn't email the digest just now.</div>{% endif %}
 
-{# ---- Issues Mason hit ---- #}
+{# ---- Issues JobMagnet hit ---- #}
 <div class="glance">
   <div class="glance-tile"><span class="glance-k">No tool yet</span><span class="glance-v">{{ counts.get('capability_gap', 0) }}</span><span class="glance-s">couldn't act</span></div>
   <div class="glance-tile"><span class="glance-k">Re-asks</span><span class="glance-v">{{ counts.get('repeat', 0) }}</span><span class="glance-s">you repeated yourself</span></div>
@@ -85,7 +85,7 @@
   </div>
 </div>
 
-{# ---- What Mason has learned ---- #}
+{# ---- What JobMagnet has learned ---- #}
 <div class="card">
   <div class="card-head"><div class="section-label"><h2 class="card-title">What you've taught JobMagnet</h2></div></div>
   <div class="card-body">

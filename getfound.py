@@ -1,4 +1,4 @@
-"""Get Found engine -- GBP / local / AEO optimization (Mason's #1 play for an
+"""Get Found engine -- GBP / local / AEO optimization (JobMagnet's #1 play for an
 invisible shop).
 
 "Claimed" is not "optimized." This is the structured best-practice checklist that
@@ -11,7 +11,7 @@ MARKETING_PLAYBOOK.md (Get Found / AEO) and the local-SEO research (review veloc
 freshness, NAP, schema).
 """
 
-# The optimization checklist, in roughly the order Mason would walk an owner through.
+# The optimization checklist, in roughly the order JobMagnet would walk an owner through.
 CHECKLIST = [
     {"key": "claimed",     "label": "Google Business Profile claimed & verified",
      "help": "The foundation. An unverified profile barely ranks."},
@@ -52,6 +52,6 @@ def score(done):
 
 
 def next_steps(done, k=3):
-    """The next few not-yet-done items -- what Mason would tackle next."""
+    """The next few not-yet-done items -- what JobMagnet would tackle next."""
     done = {k2 for k2 in (done or []) if k2 in CHECKLIST_KEYS}
     return [c for c in CHECKLIST if c["key"] not in done][:k]

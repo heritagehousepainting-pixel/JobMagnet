@@ -1,4 +1,4 @@
-"""First-win activation -- the single designated win Mason guides a new tenant toward.
+"""First-win activation -- the single designated win JobMagnet guides a new tenant toward.
 
 Pure decision + copy (no I/O), mirroring mandate.py/getfound.py. The app supplies the
 tenant's signals + live integration state to designate(), and the real-outcome facts to

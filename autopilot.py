@@ -1,8 +1,8 @@
 """Autopilot -- the wire between the Mandate's elections and the engines.
 
 This is what makes "Take it over / Ask me first / Not yet" mean something:
-  take_over -> Mason runs the play's safe autonomous action on an autopilot run
-  ask_first -> Mason leaves it for you (you act on the engine's page / approval queue)
+  take_over -> JobMagnet runs the play's safe autonomous action on an autopilot run
+  ask_first -> JobMagnet leaves it for you (you act on the engine's page / approval queue)
   off/not_yet -> skipped
 
 Pure planning only (what WOULD run); the route executes the plan through the same
@@ -23,7 +23,7 @@ AUTONOMOUS_ACTIONS = {
 
 def plan(elections):
     """elections: {playbook: election}. Returns the autopilot plan -- for each playbook
-    with an autonomous action, what Mason will do on a run:
+    with an autonomous action, what JobMagnet will do on a run:
       status 'run' (take_over) | 'ask' (ask_first, left for you) | 'off'."""
     out = []
     for pb, action in AUTONOMOUS_ACTIONS.items():

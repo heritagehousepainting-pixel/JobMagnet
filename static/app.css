@@ -147,7 +147,7 @@
 .section-tab.active{color:var(--accent-strong);border-bottom-color:var(--accent);font-weight:600}
 .section-tab:focus-visible{outline:2px solid var(--accent-ring);outline-offset:-3px;border-radius:var(--radius-sm)}
 
-/* ============================ Mason's home (briefing) ============================ */
+/* ============================ JobMagnet's home (briefing) ============================ */
 .brief-hero{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:14px;
   background:
     radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--accent) 12%,var(--surface)),var(--surface) 55%);

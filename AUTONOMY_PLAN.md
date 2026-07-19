@@ -98,8 +98,10 @@ auto-publishing for the first and only time, behind the dial, default OFF.
 
 ### Phase 3 — Autonomous reviews loop  ✅ SHIPPED
 Built: pure `reviewsync.py` (`pull_reviews(business_id)`) mirroring `roi.sync_firstback` —
-'simulated' when GBP unconnected, 'pending' once connected (real GET still code-pending; never
-fabricates reviews). Manual `POST /reviews/sync` (mirrors `/roi/sync-firstback`); the heartbeat
+'simulated' when GBP unconnected, 'pending' once connected but credentials incomplete, 'live'
+with full creds (the reviews GET IS implemented — fixed 2026-07-19 to use the stored combined
+"accounts/X/locations/Y" resource; a phantom `account_id` read had forced 'pending' forever;
+endpoint host still needs verification against a real connected account; never fabricates reviews). Manual `POST /reviews/sync` (mirrors `/roi/sync-firstback`); the heartbeat
 `/tasks/tick` now calls `pull_reviews` per tenant so monitoring is autonomous-ready (safe no-op
 until GBP is wired). Honest triage surfaced on the reviews page (derived from the stored rating,
 no schema change): 4-5★ = "Ready to approve" praise, 1-3★ = "Needs your attention" (still
@@ -113,7 +115,7 @@ replies are never auto-published / auto-marked-responded — autonomy here is mo
 + triage; the owner still taps to post the public reply. The pull stays honestly simulated/pending.
 
 Closes "we don't auto-monitor reviews yet."
-- Implement the GBP review **pull** (the code-pending connector) so the tick ingests new reviews.
+- ✅ GBP review **pull** implemented (verify the API host at first live connect — SETUP_NEEDED).
 - Auto-draft the response (already works on import) → **flag 1–3★ for the owner** (never
   auto-respond to a critical review). Auto-publish of replies is intentionally NOT built: no real
   GBP reply connector exists, so faking a posted public reply would be dishonest.

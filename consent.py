@@ -13,8 +13,9 @@ The compliance moat both products market (TCPA / CAN-SPAM / DNC), unified. Two c
      `is_suppressed`) — one auditable table both apps can adopt, keyed on the phone
      NUMBER (the identity both products share), per-channel, business_id-scoped. This
      is the migration target; FirstBack's mutable `contacts_consent` backfills into it.
-     The ledger functions take a sqlite3 connection so each app reuses them against its
-     own DB with no new dependency.
+     The ledger functions take a DB connection (psycopg/Postgres here; the vendored
+     origin used sqlite3) so each app reuses them against its own DB with no new
+     dependency.
 
 Edit trades_core/consent.py, then run `python3 trades_core/sync.py`.
 """
@@ -101,7 +102,7 @@ def normalize_number(raw):
 
 
 # --------------------------------------------------------------------------
-# Append-only ledger (migration target). Takes a sqlite3 connection.
+# Append-only ledger (migration target). Takes a psycopg (Postgres) connection.
 # --------------------------------------------------------------------------
 CHANNELS = ("sms", "email", "voice")
 

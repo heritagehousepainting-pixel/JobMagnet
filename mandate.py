@@ -1,4 +1,4 @@
-"""Mason's diagnostic + Mandate engine -- the brain and the front door.
+"""JobMagnet's diagnostic + Mandate engine -- the brain and the front door.
 
 Pure decision logic: read a business's real state (its Business Brain + a few
 diagnostic signals from the Walkthrough) and produce a *prioritised, honest* plan
@@ -10,11 +10,11 @@ need (a 1-year shop can't bootstrap a "review flywheel"; an old shop's goldmine 
 its dormant list).
 
 Side-effect free (no DB, no Flask) so it's trivially testable and the same logic
-can later drive the UI, an API, or Mason's chat. Grounded in MARKETING_PLAYBOOK.md
+can later drive the UI, an API, or JobMagnet's chat. Grounded in MARKETING_PLAYBOOK.md
 (the levers) and MASON_WALKTHROUGH_HERITAGE.md (the honest diagnosis).
 """
 
-# The playbooks Mason can run. Keys are stable ids; label/blurb drive the UI.
+# The playbooks JobMagnet can run. Keys are stable ids; label/blurb drive the UI.
 PLAYBOOKS = {
     "get_found":     {"label": "Get Found",
                       "blurb": "Optimize your Google profile, local SEO and AI answers so the right homeowners find you. Owned, free, compounding."},
@@ -94,10 +94,10 @@ def normalize_signals(raw):
 
 
 def diagnose(business, raw_signals):
-    """Return Mason's read: {state, headline, woven, signals, plays}. `plays` is the
+    """Return JobMagnet's read: {state, headline, woven, signals, plays}. `plays` is the
     full ranked list (each: key,label,blurb,applicability,recommended,score,priority,
     reason), sorted applies-first then by score. Honest: plays that don't apply yet are
-    tagged `not_yet`, not hidden -- Mason tells you what he won't do and why."""
+    tagged `not_yet`, not hidden -- JobMagnet tells you what he won't do and why."""
     business = business or {}
     s = normalize_signals(raw_signals)
     ml = s["monthly_leads"]
@@ -229,7 +229,7 @@ def diagnose(business, raw_signals):
     for i, p in enumerate(plays):
         p["priority"] = i + 1
 
-    # Business state + a Mason-voiced headline.
+    # Business state + a JobMagnet-voiced headline.
     # "Dormant" means an old customer base that's the *cheapest* next play -- which is only
     # true when fresh demand isn't already pouring in. A shop drowning in leads is leaky or
     # growing, not dormant, even if it has an old base, so gate dormant on modest lead flow.

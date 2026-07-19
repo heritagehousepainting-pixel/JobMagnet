@@ -161,7 +161,7 @@ cb = client()
 r = cb.post("/signup", data={"email": "bob@plumb.com", "password": "plumber123",
                              "name": "Bob's Plumbing", "trade": "Plumbing"})
 check("signup creates a tenant + logs in", r.status_code == 302)
-check("new tenant is routed to the Walkthrough (Mason is the front door)",
+check("new tenant is routed to the Walkthrough (JobMagnet is the front door)",
       r.headers["Location"].endswith("/walkthrough"))
 bob = db.get_user_by_email("bob@plumb.com")
 bob_biz = bob["business_id"]
@@ -457,7 +457,7 @@ check("cold SMS sends (simulated) only with consent + channel enabled",
       res["status"] == "simulated")
 messaging.COLD_SMS_ENABLED = False  # leave the gate closed
 
-# --- Mason's diagnostic / Mandate engine (A) -------------------------------
+# --- JobMagnet's diagnostic / Mandate engine (A) -------------------------------
 print("Mandate engine (pure logic)")
 biz1 = db.get_business(1)
 # Heritage-like: 1yr, invisible, tapped reviews, no dormant list, closes what it gets.
@@ -527,7 +527,7 @@ check("walkthrough POST builds the mandate and redirects",
 check("mandate persisted for the tenant", db.has_mandate(1))
 check("signals persisted for the tenant", db.get_signals(1)["past_customers"] == 15)
 r = c.get("/mandate")
-check("mandate page renders with Mason's read",
+check("mandate page renders with JobMagnet's read",
       r.status_code == 200 and b"JobMagnet's read" in r.data and b"Get Found" in r.data)
 check("mandate page honestly shows reactivation as Not yet",
       b"Database Reactivation" in r.data and b"Not yet" in r.data)
@@ -908,7 +908,50 @@ publishing.gbp_live = lambda business_id=None: True   # simulate a connected GBP
 _pull_live = reviewsync.pull_reviews(_rev_biz)
 check("pull_reviews is pending once GBP is connected (no fabricated reviews)",
       _pull_live["mode"] == "pending" and _pull_live["added"] == 0)
+
+# 1b) The FIXED live path (bug: a never-stored `account_id` field used to force
+#     'pending' forever). With real-shaped creds (combined "accounts/X/locations/Y"
+#     resource, as google_business stores them) and a stubbed HTTP layer, the pull
+#     must hit the combined-resource URL, ingest, and dedupe.
+import urllib.request as _ur
+import json as _rs_json
+db.set_connection(_rev_biz, "gbp", {
+    "access_token": "tok-live", "refresh_token": "",
+    "token_expiry": "2099-01-01T00:00:00+00:00",
+    "location_id": "accounts/108/locations/42"})
+_seen_urls = []
+class _FakeResp:
+    def read(self):
+        return _rs_json.dumps({"reviews": [
+            {"reviewId": "gbp-r-1", "starRating": "FIVE",
+             "reviewer": {"displayName": "A Neighbor"}, "comment": "Great crew"}]}).encode()
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+_urlopen0 = _ur.urlopen
+def _fake_urlopen(req, timeout=10):
+    _seen_urls.append(req.full_url)
+    return _FakeResp()
+_ur.urlopen = _fake_urlopen
+_pull_fixed = reviewsync.pull_reviews(_rev_biz)
+check("pull_reviews goes live with real-shaped creds (account_id bug fixed)",
+      _pull_fixed["mode"] == "live" and _pull_fixed["added"] == 1)
+check("reviews GET uses the stored combined location resource",
+      _seen_urls and "/accounts/108/locations/42/reviews" in _seen_urls[0])
+check("pulled review landed with rating + author",
+      any(rv["gbp_review_id"] == "gbp-r-1" and rv["rating"] == 5
+          for rv in db.list_reviews(_rev_biz)))
+_pull_again = reviewsync.pull_reviews(_rev_biz)
+check("re-pull dedupes on gbp_review_id (no double ingest)",
+      _pull_again["mode"] == "live" and _pull_again["added"] == 0)
+_ur.urlopen = _urlopen0
+# Remove the fake connection so later sections (tick's per-tenant pull) stay offline.
+_rc_conn = db.get_conn()
+_rc_conn.execute("DELETE FROM connections WHERE business_id=%s AND provider='gbp'",
+                 (_rev_biz,))
+_rc_conn.commit(); _rc_conn.close()
 publishing.gbp_live = _gbp_live_orig
+check("fake GBP connection cleaned up (later sections stay offline)",
+      db.get_connection(_rev_biz, "gbp") is None)
 
 # 2) The manual /reviews/sync route redirects with the honest mode (mirrors /roi/sync-firstback).
 r = c.post("/reviews/sync", data={})
@@ -1245,13 +1288,13 @@ check("contact renders a form", r.status_code == 200 and b"on your mind" in r.da
 r = pc.post("/contact", data={"name": "", "email": "bad", "message": ""})
 check("contact rejects an incomplete submission", b"Add your name" in r.data)
 r = pc.post("/contact", data={"name": "Test Painter", "email": "t@example.com",
-                              "trade": "Painting", "message": "Interested in Mason."})
+                              "trade": "Painting", "message": "Interested in JobMagnet."})
 check("contact accepts a valid submission", r.status_code == 200 and b"be in touch" in r.data)
 
-# --- Mason's home: the command center (chat) + the manual Queue -------------
+# --- JobMagnet's home: the command center (chat) + the manual Queue -------------
 # The signed-in home is now the conversational command center; the briefing,
 # approval queue and at-a-glance strip moved to /queue (the manual view).
-print("Mason's command center")
+print("JobMagnet's command center")
 # Reuse the client logged in at the top of the suite (the seed owner's password
 # is rotated mid-suite, but its existing session stays valid).
 r = c.get("/dashboard")
@@ -1260,7 +1303,7 @@ check("home is the command center surface",
 check("command center loads the orb + assistant assets",
       b"assistant.js" in r.data and b'id="orb"' in r.data)
 r = c.get("/queue")
-check("queue still shows Mason's briefing",
+check("queue still shows JobMagnet's briefing",
       r.status_code == 200 and b"brief-hi" in r.data and b"on the clock" in r.data)
 check("queue keeps the approval queue", b"Awaiting your review" in r.data)
 check("queue shows the at-a-glance strip", b"Total created" in r.data)
@@ -1268,7 +1311,7 @@ check("queue shows the at-a-glance strip", b"Total created" in r.data)
 # --- The assistant agent ----------------------------------------------------
 # Read tools answer directly; gated tools come back as a pending_action that is
 # NOT executed until confirmed; confirm runs through the real seam.
-print("Mason's command center -- the agent")
+print("JobMagnet's command center -- the agent")
 import assistant as asst
 biz1 = db.get_business(1)
 out = asst.run(biz1, "how many leads came in this week?")
@@ -1301,7 +1344,7 @@ r = c.post("/assistant/confirm", data={"tool": "request_reviews", "args": "{}"})
 check("/assistant/confirm runs the gated action", r.status_code == 200 and r.is_json)
 
 # --- Command-center memory: record real questions, flag the weak spots, learn ---
-print("Mason's command center -- memory + self-learning")
+print("JobMagnet's command center -- memory + self-learning")
 import convos as _cv
 # A real question, recorded through the HTTP route (the smoke test of a real question).
 c.post("/assistant", data={"message": "how many leads came in this week?", "convo_key": "memk1"})
@@ -1313,7 +1356,7 @@ check("a capability gap is flagged", db.flag_counts(1).get("capability_gap", 0) 
 # Re-asking the same thing is called out as a repeat.
 c.post("/assistant", data={"message": "can I change my billing plan", "convo_key": "memk1"})
 check("a repeated ask is flagged", db.flag_counts(1).get("repeat", 0) >= 1)
-# Teach a correction, then Mason honors it deterministically (before the brain).
+# Teach a correction, then JobMagnet honors it deterministically (before the brain).
 _cv.teach(1, "pause everything", "answer",
           "Paused all your campaigns. Say resume to turn them back on.")
 _lr = asst.run(db.get_business(1), "please pause everything for me")
@@ -1376,17 +1419,17 @@ check("the command center surfaces the digest line",
 check("the training page ranks what to build next",
       (not _tu) or b"Build these next" in c.get("/training").data)
 
-# Proactive teaching: after a recurring gap, Mason offers to remember the route he takes.
+# Proactive teaching: after a recurring gap, JobMagnet offers to remember the route he takes.
 _biz1 = db.get_business(1)
 _o1 = asst.run(_biz1, "can I change my billing plan")
 _cv.record_exchange(1, "coachk", "can I change my billing plan", _o1)
 _o2 = asst.run(_biz1, "can I change my billing plan")
 _cid, _ = _cv.record_exchange(1, "coachk", "can I change my billing plan", _o2)
 _offer = _cv.coach_offer(1, _cid, "thanks, that's all")
-check("Mason proactively offers to remember a recurring gap at the end of a chat",
+check("JobMagnet proactively offers to remember a recurring gap at the end of a chat",
       bool(_offer) and _offer["action"] == "route" and _offer["value"] == "/plan"
       and _offer["count"] >= 2)
-check("Mason offers at most once per conversation",
+check("JobMagnet offers at most once per conversation",
       _cv.coach_offer(1, _cid, "thanks again") is None)
 # accepting via the route teaches the route + resolves the gap, and the next ask uses it
 r = c.post("/assistant/learn", data={"pattern": _offer["pattern"], "action": "route",
@@ -1397,7 +1440,7 @@ check("the self-taught route is now honored deterministically",
       _o3.get("meta", {}).get("status") == "learned"
       and any(card.get("href") == "/plan" for card in _o3.get("cards", [])))
 
-# Tool-mapping offer: when the brain is confident an existing tool fits, Mason offers it.
+# Tool-mapping offer: when the brain is confident an existing tool fits, JobMagnet offers it.
 _t1 = asst.run(_biz1, "space my posts out please")
 _cv.record_exchange(1, "toolk", "space my posts out please", _t1)
 _t2 = asst.run(_biz1, "space my posts out please")
@@ -1405,7 +1448,7 @@ _tcid, _ = _cv.record_exchange(1, "toolk", "space my posts out please", _t2)
 _orig_hook = getattr(_cv, "_tool_suggest_hook", None)
 _cv._tool_suggest_hook = lambda msg: "list_drafts"      # stub a confident verdict
 _toffer = _cv.coach_offer(1, _tcid, "thanks bye")
-check("Mason offers a TOOL mapping when the brain is confident one fits",
+check("JobMagnet offers a TOOL mapping when the brain is confident one fits",
       bool(_toffer) and _toffer["action"] == "list_drafts")
 _cv._tool_suggest_hook = _orig_hook
 
@@ -1478,7 +1521,7 @@ finally:
 
 # --- Phase 5: the trust layer (in-app activity feed) ------------------------
 # A read-only viewing surface that merges autopilot runs + outbound messages +
-# published posts into one honest, reverse-chronological "Here's what Mason did"
+# published posts into one honest, reverse-chronological "Here's what JobMagnet did"
 # feed -- strictly tenant-scoped (leaking another tenant's activity is the worst
 # possible bug for this page).
 print("Phase 5 activity feed")
@@ -1781,6 +1824,16 @@ check("get-found score ignores lsa keys (shared table, filtered)",
 r = c.get("/ads")
 check("paid leads page shows the concierge",
       r.status_code == 200 and b"LSA Concierge" in r.data)
+
+# --- Public /contact rate limit (unauthenticated POST) ----------------------
+print("Contact rate limit")
+_rl_codes = []
+for _i in range(6):
+    _rl = c.post("/contact", data={"name": f"Burst {_i}", "email": "b@x.com",
+                                   "message": "hello", "trade": "paint"})
+    _rl_codes.append(_rl.status_code)
+check("contact form accepts normal traffic then 429s a burst (per-IP limit)",
+      _rl_codes[0] in (200,) and _rl_codes[-1] == 429)
 
 # --- Cleanup ----------------------------------------------------------------
 # (Postgres DB is dropped by the atexit handler registered at the top of this file.)
