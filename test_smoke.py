@@ -1825,6 +1825,79 @@ r = c.get("/ads")
 check("paid leads page shows the concierge",
       r.status_code == 200 and b"LSA Concierge" in r.data)
 
+# --- brain.py: two-tier routing + spend cap + cost ledger ------------------
+print("Brain (LLM seam: tiers + cap + ledger)")
+import brain
+import config as _cfg
+
+# Pricing prefix-match (current published Claude rates + directional others)
+check("cost table: sonnet input priced at $3/1M",
+      abs(brain._cost("claude-sonnet-5", 1_000_000, 0) - 3.00) < 1e-6)
+check("cost table: sonnet output priced at $15/1M",
+      abs(brain._cost("claude-sonnet-5", 0, 1_000_000) - 15.00) < 1e-6)
+check("cost table: haiku cheaper than sonnet",
+      brain._cost("claude-haiku-4-5", 1_000_000, 0) < brain._cost("claude-sonnet-5", 1_000_000, 0))
+check("cost table: deepseek is the cheapest tier",
+      brain._cost("deepseek-chat", 1_000_000, 1_000_000) < brain._cost("minimax-m2.5", 1_000_000, 1_000_000))
+check("cost table: unknown model uses conservative sonnet fallback",
+      abs(brain._cost("mystery-model", 1_000_000, 0) - 3.00) < 1e-6)
+
+# Tier resolution reacts to which keys are configured (monkeypatch config)
+_k = (_cfg.ANTHROPIC_API_KEY, _cfg.DEEPSEEK_API_KEY, _cfg.MINIMAX_API_KEY, _cfg.LLM_DAILY_COST_CAP_USD)
+_cfg.ANTHROPIC_API_KEY = _cfg.DEEPSEEK_API_KEY = _cfg.MINIMAX_API_KEY = ""
+check("no keys -> both tiers demo", brain.tiers_status() == {"bulk": "demo", "brand": "demo"})
+check("generate returns None with no provider (caller falls back to template)",
+      brain.generate("brand", "sys", "user") is None)
+_cfg.MINIMAX_API_KEY = "mm-test"
+check("only MiniMax set -> both tiers real (bulk=minimax)",
+      brain.resolve("bulk")[0] == "minimax" and brain.resolve("brand")[0] == "minimax")
+_cfg.ANTHROPIC_API_KEY = "sk-test"
+check("MiniMax + Claude -> tiers split (bulk=minimax, brand=claude)",
+      brain.resolve("bulk")[0] == "minimax" and brain.resolve("brand")[0] == "claude")
+check("brand tier uses the configured brand model", brain.resolve("brand")[1] == _cfg.BRAND_MODEL)
+_cfg.DEEPSEEK_API_KEY = "ds-test"
+check("DeepSeek preferred over MiniMax for bulk", brain.resolve("bulk")[0] == "deepseek")
+
+# A real call: stub the provider seam (no network), verify it logs to the ledger
+_orig_call = brain._call_provider
+brain._call_provider = lambda prov, model, s, u, **kw: ("STUBBED REPLY", {"input_tokens": 1000, "output_tokens": 200})
+_cost_before = db.llm_cost_today()
+_out = brain.generate("brand", "sys", "user", business_id=1)
+check("stubbed brand call returns the model text", _out == "STUBBED REPLY")
+check("the call was written to the cost ledger", db.llm_cost_today() > _cost_before)
+_rows = db.get_conn()
+_lu = _rows.execute("SELECT tier, provider, input_tokens, cost_usd FROM llm_usage "
+                    "ORDER BY id DESC LIMIT 1").fetchone()
+_rows.close()
+check("ledger row records tier + provider + tokens",
+      _lu["tier"] == "brand" and _lu["provider"] == "claude" and _lu["input_tokens"] == 1000)
+check("ledger cost is nonzero and matches the price table",
+      abs(float(_lu["cost_usd"]) - brain._cost(_cfg.BRAND_MODEL, 1000, 200)) < 1e-9)
+
+# Per-tenant daily cap: push tenant 1 over its cap, verify it degrades to template (None)
+_cfg.LLM_TENANT_DAILY_CAP_USD = 0.000001   # effectively already exceeded by the row above
+check("tenant over its daily cap -> generate returns None (template fallback)",
+      brain.generate("brand", "sys", "user", business_id=1) is None)
+check("a DIFFERENT tenant under cap still generates",
+      brain.generate("brand", "sys", "user", business_id=999) == "STUBBED REPLY")
+_cfg.LLM_TENANT_DAILY_CAP_USD = 3.0
+
+# Platform-wide cap: set to 0 -> all real LLM disabled (demo only), even with keys
+_cfg.LLM_DAILY_COST_CAP_USD = 0.0
+check("platform cap of 0 disables all real LLM (demo mode)",
+      brain.generate("brand", "sys", "user", business_id=42) is None)
+_cfg.LLM_DAILY_COST_CAP_USD = 25.0
+# Platform cap reached (tiny cap, ledger already has spend) -> None
+_cfg.LLM_DAILY_COST_CAP_USD = 0.0000001
+check("platform over daily cap -> None even for a fresh tenant",
+      brain.generate("brand", "sys", "user", business_id=777) is None)
+
+# Restore everything so later sections and prod behavior are untouched
+brain._call_provider = _orig_call
+(_cfg.ANTHROPIC_API_KEY, _cfg.DEEPSEEK_API_KEY, _cfg.MINIMAX_API_KEY,
+ _cfg.LLM_DAILY_COST_CAP_USD) = _k
+check("brain restored to demo after the cap tests", ai.brain_mode() == "demo")
+
 # --- Public /contact rate limit (unauthenticated POST) ----------------------
 print("Contact rate limit")
 _rl_codes = []

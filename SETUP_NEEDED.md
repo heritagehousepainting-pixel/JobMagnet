@@ -10,10 +10,34 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done
 ---
 
 ## Already done
-- ✅ **MiniMax API key** — in `.env` (`MINIMAX_API_KEY`), brain is live.
-- ✅ **Public marketing site** — home (`/`), `/pricing`, `/how-it-works`, `/contact`
-  are built and live (dark, premium). Pricing pulls from `plans.py`, so changing a
-  plan there updates the site automatically.
+- ✅ **Public marketing site** — home (`/`), `/pricing`, `/how-it-works`, `/contact`,
+  `/features` are built and live (dark, premium). Pricing pulls from `plans.py`, so
+  changing a plan there updates the site automatically.
+
+## AI brain — the two-tier engine (set at least one key)  ⚠️
+Every generation goes through the one gated seam (`brain.py`). Until a key is set it runs
+the built-in **demo templates** (honest, works with zero setup — this is what production
+runs today). Two tiers, each falling back to demo if unconfigured:
+- **Bulk tier** (routine posts, assistant routing, the grader) — cheapest configured
+  provider. Set **`DEEPSEEK_API_KEY`** (model `deepseek-chat`, from platform.deepseek.com)
+  or keep **`MINIMAX_API_KEY`**.
+- **Brand tier** (review replies, FAQ/AEO, ad copy, partner emails, assistant chat) —
+  **`ANTHROPIC_API_KEY`** from console.anthropic.com; model defaults to `claude-sonnet-5`
+  (override with `JOBMAGNET_BRAND_MODEL`). A **Claude API key is separate from a Claude
+  subscription** — the subscription can't drive a server; you need a Console API key.
+- Set only one key → the whole product is real on that provider (not tier-split). Set a
+  bulk key AND Claude → the split turns on automatically.
+- **`JOBMAGNET_PROVIDER`** (legacy single-provider switch) is superseded by the tier
+  routing above; the tiers key off the individual API keys, not this var.
+
+### Spend caps (the surprise-bill wall) — already on, tune if needed
+- **`JOBMAGNET_LLM_DAILY_CAP_USD`** — platform-wide daily ceiling across all tenants
+  (default **$25**). At/over it, generation degrades to templates until UTC midnight.
+  Set **0** to disable all real LLM (demo only) as a kill switch.
+- **`JOBMAGNET_LLM_TENANT_DAILY_CAP_USD`** — per-tenant daily ceiling (default **$3**),
+  so one runaway tenant (e.g. a chat loop) can't eat the platform budget.
+- Both caps FAIL OPEN (a ledger read error never blocks a send). Every real call is
+  written to the `llm_usage` cost ledger for capping + future cost-of-serve reporting.
 
 ## Code-pending — NOT just a credential (won't work until built)
 The truthfulness audit (2026-06-15) confirmed the site now only claims what the code
@@ -162,6 +186,11 @@ Tracked here so you have one checklist. Details in `.env.example`.
   any real account** (see the Security section above).
 - `JOBMAGNET_WEBHOOK_TOKEN` — shared secret for inbound webhooks. **Set before
   deploying**; while empty the webhooks are open (local dev only).
+- AI brain (see the two-tier section up top): `ANTHROPIC_API_KEY` (+ optional
+  `JOBMAGNET_BRAND_MODEL`, default `claude-sonnet-5`), `DEEPSEEK_API_KEY` (+ `DEEPSEEK_MODEL`,
+  `DEEPSEEK_BASE_URL`), `MINIMAX_API_KEY` (+ `MINIMAX_MODEL`, `MINIMAX_BASE_URL`).
+  Spend caps: `JOBMAGNET_LLM_DAILY_CAP_USD` (default 25), `JOBMAGNET_LLM_TENANT_DAILY_CAP_USD`
+  (default 3). Set the platform cap to 0 to disable all real LLM.
 - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`.
 - Email: `JOBMAGNET_EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`.
 - Google Business Profile one-click connect: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,

@@ -27,6 +27,7 @@ import re
 
 import db
 import ai
+import brain
 import mandate
 import autopilot
 import messaging
@@ -442,18 +443,18 @@ def _route_system(business=None):
 
 
 def _llm_route(business, message, history):
-    """Ask the active brain to pick a tool + args. Returns a dict or None (-> demo floor)."""
-    provider = ai._active_provider()
-    if provider not in ("claude", "minimax"):
-        return None
+    """Ask the active brain to pick a tool + args. Returns a dict or None (-> demo floor).
+    Internal routing/classification -> bulk tier."""
     convo = ""
     for turn in (history or [])[-6:]:
         who = "Owner" if turn.get("role") == "user" else "JobMagnet"
         convo += f"{who}: {turn.get('content', '')}\n"
     user_text = f"{convo}Owner: {message}\n\nReturn the JSON now."
     try:
-        complete = ai._claude_complete if provider == "claude" else ai._minimax_complete
-        raw = ai._strip_think(complete(_route_system(business), user_text))
+        raw = brain.generate("bulk", _route_system(business), user_text,
+                             max_tokens=400, business_id=business.get("id"))
+        if not raw:
+            return None
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         if not m:
             return None
@@ -469,9 +470,6 @@ def suggest_tool_for(message):
     """Given a request JobMagnet fell back on (a recurring gap), ask the brain whether ONE
     existing tool would genuinely satisfy it. Returns a tool name only on high confidence,
     else None. Powers the proactive 'I think I can actually do that now' offer."""
-    provider = ai._active_provider()
-    if provider not in ("claude", "minimax"):
-        return None
     system = (
         "An assistant could not handle a request and fell back to pointing the owner at a "
         "page. Decide if ONE of the existing tools below would ACTUALLY do what the owner "
@@ -480,8 +478,9 @@ def suggest_tool_for(message):
         'Reply with ONLY a JSON object: {"tool":"<exact tool name or none>","confidence":"high|low"}.')
     user = f"OWNER REQUEST: {message}\n\nReturn the JSON now."
     try:
-        complete = ai._claude_complete if provider == "claude" else ai._minimax_complete
-        raw = ai._strip_think(complete(system, user))
+        raw = brain.generate("bulk", system, user, max_tokens=200)  # classification -> bulk
+        if not raw:
+            return None
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         d = json.loads(m.group(0)) if m else {}
         if d.get("tool") in TOOLS and d.get("confidence") == "high":
@@ -569,23 +568,18 @@ def _route_topic(message):
 def _chat_reply(message):
     """A plain conversational answer (no tool). Uses the brain if available, else a
     helpful capabilities nudge."""
-    provider = ai._active_provider()
-    if provider in ("claude", "minimax"):
-        try:
-            complete = ai._claude_complete if provider == "claude" else ai._minimax_complete
-            sys = ("You are the JobMagnet assistant, a warm and concise marketing AI for a "
-                   "home-services contractor. Answer in 1 to 3 sentences. Do not "
-                   "use dashes; use periods and commas. If they seem to want an action you can "
-                   "take (draft a post, send reviews, connect an account, show stats, set "
-                   "autopilot), offer it. Never call something a 'feature request' or say it is "
-                   "'for future development'. If you cannot do it directly, point them to the "
-                   "right place honestly (the Queue for scheduling, Plan and Pricing for billing, "
-                   "the Business Brain in Settings for their profile).")
-            out = ai._strip_think(complete(sys, message))
-            if out:
-                return out
-        except Exception:
-            pass
+    sys = ("You are the JobMagnet assistant, a warm and concise marketing AI for a "
+           "home-services contractor. Answer in 1 to 3 sentences. Do not "
+           "use dashes; use periods and commas. If they seem to want an action you can "
+           "take (draft a post, send reviews, connect an account, show stats, set "
+           "autopilot), offer it. Never call something a 'feature request' or say it is "
+           "'for future development'. If you cannot do it directly, point them to the "
+           "right place honestly (the Queue for scheduling, Plan and Pricing for billing, "
+           "the Business Brain in Settings for their profile).")
+    # The owner-facing conversational reply -> brand tier (voice matters, volume is low).
+    out = brain.generate("brand", sys, message, max_tokens=400)
+    if out:
+        return out
     return ("I am your control desk. Ask me things like \"how many leads this week,\" "
             "\"draft an Instagram post about the Oak Street exterior,\" \"connect my Google "
             "calendar,\" or \"set reviews to autopilot.\"")

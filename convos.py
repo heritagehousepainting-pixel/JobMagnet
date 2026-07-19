@@ -91,22 +91,11 @@ def _flag(business_id, convo_id, user_tid, message, meta, prior, gap_route=""):
 _GRADED_STATUSES = ("ok", "chat", "learned")
 
 
-def _complete(provider, system, user):
-    """One completion call, portable across both apps' ai modules."""
-    import ai
-    if hasattr(ai, "_llm_complete"):           # FirstBack-style ai
-        return ai._llm_complete(provider, system, user)
-    fn = ai._claude_complete if provider == "claude" else ai._minimax_complete
-    return fn(system, user)
-
-
 def _grade(message, reply):
     """Ask the brain to judge the exchange. Returns {'verdict','reason'} or None (no real
-    brain configured, or the call failed -> we simply don't grade)."""
-    import ai
-    provider = ai._active_provider()
-    if provider not in ("claude", "minimax"):
-        return None
+    brain configured, capped, or the call failed -> we simply don't grade). LLM-judge is
+    internal QA -> bulk tier."""
+    import brain
     system = (
         "You are a strict QA reviewer for an assistant that helps a home-services "
         "contractor run their business. Given the OWNER's message and the ASSISTANT's "
@@ -119,7 +108,9 @@ def _grade(message, reply):
         "dashes; use periods and commas.")
     user = f"OWNER: {message}\nASSISTANT: {reply}\n\nReturn the JSON now."
     try:
-        raw = ai._strip_think(_complete(provider, system, user))
+        raw = brain.generate("bulk", system, user, max_tokens=200)
+        if not raw:
+            return None
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         data = json.loads(m.group(0)) if m else None
         if isinstance(data, dict) and data.get("verdict") in ("good", "weak", "miss"):

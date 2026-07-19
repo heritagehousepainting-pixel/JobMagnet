@@ -21,9 +21,9 @@ from config import (PROVIDER, PLATFORMS, DEFAULT_PLATFORM,
                     ANTHROPIC_API_KEY, CLAUDE_MODEL,
                     MINIMAX_API_KEY, MINIMAX_MODEL, MINIMAX_BASE_URL,
                     IMAGE_API_KEY)
-# Provider plumbing (MiniMax/Claude/demo selection + the HTTP/SDK call) lives in the
-# trades_core kernel; this file keeps JobMagnet's prompts + content shaping.
-from llm import active_provider as _active_provider, strip_think as _strip_think, complete as _complete
+# Every LLM call goes through the one gated, cost-capped, ledgered seam (brain.py),
+# which owns provider selection, the two tiers, the spend cap, and the cost ledger.
+import brain
 
 
 def _platform_hint(platform):
@@ -66,19 +66,6 @@ def _user_prompt(topic):
 
 
 # --------------------------------------------------------------------------
-# REAL BRAINS
-# --------------------------------------------------------------------------
-def _claude_complete(system, user_text):
-    return _complete("claude", system, [{"role": "user", "content": user_text}],
-                     max_tokens=600)
-
-
-def _minimax_complete(system, user_text):
-    return _complete("minimax", system, [{"role": "user", "content": user_text}],
-                     max_tokens=800, temperature=0.8)
-
-
-# --------------------------------------------------------------------------
 # DEMO MODE  (no API key needed)
 # --------------------------------------------------------------------------
 def _demo_post(business, topic, platform):
@@ -114,27 +101,21 @@ def _clean_punct(text):
 
 
 def generate_post(business, topic, platform=DEFAULT_PLATFORM):
-    """Return a ready-to-review social post string for the given platform."""
+    """Return a ready-to-review social post string for the given platform. Routine social
+    copy -> bulk tier."""
     if platform not in PLATFORMS:
         platform = DEFAULT_PLATFORM
-    provider = _active_provider()
-    raw = None
-    if provider in ("claude", "minimax"):
-        system, user_text = _system_prompt(business, platform), _user_prompt(topic)
-        try:
-            raw = (_claude_complete if provider == "claude" else _minimax_complete)(
-                system, user_text)
-        except Exception as e:
-            print(f"[jobmagnet] {provider} brain failed, using demo fallback: {e}",
-                  file=sys.stderr, flush=True)
-            raw = None
+    raw = brain.generate("bulk", _system_prompt(business, platform), _user_prompt(topic),
+                         max_tokens=600, business_id=business.get("id"))
     if not raw:
         return _demo_post(business, topic, platform)
     return _clean_punct(raw)
 
 
 def brain_mode():
-    return _active_provider()
+    """The headline brain for the UI label: the brand-tier provider actually usable now
+    (claude / deepseek / minimax / demo). Truthful about what's running, not just the env."""
+    return brain.resolve("brand")[0]
 
 
 # --------------------------------------------------------------------------
@@ -170,18 +151,13 @@ def _review_response_prompt(business, review):
 
 
 def generate_review_response(business, review):
-    """Draft a public response to a review, in the business's voice."""
-    provider = _active_provider()
-    if provider in ("claude", "minimax"):
-        system = _review_response_prompt(business, review)
-        try:
-            raw = (_claude_complete if provider == "claude" else _minimax_complete)(
-                system, "Write the reply now.")
-            if raw:
-                return _clean_punct(raw)
-        except Exception as e:
-            print(f"[jobmagnet] {provider} review reply failed, using template: {e}",
-                  file=sys.stderr, flush=True)
+    """Draft a public response to a review, in the business's voice. Public + reputation
+    -> brand tier."""
+    raw = brain.generate("brand", _review_response_prompt(business, review),
+                         "Write the reply now.", max_tokens=400,
+                         business_id=business.get("id"))
+    if raw:
+        return _clean_punct(raw)
     # Demo / fallback template.
     author = (review.get("author") or "there").split()[0]
     if (review.get("rating") or 5) >= 4:
@@ -215,26 +191,22 @@ def _faq_demo(business):
 def generate_faq(business, n=5):
     """Answer-first FAQ pairs for the business, tuned for AEO (so AI answer engines
     can quote them). Returns a list of (question, answer) tuples."""
-    provider = _active_provider()
-    if provider in ("claude", "minimax"):
-        b = business
-        system = (
-            f"You write concise FAQ content for {b.get('name','a home-services business')}, "
-            f"a {b.get('trade','home services')} business serving {b.get('service_area','the local area')}. "
-            f"SERVICES: {b.get('services','')}. WHAT SETS US APART: {b.get('differentiators','')}.\n"
-            f"Write {n} frequently asked questions a homeowner would ask, each with a direct, "
-            "answer-first response of 1 to 3 sentences. Do not invent prices or guarantees. "
-            "No dashes; use periods and commas. Format EXACTLY as 'Q: ...' then 'A: ...' lines, "
-            "one pair per question, no numbering, no extra text.")
-        try:
-            raw = (_claude_complete if provider == "claude" else _minimax_complete)(
-                system, "Write the FAQ now.")
-            pairs = _parse_qa(_clean_punct(raw or ""))
-            if pairs:
-                return pairs
-        except Exception as e:
-            print(f"[jobmagnet] {provider} FAQ failed, using template: {e}",
-                  file=sys.stderr, flush=True)
+    b = business
+    system = (
+        f"You write concise FAQ content for {b.get('name','a home-services business')}, "
+        f"a {b.get('trade','home services')} business serving {b.get('service_area','the local area')}. "
+        f"SERVICES: {b.get('services','')}. WHAT SETS US APART: {b.get('differentiators','')}.\n"
+        f"Write {n} frequently asked questions a homeowner would ask, each with a direct, "
+        "answer-first response of 1 to 3 sentences. Do not invent prices or guarantees. "
+        "No dashes; use periods and commas. Format EXACTLY as 'Q: ...' then 'A: ...' lines, "
+        "one pair per question, no numbering, no extra text.")
+    # Site content + AEO -> brand tier.
+    raw = brain.generate("brand", system, "Write the FAQ now.", max_tokens=700,
+                         business_id=business.get("id"))
+    if raw:
+        pairs = _parse_qa(_clean_punct(raw))
+        if pairs:
+            return pairs
     return _faq_demo(business)
 
 
@@ -289,26 +261,21 @@ def _ad_copy_demo(business):
 def generate_ad_copy(business):
     """Google Search ad assets (headlines + descriptions) in the brand voice.
     Returns {'headlines': [...], 'descriptions': [...]}."""
-    provider = _active_provider()
-    if provider in ("claude", "minimax"):
-        b = business
-        system = (
-            f"You write Google Search ads for {b.get('name','a home-services business')}, "
-            f"a {b.get('trade','home services')} business serving {b.get('service_area','the local area')}. "
-            f"WHAT SETS US APART: {b.get('differentiators','')}.\n"
-            "Write 5 headlines (max 30 characters each) and 2 descriptions (max 90 characters each). "
-            "High intent, local, a clear benefit and call to action. No dashes; use periods and commas. "
-            "Format EXACTLY as 'H: ...' lines then 'D: ...' lines, nothing else.")
-        try:
-            raw = _clean_punct((_claude_complete if provider == "claude" else _minimax_complete)(
-                system, "Write the ads now.") or "")
-            heads = [l[2:].strip() for l in raw.splitlines() if l.strip()[:2].lower() == "h:"]
-            descs = [l[2:].strip() for l in raw.splitlines() if l.strip()[:2].lower() == "d:"]
-            if heads and descs:
-                return {"headlines": heads, "descriptions": descs}
-        except Exception as e:
-            print(f"[jobmagnet] {provider} ad copy failed, using template: {e}",
-                  file=sys.stderr, flush=True)
+    b = business
+    system = (
+        f"You write Google Search ads for {b.get('name','a home-services business')}, "
+        f"a {b.get('trade','home services')} business serving {b.get('service_area','the local area')}. "
+        f"WHAT SETS US APART: {b.get('differentiators','')}.\n"
+        "Write 5 headlines (max 30 characters each) and 2 descriptions (max 90 characters each). "
+        "High intent, local, a clear benefit and call to action. No dashes; use periods and commas. "
+        "Format EXACTLY as 'H: ...' lines then 'D: ...' lines, nothing else.")
+    # Paid, public copy -> brand tier.
+    raw = _clean_punct(brain.generate("brand", system, "Write the ads now.",
+                                      max_tokens=500, business_id=business.get("id")) or "")
+    heads = [l[2:].strip() for l in raw.splitlines() if l.strip()[:2].lower() == "h:"]
+    descs = [l[2:].strip() for l in raw.splitlines() if l.strip()[:2].lower() == "d:"]
+    if heads and descs:
+        return {"headlines": heads, "descriptions": descs}
     return _ad_copy_demo(business)
 
 
@@ -320,29 +287,24 @@ def generate_cold_email(business, contact):
     The CAN-SPAM footer (physical address + opt-out) is added by the sender, not here."""
     b = business
     name = (contact.get("name") or "there").split()[0] if contact else "there"
-    provider = _active_provider()
-    if provider in ("claude", "minimax"):
-        system = (
-            f"You write brief, respectful B2B partnership outreach emails for "
-            f"{b.get('name','a home-services business')}, a {b.get('trade','home services')} "
-            f"business serving {b.get('service_area','the local area')}. The recipient is a "
-            f"potential referral partner (realtor, property manager, or general contractor), "
-            f"NOT a homeowner. WHAT SETS US APART: {b.get('differentiators','')}.\n"
-            "Goal: open a referral relationship. Be human and concise (under 120 words), no "
-            "hype, no pushy sales language. Do not invent prior contact. No dashes; use periods "
-            "and commas. Format EXACTLY as 'SUBJECT: ...' on the first line, then a blank line, "
-            "then the email body.")
-        try:
-            raw = _clean_punct((_claude_complete if provider == "claude" else _minimax_complete)(
-                system, f"Write the email to {name}.") or "")
-            subj, _, body = raw.partition("\n")
-            subj = subj.replace("SUBJECT:", "").strip()
-            body = body.strip()
-            if subj and body:
-                return {"subject": subj, "body": body}
-        except Exception as e:
-            print(f"[jobmagnet] {provider} cold email failed, using template: {e}",
-                  file=sys.stderr, flush=True)
+    system = (
+        f"You write brief, respectful B2B partnership outreach emails for "
+        f"{b.get('name','a home-services business')}, a {b.get('trade','home services')} "
+        f"business serving {b.get('service_area','the local area')}. The recipient is a "
+        f"potential referral partner (realtor, property manager, or general contractor), "
+        f"NOT a homeowner. WHAT SETS US APART: {b.get('differentiators','')}.\n"
+        "Goal: open a referral relationship. Be human and concise (under 120 words), no "
+        "hype, no pushy sales language. Do not invent prior contact. No dashes; use periods "
+        "and commas. Format EXACTLY as 'SUBJECT: ...' on the first line, then a blank line, "
+        "then the email body.")
+    # Partner-facing, represents the contractor -> brand tier.
+    raw = _clean_punct(brain.generate("brand", system, f"Write the email to {name}.",
+                                      max_tokens=500, business_id=business.get("id")) or "")
+    subj, _, body = raw.partition("\n")
+    subj = subj.replace("SUBJECT:", "").strip()
+    body = body.strip()
+    if subj and body:
+        return {"subject": subj, "body": body}
     return {
         "subject": f"Referral partnership with {b.get('name','our team')}?",
         "body": (f"Hi {name},\n\nI run {b.get('name','a local')} {b.get('trade','home services')} "

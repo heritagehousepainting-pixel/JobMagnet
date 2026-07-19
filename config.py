@@ -29,11 +29,36 @@ TAGLINE = "Become the contractor jobs come to."
 PROVIDER = os.environ.get("JOBMAGNET_PROVIDER", "demo")
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-4-8")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-4-8")  # legacy single-provider default
 
 MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
 MINIMAX_MODEL = os.environ.get("MINIMAX_MODEL", "MiniMax-M2.5")
 MINIMAX_BASE_URL = os.environ.get("MINIMAX_BASE_URL", "https://api.minimax.io")
+
+# --- Two-tier AI brain (brain.py) -----------------------------------------
+# Every LLM call goes through brain.generate(tier, ...). Two tiers:
+#   "bulk"  -> high-volume, low-stakes copy (routine social posts, assistant routing,
+#              the LLM grader). Cheapest configured provider: DeepSeek, then MiniMax.
+#   "brand" -> customer-facing / judgment copy (review replies, FAQ/AEO, ad copy,
+#              partner emails, assistant chat). Best voice + anti-hallucination: Claude.
+# Each tier resolves to the first configured provider in its order; if a tier has no
+# provider it degrades to the built-in demo templates (the app never breaks). Set ONE
+# real key and the whole product is real; set both a bulk key and Claude to get the split.
+# DeepSeek is OpenAI-compatible (same call shape as MiniMax).
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+# Brand-tier Claude model. Sonnet 5 is the quality/cost sweet spot for short brand copy;
+# override to claude-haiku-4-5 (cheaper) or claude-opus-4-8 (max) as desired.
+BRAND_MODEL = os.environ.get("JOBMAGNET_BRAND_MODEL", "claude-sonnet-5")
+
+# --- LLM spend caps (the surprise-bill wall) ------------------------------
+# Platform-wide daily ceiling across ALL tenants (USD). At/over it, brain.generate
+# returns None (degrades to templates) until UTC midnight. Set to 0 to disable all real
+# LLM (demo only). Per-tenant daily ceiling stops one runaway tenant (e.g. a chat loop)
+# from eating the platform budget. Both caps FAIL OPEN: a ledger read error never blocks.
+LLM_DAILY_COST_CAP_USD = float(os.environ.get("JOBMAGNET_LLM_DAILY_CAP_USD", "") or "25.0")
+LLM_TENANT_DAILY_CAP_USD = float(os.environ.get("JOBMAGNET_LLM_TENANT_DAILY_CAP_USD", "") or "3.0")
 
 # --- Messaging (Phase 0): outbound SMS/email. Safe no-op until configured. ---
 # SMS via Twilio. Leave blank to keep SMS simulated (logged, not sent).
