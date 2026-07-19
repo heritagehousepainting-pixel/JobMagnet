@@ -87,6 +87,15 @@ check("brain defaults to demo (no API key)", ai.brain_mode() == "demo")
 
 # --- Auth -------------------------------------------------------------------
 print("Auth")
+# _safe_next open-redirect guard (shared trades_core kernel; fixed 2026-07-19). The
+# backslash form /\evil.com bypassed the old startswith('//') check because browsers
+# normalize \ to / in the authority -> off-site redirect / phishing off a trusted link.
+import auth as _authmod
+check("safe_next keeps a legit relative path", _authmod._safe_next("/queue?x=1") == "/queue?x=1")
+for _evil in ("//evil.com", "/\\evil.com", "\\\\evil.com", "https://evil.com",
+              "https:evil.com", "/ok\nx", "", None):
+    check(f"safe_next neutralizes {_evil!r}", _authmod._safe_next(_evil) == "/dashboard")
+
 c = client()
 r = c.get("/dashboard")
 check("dashboard requires login (redirect)", r.status_code == 302 and "/login" in r.headers["Location"])
