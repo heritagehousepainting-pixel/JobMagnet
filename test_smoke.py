@@ -53,6 +53,10 @@ import messaging
 import publishing
 import plans
 import billing
+import radiusmail
+import partners
+import lsa
+import roi
 
 # The bulk suite posts plain forms; CSRF is exercised separately (see end), so
 # run the rest under testing mode where the CSRF guard is skipped.
@@ -366,8 +370,8 @@ check("FirstBack sync is simulated when not connected",
       "sync=simulated" in r.headers.get("Location", ""))
 r = c.post("/webhooks/booking", data={"business_id": "1", "channel": "google_lsa", "value": "1500"})
 check("booking webhook creates a booked conversion", r.status_code == 201)
-lsa = [r for r in db.roi_summary(1)["rows"] if r["channel"] == "google_lsa"][0]
-check("webhook booking shows under its channel", lsa["booked"] == 1)
+_lsa_row = [r for r in db.roi_summary(1)["rows"] if r["channel"] == "google_lsa"][0]
+check("webhook booking shows under its channel", _lsa_row["booked"] == 1)
 
 # --- Phase 4: ads assist + lead engine -------------------------------------
 print("Phase 4 ads + leads")
@@ -430,7 +434,8 @@ check("opted-out partner is blocked from further email",
 # --- Phase 6: cold SMS/voice (hard-gated) ----------------------------------
 print("Phase 6 cold SMS/voice (gated)")
 r = c.get("/cold")
-check("cold outreach page renders", r.status_code == 200 and b"Cold SMS" in r.data)
+check("cold outreach UI removed (channel permanently gated; the seam remains)",
+      r.status_code == 404)
 prospect = db.add_contact(1, name="Cold Prospect", phone="555-900-1000", kind="lead")
 pc = db.get_contact(prospect, 1)
 res = messaging.send_cold_sms(1, pc["phone"], "hi", contact=pc)
@@ -442,7 +447,8 @@ messaging.COLD_SMS_ENABLED = True   # simulate the attorney sign-off / enablemen
 res = messaging.send_cold_sms(1, pc["phone"], "hi", contact=db.get_contact(prospect, 1))
 check("cold SMS still blocked without prior written consent",
       res["status"] == "blocked_no_consent")
-c.post("/cold/consent", data={"contact_id": prospect})
+db.set_contact_consent(1, prospect, "sms", "granted",
+                       source="written consent recorded (test)")
 check("written consent recorded in the ledger",
       db.get_contact(prospect, 1)["consent_status"] == "granted")
 res = messaging.send_cold_sms(1, pc["phone"], "hi", contact=db.get_contact(prospect, 1),
@@ -655,7 +661,10 @@ check("premium shop gets risk-reversal offers", offers.suggest(biz1, {"avg_job_v
 check("standard shop gets discount-style offers", offers.suggest(biz1, {"avg_job_value": 1000})["luxury"] is False)
 check("offers are always non-empty", len(offers.suggest(biz1, {})["offers"]) >= 3)
 r = c.get("/offer")
-check("offer page renders", r.status_code == 200 and b"Offer" in r.data)
+check("standalone offer page removed (folded into Compose)", r.status_code == 404)
+r = c.get("/compose")
+check("compose renders offer & guarantee ideas inline",
+      r.status_code == 200 and b"Offer &amp; guarantee ideas" in r.data)
 
 # --- Loop 1: Mandate elections -> engines (autopilot) ----------------------
 print("Autopilot (elections -> engines)")
@@ -1108,7 +1117,9 @@ crypto.SECRETS_KEY = ""   # restore dev default for the rest of the suite
 print("Plans (pricing + capability gate)")
 check("pro cannot autopilot", plans.can_autopilot("pro") is False)
 check("premium can autopilot", plans.can_autopilot("premium") is True)
-check("scale unlocks managed ads", plans.can_managed_ads("scale") is True)
+check("managed-ads promise retired (we never manage an ad account)",
+      not hasattr(plans, "can_managed_ads")
+      and "managed_ads" not in plans.PLANS["scale"])
 check("text caps scale by plan", plans.text_cap("pro") == 750 and plans.text_cap("premium") == 2000)
 check("plan prices are set", plans.PLANS["premium"]["price"] == 299)
 check("set_plan persists", db.set_plan(1, "premium") and db.get_plan(1) == "premium")
@@ -1666,6 +1677,110 @@ _gb._exchange_code, _gb._fetch_location_id, _gb._refresh = _exch0, _floc0, _ref0
 _gb.GOOGLE_CLIENT_ID, _gb.GOOGLE_CLIENT_SECRET = _cid0, _sec0
 db.set_election(1, "get_found", "off")
 db.set_auto_publish(1, False)
+
+# --- New-client engines: Neighbor Mail / Partners / LSA Concierge ----------
+print("New-client engines")
+
+# Neighbor Mail: pure copy rules (privacy: street yes, house number never)
+_nm_biz = {"name": "Heritage House Painting", "trade": "painting", "phone": "215-555-0100"}
+_letter = radiusmail.neighbor_letter(_nm_biz, {"address": "412 Elm St, Doylestown PA",
+                                               "service": "exterior repaint"})
+check("neighbor letter names the street, never the house number",
+      "Elm St" in _letter and "412" not in _letter)
+check("door hanger names the street too",
+      "Elm St" in radiusmail.door_hanger(_nm_biz, {"address": "412 Elm St, Doylestown PA"}))
+check("mail mode is honestly assisted (no mail API wired)",
+      radiusmail.mail_mode() == "assisted")
+
+# Campaign flow through the routes
+_nm_cust = db.add_contact(1, name="Mail Anchor", phone="215-555-8111", kind="customer")
+db.set_contact_job(1, _nm_cust, "2025-10-01", "exterior")
+r = c.post("/radiusmail/create", data={"contact_id": _nm_cust, "address": "", "pieces": "50"})
+check("campaign requires a jobsite address", "noaddress" in r.headers.get("Location", ""))
+r = c.post("/radiusmail/create", data={"contact_id": _nm_cust,
+                                       "address": "9 Oak Ln, Doylestown PA", "pieces": "50"})
+check("campaign drafts from a completed job", "drafted" in r.headers.get("Location", ""))
+check("jobsite address remembered on the contact",
+      db.get_contact(_nm_cust, 1)["address"] == "9 Oak Ln, Doylestown PA")
+_camps = db.list_mail_campaigns(1)
+check("campaign persisted as an assisted draft",
+      _camps and _camps[0]["status"] == "draft" and _camps[0]["mode"] == "assisted")
+r = c.post("/radiusmail/create", data={"contact_id": _nm_cust, "address": "9 Oak Ln"})
+check("one campaign per job (duplicate refused)", "exists" in r.headers.get("Location", ""))
+_cid = _camps[0]["id"]
+c.post(f"/radiusmail/{_cid}/status", data={"status": "bogus"})
+check("unknown campaign status refused", db.get_mail_campaign(_cid, 1)["status"] == "draft")
+c.post(f"/radiusmail/{_cid}/status", data={"status": "approved"})
+check("campaign approves", db.get_mail_campaign(_cid, 1)["status"] == "approved")
+r = c.get(f"/radiusmail/{_cid}/print")
+check("print view renders the letter", r.status_code == 200 and b"Oak Ln" in r.data)
+c.post(f"/radiusmail/{_cid}/status", data={"status": "printed"})
+check("campaign marked printed (with timestamp)",
+      db.get_mail_campaign(_cid, 1)["status"] == "printed"
+      and db.get_mail_campaign(_cid, 1)["printed_at"])
+r = c.get("/radiusmail")
+check("neighbor mail page renders", r.status_code == 200 and b"Neighbor Mail" in r.data)
+check("direct mail is an ROI attribution channel", "direct_mail" in roi.CHANNELS)
+check("neighbor mail is a mandate playbook", "radius_mail" in mandate.PLAYBOOKS)
+
+# Autopilot drafts a campaign per completed job (draft-only: mail never auto-sends)
+db.set_plan(1, "premium")
+for _pb in ("get_found", "show_work", "reviews", "reactivation", "referrals"):
+    db.set_election(1, _pb, "off")
+db.set_election(1, "radius_mail", "take_over")
+_nm2 = db.add_contact(1, name="Mail Anchor Two", phone="215-555-8112", kind="customer")
+db.set_contact_job(1, _nm2, "2025-11-01", "interior")
+db.set_contact_address(1, _nm2, "14 Pine Rd, Doylestown PA")
+_ap_mail = autopilot.run_for(1)
+check("autopilot drafts a neighbor campaign for a completed job",
+      _nm2 in db.mail_campaign_contact_ids(1) and _ap_mail["posts"] >= 1)
+_ap_mail2 = autopilot.run_for(1)
+check("autopilot never drafts the same jobsite twice",
+      sum(1 for cmp in db.list_mail_campaigns(1) if cmp["contact_id"] == _nm2) == 1)
+db.set_election(1, "radius_mail", "off")
+
+# Partners: typed intros + the anti-kickback guardrail
+check("realtors never get cash rewards (RESPA guardrail)",
+      partners.cash_reward_allowed("realtor") is False)
+check("insurance/restoration never gets cash rewards",
+      partners.cash_reward_allowed("insurance_restoration") is False)
+check("property managers may be rewarded (tracked via Nod)",
+      partners.cash_reward_allowed("property_manager") is True)
+check("guardrail types carry a warning note",
+      "never" in partners.reward_note("realtor").lower())
+_pm = db.add_contact(1, name="Pat Manager", email="pat@pm.example", kind="partner")
+c.post("/outreach/type", data={"contact_id": _pm, "partner_type": "property_manager"})
+check("partner type persists", db.get_contact(_pm, 1)["partner_type"] == "property_manager")
+c.post("/outreach/type", data={"contact_id": _pm, "partner_type": "made_up"})
+check("unknown partner type refused",
+      db.get_contact(_pm, 1)["partner_type"] == "property_manager")
+r = c.post("/outreach", data={"action": "generate", "contact_id": _pm})
+check("typed partner intro drafts with the per-type angle",
+      r.status_code == 200 and b"Turnovers on a deadline" in r.data)
+check("portfolio digest refuses to pad with filler",
+      partners.digest_email({"name": "X"}, []) is None)
+_dg = partners.digest_email({"name": "X", "trade": "painting"},
+                            [{"topic": "Colonial exterior repaint"}])
+check("portfolio digest built from real work only",
+      _dg and "Colonial exterior repaint" in _dg["body"])
+# The digest ROUTE: biz 1 has published posts by this point in the suite, so the
+# digest action must render a preview built from that real work.
+r = c.post("/outreach", data={"action": "digest", "contact_id": _pm})
+check("digest route renders a preview from published work",
+      r.status_code == 200 and b"Recent work from" in r.data)
+
+# LSA Concierge: checklist + scoring + shared-store isolation
+check("lsa checklist scores from zero", lsa.score(set()) == 0)
+check("lsa next steps walk in order", lsa.next_steps(set())[0]["key"] == "lsa_signup")
+c.post("/ads/check", data={"item": "lsa_signup", "done": "1"})
+check("lsa item persists", "lsa_signup" in db.get_lsa_done(1))
+check("lsa rejects get-found keys (stores stay separate)",
+      db.set_lsa_item(1, "claimed", True) is False)
+check("get-found score ignores lsa keys (shared table, filtered)",
+      "lsa_signup" not in {k for k in db.get_getfound_done(1) if k in getfound.CHECKLIST_KEYS})
+r = c.get("/ads")
+check("paid leads page shows the concierge",
+      r.status_code == 200 and b"LSA Concierge" in r.data)
 
 # --- Cleanup ----------------------------------------------------------------
 # (Postgres DB is dropped by the atexit handler registered at the top of this file.)

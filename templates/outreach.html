@@ -1,20 +1,21 @@
 {% extends "app_shell.html" %}
 {% import "_macros.html" as ui %}
-{% block title %}Outreach{% endblock %}
-{% block page_title %}Partner Outreach{% endblock %}
-{% block page_sub %}<p class="page-sub">Cold email to potential referral partners (realtors, property managers, GCs). Built CAN-SPAM compliant. Not for homeowners.</p>{% endblock %}
+{% block title %}Partners{% endblock %}
+{% block page_title %}Partner Engine{% endblock %}
+{% block page_sub %}<p class="page-sub">Realtors, property managers, designers, GCs and neighboring trades — one relationship can feed you jobs for years. JobMagnet opens it compliantly and keeps it warm. Never for homeowners.</p>{% endblock %}
 
 {% block content %}
 {% set msg = request.args.get('msg') %}
 {% if msg == 'noaddr' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Add your mailing address in <a href="/settings">Business Brain</a> first. The law (CAN-SPAM) requires it on every marketing email.</div>{% endif %}
 {% if msg == 'incomplete' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That partner needs an email address, and the message needs a subject and body.</div>{% endif %}
+{% if msg == 'nodigest' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">No published work to build a digest from yet. Publish a few posts first — the digest only ever shows real work.</div>{% endif %}
 {% if msg and msg.startswith('sent_simulated') %}<div class="save-banner">Email queued (simulated). Connect email sending to deliver for real, see <a href="/settings">setup</a>.</div>{% endif %}
 {% if msg == 'sent_sent' %}<div class="save-banner">Email sent.</div>{% endif %}
 {% if msg and msg.startswith('sent_blocked') %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That contact opted out or is on do-not-contact, so nothing was sent.</div>{% endif %}
 
 {% if not can_spam %}
 <div class="card" style="margin-bottom:var(--space-6);border-left:3px solid var(--warning)">
-  <div class="card-body"><strong>Cold email is off.</strong> Add a mailing address in <a href="/settings">Business Brain</a> to enable compliant sending.</div>
+  <div class="card-body"><strong>Partner email is off.</strong> Add a mailing address in <a href="/settings">Business Brain</a> to enable compliant sending.</div>
 </div>
 {% endif %}
 
@@ -29,31 +30,52 @@
       <tbody>
         {% for p in partners %}
         <tr>
-          <td><strong>{{ p.name }}</strong></td>
-          <td class="dt-muted">{{ p.email or 'no email' }}</td>
+          <td><strong>{{ p.name }}</strong><div class="dt-muted">{{ p.email or 'no email' }}</div></td>
+          <td>
+            <form method="post" action="/outreach/type" style="display:flex;gap:var(--space-2);align-items:center">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="contact_id" value="{{ p.id }}">
+              <select class="field-control" name="partner_type" style="max-width:12rem" aria-label="Partner type for {{ p.name }}">
+                <option value="">type…</option>
+                {% for key, t in partner_types.items() %}
+                <option value="{{ key }}" {{ 'selected' if p.partner_type == key }}>{{ t.label }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-secondary btn-sm" type="submit">Set</button>
+            </form>
+          </td>
           <td>{% if p.suppressed or p.consent_status == 'opted_out' %}<span class="pill pill-warning">do not contact</span>{% endif %}</td>
-          <td style="text-align:right">
+          <td style="text-align:right;white-space:nowrap">
             <form method="post" action="/outreach" style="display:inline">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="action" value="generate">
               <input type="hidden" name="contact_id" value="{{ p.id }}">
-              <button class="btn btn-secondary btn-sm" type="submit" {{ 'disabled' if (p.suppressed or p.consent_status == 'opted_out' or not p.email) }}>Draft email</button>
+              <button class="btn btn-secondary btn-sm" type="submit" {{ 'disabled' if (p.suppressed or p.consent_status == 'opted_out' or not p.email) }}>Draft intro</button>
+            </form>
+            <form method="post" action="/outreach" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="digest">
+              <input type="hidden" name="contact_id" value="{{ p.id }}">
+              <button class="btn btn-secondary btn-sm" type="submit" {{ 'disabled' if (p.suppressed or p.consent_status == 'opted_out' or not p.email) }}>Portfolio digest</button>
             </form>
           </td>
         </tr>
+        {% if p.reward_note %}
+        <tr><td colspan="4"><p class="dt-muted" style="font-size:.85rem;margin:0 0 var(--space-2)">{{ p.reward_note }}</p></td></tr>
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>
     {% else %}
       {{ ui.empty("No partners yet",
-                  "Add realtors, property managers or GCs as partner contacts, then JobMagnet drafts a compliant intro email to each.",
+                  "Add realtors, property managers, designers or GCs as partner contacts. You already know ten — start with them.",
                   "/contacts", "Add partners") }}
     {% endif %}
   </div>
 </div>
 
 {% if preview %}
-<div class="card">
+<div class="card" style="margin-bottom:var(--space-6)">
   <div class="card-head"><h2 class="card-title">Draft to {{ preview.contact.name }}</h2></div>
   <div class="card-body">
     <form method="post" action="/outreach/send">
@@ -70,4 +92,13 @@
   </div>
 </div>
 {% endif %}
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">Rewarding partners — the rules</h2></div>
+  <div class="card-body">
+    <p class="post-body" style="margin-bottom:var(--space-2)">Never offer <strong>realtors</strong> or <strong>insurance/restoration</strong> partners cash referral fees — anti-kickback rules (e.g. RESPA) make that a real legal risk. Thank them with priority scheduling and fast quotes for their clients.</p>
+    <p class="post-body" style="margin-bottom:var(--space-2)">For everyone else, if you want to run a tracked referral reward, use <strong>Nod</strong> — it records the reward, the confirmation and the payout so both sides have a clean record.</p>
+    <p class="post-body" style="margin:0">Neighboring trades with overflow work to trade? That's what <strong>TradeSource</strong> is for — a vetted contractor-to-contractor job exchange.</p>
+  </div>
+</div>
 {% endblock %}

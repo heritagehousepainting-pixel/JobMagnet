@@ -11,13 +11,14 @@ from config import FIRSTBACK_API_URL, FIRSTBACK_API_KEY
 # The marketing channels we attribute spend and bookings to.
 CHANNELS = [
     "social", "google_lsa", "google_ads", "facebook_ads", "local_seo",
-    "reviews", "email", "referral", "other",
+    "reviews", "email", "direct_mail", "referral", "other",
 ]
 
 CHANNEL_LABELS = {
     "social": "Social content", "google_lsa": "Local Services Ads",
     "google_ads": "Google Search Ads", "facebook_ads": "Facebook/Instagram Ads",
     "local_seo": "Local SEO / GBP", "reviews": "Reviews", "email": "Email",
+    "direct_mail": "Direct mail (Neighbor Mail)",
     "referral": "Referral / word of mouth", "other": "Other",
 }
 

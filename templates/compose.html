@@ -56,4 +56,22 @@
   </div>
 </div>
 {% endif %}
+
+{% if offer %}
+<div class="card" style="max-width:680px;margin-top:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">Offer &amp; guarantee ideas</h2>
+    <span class="pill {{ 'pill-booked' if offer.luxury else 'pill-neutral' }}"><span class="pill-dot"></span>{{ 'Premium' if offer.luxury else 'Standard' }}</span>
+  </div>
+  <div class="card-body">
+    <p class="post-body" style="margin-bottom:var(--space-3)">{{ offer.note }}</p>
+    <ul class="post-body" style="margin-bottom:var(--space-3)">
+      {% for o in offer.offers %}<li>{{ o }}</li>{% endfor %}
+    </ul>
+    <p class="field-label">Your risk-reversal</p>
+    <p class="post-body">{{ offer.guarantee }}</p>
+    <p class="dt-muted" style="font-size:.85rem;margin-top:var(--space-2)">A strong, honest hook lowers what every lead costs. Weave one into the post above; set specifics in your <a href="/settings">Business Brain</a>.</p>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

@@ -43,6 +43,9 @@ import seo
 import roi
 import reviewsync
 import ads
+import lsa
+import partners
+import radiusmail
 import outreach
 from config import (APP_NAME, TAGLINE, DEBUG, PORT, SECRET_KEY, SESSION_COOKIE_SECURE,
                     SEED_OWNER_EMAIL, SEED_OWNER_PASSWORD, PLATFORMS, DEFAULT_PLATFORM,
@@ -141,8 +144,9 @@ NAV_SECTIONS = [
                    ("/showwork", "Show Work"), ("/compose", "Compose"),
                    ("/local", "Local SEO")]),
     ("Win the Job", [("/speed", "Speed-to-Lead"), ("/reactivation", "Reactivation"),
-                     ("/referrals", "Referrals"), ("/offer", "Offer")]),
-    ("Advertise", [("/ads", "Ads"), ("/outreach", "Outreach"), ("/cold", "Cold Outreach")]),
+                     ("/referrals", "Referrals")]),
+    ("New Clients", [("/radiusmail", "Neighbor Mail"), ("/outreach", "Partners"),
+                     ("/ads", "Paid Leads")]),
     ("My Business", [("/plan", "Plan & Pricing"), ("/connections", "Connections"),
                      ("/roi", "Results"), ("/contacts", "Contacts"),
                      ("/settings", "Business Brain")]),
@@ -1014,19 +1018,12 @@ def showwork_post():
     return redirect("/showwork?posted=1")
 
 
-@app.route("/offer")
-@login_required
-def offer_page():
-    """Offer & Guarantee: suggested hooks + risk-reversal, tuned to whether this is a
-    premium shop (avg job value)."""
-    biz = current_business()
-    return render_template("offer.html",
-                           offer=offers.suggest(biz, db.get_signals(biz["id"]) or {}))
-
-
 @app.route("/compose", methods=["GET", "POST"])
 @login_required
 def compose():
+    """Compose. The Offer & Guarantee suggestions (offers.py) render inline here —
+    the standalone /offer page was folded in so hooks sit next to the copy they
+    should strengthen."""
     biz = current_business()
     if request.method == "POST":
         action = request.form.get("action")
@@ -1043,9 +1040,11 @@ def compose():
         draft = ai.generate_post(biz, topic, platform)
         image = ai.generate_image(biz, topic, platform)
         return render_template("compose.html", topic=topic, platform=platform,
-                               draft=draft, image=image)
+                               draft=draft, image=image,
+                               offer=offers.suggest(biz, db.get_signals(biz["id"]) or {}))
     return render_template("compose.html", topic="", platform=DEFAULT_PLATFORM,
-                           draft=None, image=None)
+                           draft=None, image=None,
+                           offer=offers.suggest(biz, db.get_signals(biz["id"]) or {}))
 
 
 @app.route("/posts/<int:post_id>/status", methods=["POST"])
@@ -1337,31 +1336,76 @@ def contacts_suppress(contact_id):
 @app.route("/ads", methods=["GET", "POST"])
 @login_required
 def ads_page():
+    """Paid Leads: the LSA Concierge (guided Google Screened setup + weekly hygiene,
+    the cheapest qualified lead in the trades) plus budget guidance and ad copy.
+    Advisory + guided only — no ad account is touched, and we say so."""
     biz = current_business()
     revenue = request.values.get("revenue", type=float)
     budget = ads.recommend_budget(revenue) if revenue else None
     adcopy = ai.generate_ad_copy(biz) if (request.method == "POST"
                                           and request.form.get("action") == "copy") else None
+    lsa_done = db.get_lsa_done(biz["id"])
     return render_template("ads.html", budget=budget, adcopy=adcopy,
-                           revenue=revenue or "")
+                           revenue=revenue or "",
+                           lsa_checklist=lsa.CHECKLIST, lsa_done=lsa_done,
+                           lsa_score=lsa.score(lsa_done),
+                           lsa_next=lsa.next_steps(lsa_done))
+
+
+@app.route("/ads/check", methods=["POST"])
+@login_required
+def ads_lsa_check():
+    biz = current_business()
+    db.set_lsa_item(biz["id"], request.form.get("item") or "",
+                    request.form.get("done") == "1")
+    return redirect("/ads")
 
 
 @app.route("/outreach", methods=["GET", "POST"])
 @login_required
 def outreach_page():
-    """B2B partner cold email. Generate a draft for a partner, then send it through
-    the CAN-SPAM-compliant, consent-gated email seam (simulated until SMTP is set)."""
+    """Partner engine: typed B2B partners (realtor / PM / designer / GC / trade), a
+    per-type intro, and a recurring portfolio digest — all through the CAN-SPAM email
+    seam (simulated until SMTP is set). Reward guardrail: no cash fees for realtors or
+    insurance/restoration partners (partners.py); reward tracking belongs to Nod."""
     biz = current_business()
     preview = None
     if request.method == "POST" and request.form.get("action") == "generate":
         contact = db.get_contact(request.form.get("contact_id", type=int), biz["id"])
         if contact:
-            email = ai.generate_cold_email(biz, contact)
+            ptype = contact.get("partner_type")
+            if ptype:
+                email = partners.intro_email(biz, contact, ptype)
+            else:  # untyped partner: fall back to the AI-drafted generic intro
+                email = ai.generate_cold_email(biz, contact)
             preview = {"contact": contact, "subject": email["subject"], "body": email["body"]}
+    elif request.method == "POST" and request.form.get("action") == "digest":
+        contact = db.get_contact(request.form.get("contact_id", type=int), biz["id"])
+        recent = [p for p in db.list_posts(biz["id"]) if p["status"] == "published"][:5]
+        email = partners.digest_email(biz, recent)
+        if contact and email:
+            preview = {"contact": contact, "subject": email["subject"], "body": email["body"]}
+        elif contact:
+            return redirect("/outreach?msg=nodigest")
+    plist = db.list_contacts(biz["id"], kind="partner")
+    for p in plist:
+        p["type_label"] = partners.get_type(p.get("partner_type"))["label"] if p.get("partner_type") else ""
+        p["reward_note"] = partners.reward_note(p.get("partner_type")) if p.get("partner_type") else ""
     return render_template("outreach.html",
-                           partners=db.list_contacts(biz["id"], kind="partner"),
+                           partners=plist, partner_types=partners.PARTNER_TYPES,
                            preview=preview, channels=messaging.channel_status(biz["id"]),
                            can_spam=outreach.can_spam_ready(biz))
+
+
+@app.route("/outreach/type", methods=["POST"])
+@login_required
+def outreach_set_type():
+    biz = current_business()
+    contact = db.get_contact(request.form.get("contact_id", type=int), biz["id"])
+    ptype = request.form.get("partner_type") or ""
+    if contact and (ptype in partners.PARTNER_TYPES or ptype == ""):
+        db.set_contact_partner_type(biz["id"], contact["id"], ptype)
+    return redirect("/outreach")
 
 
 @app.route("/outreach/send", methods=["POST"])
@@ -1381,44 +1425,69 @@ def outreach_send():
     return redirect(f"/outreach?msg=sent_{res['status']}")
 
 
-@app.route("/cold")
+# NOTE: the /cold UI (cold SMS / voice) was removed 2026-07-19. Cold phone outreach
+# to homeowners is permanently hard-blocked (TCPA; no attorney sign-off, no approval
+# path), so a page advertising it violated AUDIT_TRUTH in spirit. The fail-closed
+# messaging seam (messaging.send_cold_sms + consent ledger + DNC) is KEPT — it is the
+# compliance moat and other engines rely on it. See CAPABILITY_BACKLOG.md.
+
+
+@app.route("/radiusmail")
 @login_required
-def cold_page():
-    """Cold SMS / voice -- hard-gated. The page is mostly about the compliance posture
-    (our moat): it stays disabled until a TCPA attorney signs off, and even then each
-    contact needs written consent."""
+def radiusmail_page():
+    """Neighbor Mail: radius direct-mail campaigns around completed jobsites — the
+    one lawful cold channel to homeowners (paper needs no consent). v0 is assisted:
+    JobMagnet drafts, the owner prints + drops via USPS EDDM."""
     biz = current_business()
-    leads = [c for c in db.list_contacts(biz["id"]) if c["kind"] in ("partner", "lead")]
-    return render_template("cold.html", leads=leads,
-                           sms_enabled=messaging.cold_sms_enabled(),
-                           voice_enabled=messaging.cold_voice_enabled(),
-                           channels=messaging.channel_status(biz["id"]))
+    campaigns = db.list_mail_campaigns(biz["id"])
+    covered = db.mail_campaign_contact_ids(biz["id"])
+    jobs = [c for c in db.list_contacts(biz["id"], kind="customer")
+            if c.get("last_job_at") and c["id"] not in covered]
+    return render_template("radiusmail.html", campaigns=campaigns, jobs=jobs,
+                           mode=radiusmail.mail_mode(),
+                           default_pieces=radiusmail.DEFAULT_PIECES,
+                           eddm_steps=radiusmail.eddm_steps())
 
 
-@app.route("/cold/consent", methods=["POST"])
+@app.route("/radiusmail/create", methods=["POST"])
 @login_required
-def cold_consent():
-    """Record prior express WRITTEN consent for a contact (the TCPA requirement for
-    cold marketing SMS). In production this captures the signed proof; here it records
-    the consent event in the ledger."""
-    biz = current_business()
-    contact = db.get_contact(request.form.get("contact_id", type=int), biz["id"])
-    if contact:
-        db.set_contact_consent(biz["id"], contact["id"], "sms", "granted",
-                               source="written consent recorded in app")
-    return redirect("/cold")
-
-
-@app.route("/cold/sms", methods=["POST"])
-@login_required
-def cold_sms_send():
+def radiusmail_create():
+    """Draft a campaign for a completed job. The jobsite address is entered here (and
+    remembered on the contact so the next campaign prefills)."""
     biz = current_business()
     contact = db.get_contact(request.form.get("contact_id", type=int), biz["id"])
-    body = (request.form.get("body") or "").strip()
-    if not contact or not contact.get("phone") or not body:
-        return redirect("/cold?msg=incomplete")
-    res = messaging.send_cold_sms(biz["id"], contact["phone"], body, contact=contact)
-    return redirect(f"/cold?msg={res['status']}")
+    address = (request.form.get("address") or (contact or {}).get("address") or "").strip()
+    if not contact or not address:
+        return redirect("/radiusmail?msg=noaddress")
+    if contact["id"] in db.mail_campaign_contact_ids(biz["id"]):
+        return redirect("/radiusmail?msg=exists")
+    db.set_contact_address(biz["id"], contact["id"], address)
+    camp = radiusmail.campaign_from_job(
+        biz, {"address": address, "service": contact.get("last_service", "")},
+        pieces=request.form.get("pieces", type=int) or radiusmail.DEFAULT_PIECES)
+    db.add_mail_campaign(biz["id"], camp, contact_id=contact["id"])
+    return redirect("/radiusmail?msg=drafted")
+
+
+@app.route("/radiusmail/<int:campaign_id>/status", methods=["POST"])
+@login_required
+def radiusmail_status(campaign_id):
+    biz = current_business()
+    status = request.form.get("status") or ""
+    if db.get_mail_campaign(campaign_id, biz["id"]):
+        db.set_mail_campaign_status(biz["id"], campaign_id, status)
+    return redirect("/radiusmail")
+
+
+@app.route("/radiusmail/<int:campaign_id>/print")
+@login_required
+def radiusmail_print(campaign_id):
+    """Print-ready page (letter + door hanger) — plain layout, browser print dialog."""
+    biz = current_business()
+    camp = db.get_mail_campaign(campaign_id, biz["id"])
+    if not camp:
+        return redirect("/radiusmail")
+    return render_template("radiusmail_print.html", camp=camp, business=biz)
 
 
 @app.route("/unsubscribe/<int:contact_id>")

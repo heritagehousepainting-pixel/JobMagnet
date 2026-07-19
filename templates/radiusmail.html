@@ -1,0 +1,99 @@
+{% extends "app_shell.html" %}
+{% import "_macros.html" as ui %}
+{% block title %}Neighbor Mail{% endblock %}
+{% block page_title %}Neighbor Mail{% endblock %}
+{% block page_sub %}<p class="page-sub">Every finished job advertises to its own street. A letter and door hanger for the closest neighbors — physical mail needs no consent, and the jobsite is your proof.</p>{% endblock %}
+
+{% block content %}
+{% set msg = request.args.get('msg') %}
+{% if msg == 'drafted' %}<div class="save-banner">Campaign drafted. Review the letter, approve it, then print &amp; drop it at USPS.</div>{% endif %}
+{% if msg == 'noaddress' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">Enter the jobsite address so the campaign can anchor to the street.</div>{% endif %}
+{% if msg == 'exists' %}<div class="auth-err" style="background:var(--danger-bg);color:var(--danger);padding:var(--space-3);border-radius:var(--radius);margin-bottom:var(--space-4)">That job already has a campaign.</div>{% endif %}
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head">
+    <h2 class="card-title">Start a campaign from a completed job</h2>
+    <span class="pill pill-neutral"><span class="pill-dot"></span>Mode: {{ mode }}</span>
+  </div>
+  <div class="card-body">
+    {% if jobs %}
+    <table class="dt-table" style="width:100%">
+      <tbody>
+        {% for j in jobs %}
+        <tr>
+          <td><strong>{{ j.name }}</strong><div class="dt-muted">{{ j.last_service or 'job' }} · {{ j.last_job_at }}</div></td>
+          <td>
+            <form method="post" action="/radiusmail/create" style="display:flex;gap:var(--space-2);align-items:center;justify-content:flex-end;flex-wrap:wrap">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="contact_id" value="{{ j.id }}">
+              <input class="field-control" style="max-width:16rem" name="address" placeholder="Jobsite address" value="{{ j.address or '' }}" aria-label="Jobsite address for {{ j.name }}">
+              <input class="field-control" style="max-width:6rem" name="pieces" type="number" min="1" max="600" value="{{ default_pieces }}" aria-label="Pieces">
+              <button class="btn btn-secondary btn-sm" type="submit">Draft campaign</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="field-help" style="margin-top:var(--space-3)">The letter names the street, never the house. Your customer's exact address is not printed.</p>
+    {% else %}
+      {{ ui.empty("No completed jobs waiting",
+                  "Log completed jobs (with a last job date) in Reactivation, and each one can anchor a neighbor campaign here.",
+                  "/reactivation", "Open Reactivation") }}
+    {% endif %}
+  </div>
+</div>
+
+{% if campaigns %}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-head"><h2 class="card-title">Campaigns</h2></div>
+  <div class="card-body">
+    {% for c in campaigns %}
+    <div class="card" style="margin-bottom:var(--space-3)">
+      <div class="card-head">
+        <h3 class="card-title" style="font-size:1rem">{{ c.job_address }}</h3>
+        <span class="pill {{ 'pill-booked' if c.status == 'printed' else ('pill-new' if c.status == 'approved' else 'pill-neutral') }}"><span class="pill-dot"></span>{{ c.status }} · {{ c.pieces }} pieces</span>
+      </div>
+      <div class="card-body">
+        <p class="field-label">Neighbor letter</p>
+        <p class="post-body" style="white-space:pre-line;margin-bottom:var(--space-3)">{{ c.letter_body }}</p>
+        <p class="field-label">Door hanger</p>
+        <p class="post-body" style="white-space:pre-line;margin-bottom:var(--space-3)">{{ c.hanger_body }}</p>
+        <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+          {% if c.status == 'draft' %}
+          <form method="post" action="/radiusmail/{{ c.id }}/status">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="status" value="approved">
+            <button class="btn btn-primary btn-sm" type="submit">Approve</button>
+          </form>
+          {% endif %}
+          {% if c.status == 'approved' %}
+          <a class="btn btn-secondary btn-sm" href="/radiusmail/{{ c.id }}/print" target="_blank" rel="noopener">Open print view</a>
+          <form method="post" action="/radiusmail/{{ c.id }}/status">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="status" value="printed">
+            <button class="btn btn-primary btn-sm" type="submit">Mark printed &amp; dropped</button>
+          </form>
+          {% endif %}
+          {% if c.status == 'printed' %}
+          <a class="btn btn-secondary btn-sm" href="/radiusmail/{{ c.id }}/print" target="_blank" rel="noopener">Reprint</a>
+          <a class="btn btn-secondary btn-sm" href="/roi">Log the spend in Results</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head"><h2 class="card-title">How delivery works (USPS EDDM — no address list needed)</h2></div>
+  <div class="card-body">
+    <ol class="post-body" style="padding-left:1.2rem">
+      {% for step in eddm_steps %}<li style="margin-bottom:var(--space-2)">{{ step }}</li>{% endfor %}
+    </ol>
+    <p class="dt-muted" style="font-size:.85rem;margin-top:var(--space-2)">Assisted mode: JobMagnet drafts and formats; you print and drop. Automated print-and-mail is not wired yet, and we won't claim it until it is.</p>
+  </div>
+</div>
+{% endblock %}
