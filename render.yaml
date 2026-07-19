@@ -52,5 +52,54 @@ services:
       #   JOBMAGNET_EMAIL_FROM / SMTP_HOST / SMTP_USER / SMTP_PASSWORD   (email)
       # Billing (optional): STRIPE_SECRET_KEY
       #
-      # Scheduled work (autopilot tick + weekly digest) is driven by an external cron
-      # hitting /tasks/tick and /tasks/digest with ?token=$JOBMAGNET_WEBHOOK_TOKEN.
+      # Scheduled work (autopilot tick + weekly digest) is driven by the cron
+      # services below — no external scheduler needed.
+
+  # ---- Autonomy heartbeat: the wire that makes autopilot run unattended ----------
+  # Every 15 min: publishes due scheduled posts + runs each Premium+ tenant's
+  # take_over plays through the same consent-gated seams the buttons use. Safe at
+  # this frequency by design (cadence pacing + daily SMS caps + dedupe guards).
+  # Token-gated: /tasks/* fails closed without JOBMAGNET_WEBHOOK_TOKEN, synced here
+  # from the web service so both sides always share the same generated secret.
+  - type: cron
+    name: jobmagnet-tick
+    runtime: python
+    plan: starter
+    schedule: "*/15 * * * *"
+    buildCommand: "echo no build needed"
+    startCommand: >-
+      python -c "import os,urllib.request,urllib.parse;
+      r=urllib.request.urlopen(urllib.request.Request('https://jobmagnet-49l9.onrender.com/tasks/tick',
+      data=urllib.parse.urlencode({'token': os.environ['JOBMAGNET_WEBHOOK_TOKEN']}).encode()),
+      timeout=280); print('tick', r.status, r.read()[:400])"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: JOBMAGNET_WEBHOOK_TOKEN
+        fromService:
+          type: web
+          name: jobmagnet
+          envVarKey: JOBMAGNET_WEBHOOK_TOKEN
+
+  # ---- Weekly owner digest (Mondays 12:00 UTC ≈ Monday morning US-East) ----------
+  # Emails each tenant owner their digest; simulated (recorded, not sent) until SMTP
+  # is configured — safe to run either way.
+  - type: cron
+    name: jobmagnet-digest
+    runtime: python
+    plan: starter
+    schedule: "0 12 * * 1"
+    buildCommand: "echo no build needed"
+    startCommand: >-
+      python -c "import os,urllib.request,urllib.parse;
+      r=urllib.request.urlopen(urllib.request.Request('https://jobmagnet-49l9.onrender.com/tasks/digest',
+      data=urllib.parse.urlencode({'token': os.environ['JOBMAGNET_WEBHOOK_TOKEN']}).encode()),
+      timeout=280); print('digest', r.status, r.read()[:400])"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: JOBMAGNET_WEBHOOK_TOKEN
+        fromService:
+          type: web
+          name: jobmagnet
+          envVarKey: JOBMAGNET_WEBHOOK_TOKEN

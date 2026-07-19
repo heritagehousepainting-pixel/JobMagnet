@@ -113,14 +113,14 @@ says so:
 - ⬜ **Public URL + Twilio inbound webhook** pointed at `POST /webhooks/sms` so
   texting a job photo creates a draft (photo-by-text). Needs the app deployed (or a
   tunnel) and per-business sending numbers to map texts to the right tenant.
-- ⬜ **Autonomy heartbeat cron** — hit `POST /tasks/tick` on a schedule to make the
-  product run on its own: it publishes due scheduled posts AND runs each Premium+ tenant's
-  take_over plays through the gated seams. Token-gated by `JOBMAGNET_WEBHOOK_TOKEN` (send it
-  as a `token` form field). **Safe to run every ~15 min** — Phase 1 (content cadence) now
-  paces the get_found/show_work plays: each only redrafts once its platform window has passed
-  (Google ~weekly, showcase ~every few days), so a frequent heartbeat publishes and sends
-  without piling up drafts. The older per-tenant `POST /scheduler/run` button still works for
-  publishing due posts by hand.
+- 🟡 **Autonomy heartbeat cron** — WIRED IN THE BLUEPRINT 2026-07-19: `render.yaml` now
+  defines a `jobmagnet-tick` cron (every 15 min) and a `jobmagnet-digest` cron (Mondays)
+  that POST the token to `/tasks/tick` / `/tasks/digest`. One manual step remains: **approve
+  the Blueprint sync in the Render dashboard** so the two new cron services get provisioned
+  (Render asks for approval when a blueprint adds services; small extra cost per cron job).
+  Safe every ~15 min by design: cadence pacing, daily SMS caps, and dedupe guards mean a
+  frequent heartbeat never piles up drafts or double-texts. The per-tenant
+  `POST /scheduler/run` button still works for publishing due posts by hand.
 
 ## Phase 3 — ROI loop
 - ⬜ **Tracked phone numbers** (Twilio) per channel for attribution.
