@@ -46,23 +46,33 @@
   <div class="card-body">
     {% if contacts %}
     <table class="dt-table" style="width:100%">
-      <thead><tr style="text-align:left"><th>Name</th><th>Type</th><th>Phone / Email</th><th>Consent</th><th></th></tr></thead>
+      <thead><tr style="text-align:left">
+        <th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Consent</th>
+        <th title="When switched off, JobMagnet never messages this contact.">Contactable</th>
+      </tr></thead>
       <tbody>
         {% for c in contacts %}
         <tr>
           <td><strong>{{ c.name }}</strong></td>
           <td><span class="pill pill-neutral">{{ c.kind }}</span></td>
-          <td class="dt-muted">{{ c.phone or '' }} {{ c.email or '' }}</td>
+          <td class="dt-muted">{{ c.phone or '—' }}</td>
+          <td class="dt-muted">{{ c.email or '—' }}</td>
           <td>
-            {% if c.suppressed %}<span class="pill pill-warning">do not contact</span>
-            {% elif c.consent_status == 'opted_out' %}<span class="pill pill-warning">opted out</span>
-            {% elif c.consent_status == 'granted' %}<span class="pill pill-booked">granted</span>
-            {% else %}<span class="pill pill-neutral">unknown</span>{% endif %}
+            {% if c.consent_status == 'granted' %}<span class="pill pill-booked">Opted in</span>
+            {% elif c.consent_status == 'opted_out' %}<span class="pill pill-warning">Opted out</span>
+            {% else %}<span class="dt-muted" style="font-size:.85em">Not asked</span>{% endif %}
           </td>
-          <td style="text-align:right">
-            <form method="post" action="/contacts/{{ c.id }}/suppress" style="display:inline">
+          <td>
+            {# A real on/off toggle (submits the form on click). ON = JobMagnet may message
+               them; OFF = do not contact (suppressed from every send). #}
+            <form method="post" action="/contacts/{{ c.id }}/suppress" style="margin:0">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-              <button class="btn btn-ghost btn-sm" type="submit">{{ 'Allow' if c.suppressed else 'Do not contact' }}</button>
+              <button type="submit" class="dnc-toggle {{ 'is-off' if c.suppressed else 'is-on' }}"
+                      role="switch" aria-checked="{{ 'false' if c.suppressed else 'true' }}"
+                      title="{{ 'Do not contact. Click to allow messaging again.' if c.suppressed else 'Contactable. Click to stop all messaging (do not contact).' }}">
+                <span class="dnc-knob" aria-hidden="true"></span>
+                <span class="dnc-label">{{ 'Do not contact' if c.suppressed else 'Contactable' }}</span>
+              </button>
             </form>
           </td>
         </tr>
