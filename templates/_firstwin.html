@@ -3,7 +3,7 @@
 <div class="firstwin firstwin-{{ fw.state }}">
   {# fw.cta_route is always a static "/path" string from firstwin.WINS (safe-by-inspection, no user input in the href). #}
   {% if fw.state == 'in_progress' %}
-    <p class="firstwin-kicker">Your first win · Day {{ fw.days_since_signup + 1 }} of 7</p>
+    <p class="firstwin-kicker">Your first win{% if fw.days_since_signup < 7 %} · Day {{ fw.days_since_signup + 1 }} of 7{% endif %}</p>
     <h3 class="firstwin-label">{{ fw.label }}</h3>
     <p class="firstwin-nudge">{{ fw.nudge }}</p>
     <a class="btn btn-primary btn-sm" href="{{ fw.cta_route }}">Let's do it</a>

@@ -336,15 +336,29 @@ def dashboard():
     due_count = sum(1 for p in posts if p["status"] == "scheduled"
                     and (p["scheduled_for"] or "") <= now)
     signals = db.get_signals(biz["id"])
-    activation_funnel = db.activation_funnel_counts() if biz["id"] == 1 else None
     brief = _briefing(biz, stats, drafts, due_count, mandate_ready, signals=signals)
+    # The board: real at-a-glance numbers (honest zeros until data exists).
+    roi = db.roi_summary(biz["id"])
+    board = {
+        "leads": len(db.list_leads(biz["id"])),
+        "reviews": len(db.list_reviews(biz["id"])),
+        "posts_live": stats.get("published", 0),
+        "booked": roi["totals"].get("booked", 0),
+        "revenue": roi["totals"].get("revenue", 0.0),
+        "cost_per_booked": roi["totals"].get("cost_per_booked"),
+    }
+    # "What JobMagnet did" — the last few autopilot runs (the AI-employee activity feed).
+    recent_runs = db.list_autopilot_runs(biz["id"], limit=3)
+    # Honest brain state for the header pill (demo templates vs a real provider).
+    brain_live = ai.brain_mode() != "demo"
     return render_template("command.html", brief=brief, stats=stats,
-                           mandate_ready=mandate_ready,
+                           mandate_ready=mandate_ready, board=board,
+                           recent_runs=recent_runs, brain_live=brain_live,
+                           due_count=due_count,
                            digest=convos.digest(biz["id"]),
                            suggestions=assistant.suggestions(),
                            first_win=first_win_block(biz["id"]),
-                           jobmagnet_alert=jobmagnet_alert,
-                           activation_funnel=activation_funnel)
+                           jobmagnet_alert=jobmagnet_alert)
 
 
 @app.route("/queue")

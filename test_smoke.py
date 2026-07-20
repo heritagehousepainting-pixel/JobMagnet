@@ -1309,8 +1309,22 @@ print("JobMagnet's command center")
 r = c.get("/dashboard")
 check("home is the command center surface",
       r.status_code == 200 and b"command-shell" in r.data and b"commandInput" in r.data)
-check("command center loads the orb + assistant assets",
-      b"assistant.js" in r.data and b'id="orb"' in r.data)
+check("command center loads the assistant/chat assets (orb cut)",
+      b"assistant.js" in r.data and b'id="orb"' not in r.data)
+check("command center is now a dashboard cockpit (not the empty-void greeting)",
+      b"cockpit-shell" in r.data and b"Command center" in r.data)
+check("the internal activation-funnel metric no longer leaks to the user",
+      b"started walkthrough" not in r.data and b"set elections" not in r.data)
+# Onboarded business 1 sees the cockpit (status line + board), not Start Here.
+check("onboarded tenant sees the desk board, not Start Here",
+      b"Your board" in r.data and b"Start the walkthrough" not in r.data)
+# A brand-new tenant (no Game Plan yet) leads with Start Here above the desk.
+_nuc = client()
+_nuc.post("/signup", data={"email": "newco@example.com", "password": "newco-123456",
+                           "name": "New Contractor Co", "trade": "painting"})
+r = _nuc.get("/dashboard")
+check("new tenant (no Game Plan) leads with Start Here above the desk",
+      r.status_code == 200 and b"Start the walkthrough" in r.data and b"start-here" in r.data)
 r = c.get("/queue")
 check("queue still shows JobMagnet's briefing",
       r.status_code == 200 and b"brief-hi" in r.data and b"on the clock" in r.data)
@@ -1424,7 +1438,7 @@ _tu = _cv.top_unmet(1)
 check("top unmet ranks recurring gaps by frequency",
       isinstance(_tu, list) and (not _tu or _tu[0]["count"] >= 1))
 check("the command center surfaces the digest line",
-      b"convo-digest" in c.get("/dashboard").data)
+      b"desk-digest" in c.get("/dashboard").data)
 check("the training page ranks what to build next",
       (not _tu) or b"Build these next" in c.get("/training").data)
 
