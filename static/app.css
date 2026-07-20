@@ -446,7 +446,10 @@
 
 /* Sidebar AI status light — a green "systems go" indicator that never names the
    underlying model/provider to the user (2026-07-20). is-go = a real brain is live. */
-.biz-status{display:inline-flex;align-items:center;gap:6px}
+/* Higher specificity than `.sidebar-foot .biz-sub` (same 2-class weight, later in
+   source) so the short, fixed status text is never truncated by the biz-sub ellipsis. */
+.sidebar-foot .biz-status{display:inline-flex;align-items:center;gap:5px;
+  overflow:visible;text-overflow:clip;white-space:nowrap;max-width:none}
 .biz-status .status-led{flex:0 0 auto;width:7px;height:7px;border-radius:50%;
   background:var(--ink-faint);box-shadow:none}
 .biz-status.is-go{color:var(--accent-strong)}
