@@ -443,3 +443,14 @@
 .dt-table td{padding:var(--space-3);border-bottom:1px solid var(--border);vertical-align:middle;color:var(--ink)}
 .dt-table tbody tr:last-child td{border-bottom:0}
 .dt-table tbody tr:hover td{background:var(--bg)}
+
+/* Sidebar AI status light — a green "systems go" indicator that never names the
+   underlying model/provider to the user (2026-07-20). is-go = a real brain is live. */
+.biz-status{display:inline-flex;align-items:center;gap:6px}
+.biz-status .status-led{flex:0 0 auto;width:7px;height:7px;border-radius:50%;
+  background:var(--ink-faint);box-shadow:none}
+.biz-status.is-go{color:var(--accent-strong)}
+.biz-status.is-go .status-led{background:var(--accent);
+  box-shadow:0 0 6px color-mix(in srgb,var(--accent) 70%,transparent)}
+.biz-status.is-off{color:var(--warning,#c98a12)}
+.biz-status.is-off .status-led{background:var(--warning,#c98a12)}

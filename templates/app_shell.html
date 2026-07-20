@@ -134,7 +134,9 @@
       <span class="avatar">{{ (business.name or 'J')[0]|upper }}</span>
       <span class="biz">
         <span class="biz-name">{{ business.name }}</span>
-        <span class="biz-sub">Brain: {{ brain }}</span>
+        <span class="biz-sub biz-status {{ 'is-go' if brain != 'demo' else 'is-off' }}">
+          <span class="status-led" aria-hidden="true"></span>{{ 'Systems go' if brain != 'demo' else 'Connect AI' }}
+        </span>
       </span>
       <div class="sidebar-foot-actions">
         <button type="button" class="sidebar-theme" onclick="jmToggleTheme()" title="Toggle light / dark" aria-label="Toggle light or dark theme">
